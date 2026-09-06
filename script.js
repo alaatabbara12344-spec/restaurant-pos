@@ -28,19 +28,39 @@ const menu = [
 ];
 let cart = [];
 let orderType = "";
-/* اختيار نوع الطلب */
+/* =========================
+   رقم الطلب
+========================= */
+function getNextOrderNumber() {
+  let number =
+    Number(localStorage.getItem("orderNumber")) || 1000;
+  number++;
+  localStorage.setItem(
+    "orderNumber",
+    number
+  );
+  return number;
+}
+/* =========================
+   اختيار نوع الطلب
+========================= */
 function setOrderType(type) {
   orderType = type;
-  document.getElementById("orderType").textContent = type;
+  document.getElementById("orderType").textContent =
+    type;
 }
-/* عرض التصنيف */
+/* =========================
+   عرض التصنيف
+========================= */
 function showCategory(category) {
-  const items = document.getElementById("items");
+  const items =
+    document.getElementById("items");
   items.innerHTML = "";
   menu
     .filter(item => item.category === category)
     .forEach(item => {
-      const div = document.createElement("div");
+      const div =
+        document.createElement("div");
       div.className = "item";
       div.innerHTML = `
         <strong>${item.name}</strong>
@@ -50,11 +70,12 @@ function showCategory(category) {
       items.appendChild(div);
     });
 }
-/* إضافة صنف */
+/* =========================
+   إضافة صنف
+========================= */
 function addItem(item) {
-  const existing = cart.find(
-    x => x.name === item.name
-  );
+  const existing =
+    cart.find(x => x.name === item.name);
   if (existing) {
     existing.quantity++;
   } else {
@@ -65,21 +86,23 @@ function addItem(item) {
   }
   updateCart();
 }
-/* تغيير الكمية */
+/* =========================
+   تغيير الكمية
+========================= */
 function changeQuantity(name, amount) {
-  const item = cart.find(
-    x => x.name === name
-  );
+  const item =
+    cart.find(x => x.name === name);
   if (!item) return;
   item.quantity += amount;
   if (item.quantity <= 0) {
-    cart = cart.filter(
-      x => x.name !== name
-    );
+    cart =
+      cart.filter(x => x.name !== name);
   }
   updateCart();
 }
-/* تحديث الطلب */
+/* =========================
+   تحديث السلة
+========================= */
 function updateCart() {
   const cartItems =
     document.getElementById("cartItems");
@@ -117,7 +140,23 @@ function updateCart() {
   document.getElementById("total").textContent =
     total;
 }
-/* مسح الطلب */
+/* =========================
+   حفظ الطلب
+========================= */
+function saveOrder(order) {
+  let orders =
+    JSON.parse(
+      localStorage.getItem("orders") || "[]"
+    );
+  orders.push(order);
+  localStorage.setItem(
+    "orders",
+    JSON.stringify(orders)
+  );
+}
+/* =========================
+   مسح الطلب
+========================= */
 function clearOrder() {
   cart = [];
   orderType = "";
@@ -129,7 +168,9 @@ function clearOrder() {
   document.getElementById("notes").value = "";
   updateCart();
 }
-/* تأكيد الطلب */
+/* =========================
+   تأكيد الطلب
+========================= */
 function confirmOrder() {
   if (cart.length === 0) {
     alert("أضف أصناف إلى الطلب أولاً");
@@ -147,26 +188,141 @@ function confirmOrder() {
     document.getElementById("address").value;
   const notes =
     document.getElementById("notes").value;
-  alert(
-    "تم تأكيد الطلب ✅\n\n" +
-    "نوع الطلب: " +
-    orderType +
-    "\n" +
-    "الزبون: " +
-    name +
-    "\n" +
-    "الهاتف: " +
-    phone +
-    "\n" +
-    "العنوان: " +
-    address +
-    "\n" +
-    "الملاحظات: " +
-    notes +
-    "\n\n" +
-    "المجموع: $" +
-    document.getElementById("total").textContent
-  );
+  const total =
+    Number(
+      document.getElementById("total").textContent
+    );
+  const orderNumber =
+    getNextOrderNumber();
+  const order = {
+    number: orderNumber,
+    date: new Date().toLocaleString("ar-LB"),
+    type: orderType,
+    customer: {
+      name: name,
+      phone: phone,
+      address: address
+    },
+    notes: notes,
+    items: cart.map(item => ({
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      total: item.price * item.quantity
+    })),
+    total: total
+  };
+  // حفظ الطلب
+  saveOrder(order);
+  // طباعة الإيصال
+  printReceipt(order);
+  // تصفير الطلب
+  clearOrder();
 }
-/* فتح الأسماك عند تشغيل الصفحة */
+/* =========================
+   طباعة الإيصال
+========================= */
+function printReceipt(order) {
+  let itemsHTML = "";
+  order.items.forEach(item => {
+    itemsHTML += `
+      <tr>
+        <td>${item.name}</td>
+        <td>${item.quantity}</td>
+        <td>$${item.total}</td>
+      </tr>
+    `;
+  });
+  const receipt = `
+    <!DOCTYPE html>
+    <html lang="ar" dir="rtl">
+    <head>
+      <meta charset="UTF-8">
+      <title>فاتورة #${order.number}</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          width: 80mm;
+          margin: 0 auto;
+          padding: 10px;
+          text-align: center;
+        }
+        h2 {
+          margin-bottom: 5px;
+        }
+        p {
+          margin: 4px 0;
+          font-size: 13px;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 12px;
+          font-size: 13px;
+        }
+        th,
+        td {
+          padding: 5px 2px;
+          border-bottom: 1px dashed #999;
+        }
+        .total {
+          font-size: 20px;
+          font-weight: bold;
+          margin-top: 15px;
+        }
+        .footer {
+          margin-top: 20px;
+          font-size: 12px;
+        }
+        @media print {
+          body {
+            width: 80mm;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <h2>🐟 مطعم البحر</h2>
+      <p>فاتورة رقم #${order.number}</p>
+      <p>${order.date}</p>
+      <hr>
+      <p><strong>نوع الطلب:</strong> ${order.type}</p>
+      <p><strong>الزبون:</strong> ${order.customer.name || "-"}</p>
+      <p><strong>الهاتف:</strong> ${order.customer.phone || "-"}</p>
+      <p><strong>العنوان:</strong> ${order.customer.address || "-"}</p>
+      <table>
+        <thead>
+          <tr>
+            <th>الصنف</th>
+            <th>الكمية</th>
+            <th>المجموع</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsHTML}
+        </tbody>
+      </table>
+      <div class="total">
+        المجموع: $${order.total}
+      </div>
+      <p class="footer">
+        شكرًا لزيارتكم ❤️
+      </p>
+    </body>
+    </html>
+  `;
+  const printWindow =
+    window.open(
+      "",
+      "_blank",
+      "width=400,height=600"
+    );
+  printWindow.document.write(receipt);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+}
+/* =========================
+   تشغيل أول تصنيف
+========================= */
 showCategory("أسماك");
