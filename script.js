@@ -1,30 +1,30 @@
 const menu = [
   // مقبلات
-  {name: "حمص", category: "مقبلات", price: 4},
-  {name: "متبل", category: "مقبلات", price: 4},
-  {name: "ورق عنب", category: "مقبلات", price: 5},
-  {name: "بطاطا حرة", category: "مقبلات", price: 5},
+  { name: "حمص", category: "مقبلات", price: 4 },
+  { name: "متبل", category: "مقبلات", price: 4 },
+  { name: "ورق عنب", category: "مقبلات", price: 5 },
+  { name: "بطاطا حرة", category: "مقبلات", price: 5 },
   // أسماك
-  {name: "قاروص", category: "أسماك", price: 15},
-  {name: "دنيس", category: "أسماك", price: 16},
-  {name: "سلطان إبراهيم", category: "أسماك", price: 18},
-  {name: "سلمون", category: "أسماك", price: 20},
+  { name: "قاروص", category: "أسماك", price: 15 },
+  { name: "دنيس", category: "أسماك", price: 16 },
+  { name: "سلطان إبراهيم", category: "أسماك", price: 18 },
+  { name: "سلمون", category: "أسماك", price: 20 },
   // مشاوي
-  {name: "سمك مشوي", category: "مشاوي", price: 17},
-  {name: "روبيان مشوي", category: "مشاوي", price: 19},
-  {name: "كالاماري مشوي", category: "مشاوي", price: 16},
+  { name: "سمك مشوي", category: "مشاوي", price: 17 },
+  { name: "روبيان مشوي", category: "مشاوي", price: 19 },
+  { name: "كالاماري مشوي", category: "مشاوي", price: 16 },
   // مقالي
-  {name: "سمك مقلي", category: "مقالي", price: 15},
-  {name: "روبيان مقلي", category: "مقالي", price: 17},
-  {name: "كالاماري مقلي", category: "مقالي", price: 14},
+  { name: "سمك مقلي", category: "مقالي", price: 15 },
+  { name: "روبيان مقلي", category: "مقالي", price: 17 },
+  { name: "كالاماري مقلي", category: "مقالي", price: 14 },
   // سلطات
-  {name: "فتوش", category: "سلطات", price: 5},
-  {name: "سلطة خضراء", category: "سلطات", price: 5},
-  {name: "تبولة", category: "سلطات", price: 5},
+  { name: "فتوش", category: "سلطات", price: 5 },
+  { name: "سلطة خضراء", category: "سلطات", price: 5 },
+  { name: "تبولة", category: "سلطات", price: 5 },
   // مشروبات
-  {name: "Pepsi", category: "مشروبات", price: 2},
-  {name: "7Up", category: "مشروبات", price: 2},
-  {name: "مياه", category: "مشروبات", price: 1}
+  { name: "Pepsi", category: "مشروبات", price: 2 },
+  { name: "7Up", category: "مشروبات", price: 2 },
+  { name: "مياه", category: "مشروبات", price: 1 }
 ];
 let cart = [];
 let orderType = "";
@@ -280,8 +280,12 @@ function printReceipt(order) {
     </head>
     <body>
       <h2>🐟 مطعم البحر</h2>
-      <p>فاتورة رقم #${order.number}</p>
-      <p>${order.date}</p>
+      <p>
+        فاتورة رقم #${order.number}
+      </p>
+      <p>
+        ${order.date}
+      </p>
       <hr>
       <p>
         <strong>نوع الطلب:</strong>
@@ -345,61 +349,119 @@ function showOrders() {
     JSON.parse(
       localStorage.getItem("orders") || "[]"
     );
-  if (orders.length === 0) {
-    alert("لا يوجد طلبات محفوظة حتى الآن");
-    return;
-  }
   let ordersHTML = `
-    <div class="orders-page">
-      <h2>📋 الطلبات السابقة</h2>
-      <button onclick="location.reload()">
-        ⬅️ العودة للـPOS
-      </button>
-      <hr>
+    <div id="ordersOverlay"
+      style="
+        position:fixed;
+        inset:0;
+        background:rgba(0,0,0,0.55);
+        z-index:9999;
+        padding:20px;
+        overflow:auto;
+      ">
+      <div style="
+        background:white;
+        max-width:800px;
+        margin:20px auto;
+        padding:20px;
+        border-radius:15px;
+        direction:rtl;
+      ">
+        <div style="
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          gap:10px;
+        ">
+          <h2>📋 الطلبات السابقة</h2>
+          <button
+            onclick="closeOrders()"
+            style="
+              padding:10px 15px;
+              border:none;
+              border-radius:8px;
+              cursor:pointer;
+              font-size:16px;
+            "
+          >
+            ✕ إغلاق
+          </button>
+        </div>
+        <hr>
   `;
-  [...orders].reverse().forEach(order => {
+  if (orders.length === 0) {
     ordersHTML += `
-      <div class="saved-order">
-        <h3>
-          الطلب #${order.number}
-        </h3>
-        <p>
-          📅 ${order.date}
-        </p>
-        <p>
-          👤 ${order.customer.name || "-"}
-        </p>
-        <p>
-          📞 ${order.customer.phone || "-"}
-        </p>
-        <p>
-          🛵 النوع: ${order.type}
-        </p>
-        <p>
-          💰 المجموع:
-          <strong>$${order.total}</strong>
-        </p>
-        <details>
-          <summary>
-            عرض الأصناف
-          </summary>
-          <ul>
-            ${order.items.map(item => `
-              <li>
-                ${item.name}
-                × ${item.quantity}
-                — $${item.total}
-              </li>
-            `).join("")}
-          </ul>
-        </details>
-      </div>
+      <p style="text-align:center;">
+        لا يوجد طلبات محفوظة حتى الآن
+      </p>
     `;
-  });
+  } else {
+    [...orders].reverse().forEach(order => {
+      ordersHTML += `
+        <div style="
+          background:#f5f6f7;
+          padding:15px;
+          margin:10px 0;
+          border-radius:10px;
+        ">
+          <h3>
+            🧾 الطلب #${order.number}
+          </h3>
+          <p>
+            📅 ${order.date}
+          </p>
+          <p>
+            👤 الزبون:
+            ${order.customer.name || "-"}
+          </p>
+          <p>
+            📞 الهاتف:
+            ${order.customer.phone || "-"}
+          </p>
+          <p>
+            🛵 النوع:
+            ${order.type}
+          </p>
+          <p>
+            💰 المجموع:
+            <strong>$${order.total}</strong>
+          </p>
+          <details>
+            <summary>
+              عرض الأصناف
+            </summary>
+            <ul>
+              ${order.items.map(item => `
+                <li>
+                  ${item.name}
+                  × ${item.quantity}
+                  — $${item.total}
+                </li>
+              `).join("")}
+            </ul>
+          </details>
+        </div>
+      `;
+    });
+  }
   ordersHTML += `
+      </div>
     </div>
   `;
-  document.body.innerHTML = ordersHTML;
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    ordersHTML
+  );
+}
+/* =========================
+   إغلاق الطلبات السابقة
+========================= */
+function closeOrders() {
+  const overlay =
+    document.getElementById("ordersOverlay");
+  if (overlay) {
+    overlay.remove();
+  }
 }
 /* =========================
    تشغيل أول تصنيف
