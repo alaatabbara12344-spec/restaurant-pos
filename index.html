@@ -128,6 +128,7 @@
 
     </header>
 
+
     <main>
 
       <section class="menu">
@@ -155,6 +156,7 @@
           </button>
 
         </div>
+
 
         <div class="categories">
 
@@ -196,6 +198,7 @@
 
         </div>
 
+
         <div
           id="items"
           class="items">
@@ -218,6 +221,7 @@
 
         </div>
 
+
         <div id="cartItems">
 
           <p>
@@ -226,6 +230,7 @@
 
         </div>
 
+
         <div class="total">
 
           المجموع:
@@ -233,7 +238,9 @@
 
         </div>
 
+
         <hr>
+
 
         <h3>👤 بيانات الزبون</h3>
 
@@ -256,6 +263,7 @@
           id="notes"
           placeholder="ملاحظات على الطلب"></textarea>
 
+
         <button
           type="button"
           class="clear"
@@ -264,6 +272,7 @@
           🗑️ مسح الطلب
 
         </button>
+
 
         <button
           type="button"
@@ -282,6 +291,38 @@
 
 
   <script src="script.js"></script>
+
+
+  <!-- تشغيل نظام Offline -->
+  <script>
+
+    if ("serviceWorker" in navigator) {
+
+      window.addEventListener("load", function () {
+
+        navigator.serviceWorker
+          .register("./sw.js")
+          .then(function () {
+
+            console.log(
+              "Service Worker registered successfully"
+            );
+
+          })
+          .catch(function (error) {
+
+            console.error(
+              "Service Worker registration failed:",
+              error
+            );
+
+          });
+
+      });
+
+    }
+
+  </script>
 
 </body>
 
