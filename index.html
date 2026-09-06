@@ -2,40 +2,47 @@
 <html lang="ar" dir="rtl">
 
 <head>
-
   <meta charset="UTF-8">
 
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0">
 
-  <title>Al Bahar Restaurant</title>
+  <title>مطعم البحر - POS</title>
 
   <link rel="stylesheet" href="style.css">
-
 </head>
-
 
 <body>
 
   <div class="app">
 
     <header>
-
       <h1>🐟 مطعم البحر</h1>
-
-      <p>Fish & Seafood POS</p>
-
+      <p>Restaurant POS</p>
     </header>
-
 
     <main>
 
       <!-- MENU -->
-
       <section class="menu">
 
-        <h2>قائمة الطعام</h2>
+        <h2>🍽️ قائمة الطعام</h2>
 
+        <div class="order-type">
+
+          <button onclick="setOrderType('طاولة')">
+            🪑 طاولة
+          </button>
+
+          <button onclick="setOrderType('سفري')">
+            🥡 سفري
+          </button>
+
+          <button onclick="setOrderType('توصيل')">
+            🛵 توصيل
+          </button>
+
+        </div>
 
         <div class="categories">
 
@@ -65,24 +72,28 @@
 
         </div>
 
-
         <div id="items" class="items"></div>
 
       </section>
 
 
-
       <!-- ORDER -->
-
       <section class="cart">
 
         <h2>🛒 الطلب الحالي</h2>
 
+        <div class="order-info">
+
+          <strong>نوع الطلب:</strong>
+
+          <span id="orderType">
+            لم يتم الاختيار
+          </span>
+
+        </div>
 
         <div id="cartItems">
-
           <p>لا يوجد أصناف</p>
-
         </div>
 
 
@@ -97,31 +108,35 @@
         <hr>
 
 
-        <h3>بيانات الزبون</h3>
-
+        <h3>👤 بيانات الزبون</h3>
 
         <input
           id="name"
           type="text"
           placeholder="اسم الزبون">
 
-
         <input
           id="phone"
           type="tel"
           placeholder="رقم الهاتف">
-
 
         <input
           id="address"
           type="text"
           placeholder="العنوان">
 
-
         <textarea
           id="notes"
-          placeholder="ملاحظات على الطلب">
-        </textarea>
+          placeholder="ملاحظات على الطلب"></textarea>
+
+
+        <button
+          class="clear"
+          onclick="clearOrder()">
+
+          🗑️ مسح الطلب
+
+        </button>
 
 
         <button
@@ -138,8 +153,6 @@
 
   </div>
 
-
-  <!-- JAVASCRIPT -->
 
   <script src="script.js"></script>
 
