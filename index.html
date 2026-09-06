@@ -1,11 +1,146 @@
-<header>
-
-  <h1>🐟 مطعم البحر</h1>
-
-  <p>Restaurant POS</p>
-
-  <button class="orders-button" onclick="showOrders()">
-    📋 الطلبات السابقة
-  </button>
-
-</header>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مطعم البحر - POS</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>🐟 مطعم البحر</h1>
+      <p>Restaurant POS</p>
+      <button
+        type="button"
+        class="orders-button"
+        onclick="showOrders()">
+        📋 الطلبات السابقة
+      </button>
+    </header>
+    <main>
+      <!-- =========================
+           MENU
+      ========================== -->
+      <section class="menu">
+        <h2>🍽️ قائمة الطعام</h2>
+        <!-- نوع الطلب -->
+        <div class="order-type">
+          <button
+            type="button"
+            onclick="setOrderType('طاولة')">
+            🪑 طاولة
+          </button>
+          <button
+            type="button"
+            onclick="setOrderType('سفري')">
+            🥡 سفري
+          </button>
+          <button
+            type="button"
+            onclick="setOrderType('توصيل')">
+            🛵 توصيل
+          </button>
+        </div>
+        <!-- التصنيفات -->
+        <div class="categories">
+          <button
+            type="button"
+            onclick="showCategory('مقبلات')">
+            🥗 مقبلات
+          </button>
+          <button
+            type="button"
+            onclick="showCategory('أسماك')">
+            🐟 أسماك
+          </button>
+          <button
+            type="button"
+            onclick="showCategory('مشاوي')">
+            🔥 مشاوي
+          </button>
+          <button
+            type="button"
+            onclick="showCategory('مقالي')">
+            🍤 مقالي
+          </button>
+          <button
+            type="button"
+            onclick="showCategory('سلطات')">
+            🥬 سلطات
+          </button>
+          <button
+            type="button"
+            onclick="showCategory('مشروبات')">
+            🥤 مشروبات
+          </button>
+        </div>
+        <!-- الأصناف -->
+        <div
+          id="items"
+          class="items">
+        </div>
+      </section>
+      <!-- =========================
+           ORDER
+      ========================== -->
+      <section class="cart">
+        <h2>🛒 الطلب الحالي</h2>
+        <!-- معلومات الطلب -->
+        <div class="order-info">
+          <strong>نوع الطلب:</strong>
+          <span id="orderType">
+            لم يتم الاختيار
+          </span>
+        </div>
+        <!-- الأصناف -->
+        <div id="cartItems">
+          <p>
+            لا يوجد أصناف
+          </p>
+        </div>
+        <!-- المجموع -->
+        <div class="total">
+          المجموع:
+          $<span id="total">0</span>
+        </div>
+        <hr>
+        <!-- بيانات الزبون -->
+        <h3>👤 بيانات الزبون</h3>
+        <input
+          id="name"
+          type="text"
+          placeholder="اسم الزبون">
+        <input
+          id="phone"
+          type="tel"
+          placeholder="رقم الهاتف">
+        <input
+          id="address"
+          type="text"
+          placeholder="العنوان">
+        <textarea
+          id="notes"
+          placeholder="ملاحظات على الطلب">
+        </textarea>
+        <!-- مسح -->
+        <button
+          type="button"
+          class="clear"
+          onclick="clearOrder()">
+          🗑️ مسح الطلب
+        </button>
+        <!-- تأكيد -->
+        <button
+          type="button"
+          class="confirm"
+          onclick="confirmOrder()">
+          ✅ تأكيد الطلب
+        </button>
+      </section>
+    </main>
+  </div>
+  <!-- JavaScript -->
+  <script src="script.js"></script>
+</body>
+</html>
