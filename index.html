@@ -1,58 +1,148 @@
-<div class="app">
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
 
-  <header>
-    <h1>🐟 Al Bahar Restaurant</h1>
-    <p>Fish & Seafood POS</p>
-  </header>
+<head>
 
-  <main>
+  <meta charset="UTF-8">
 
-    <section class="menu">
-      <h2>Menu</h2>
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
 
-      <div class="categories">
-        <button onclick="showCategory('مقبلات')">🥗 مقبلات</button>
-        <button onclick="showCategory('أسماك')">🐟 أسماك</button>
-        <button onclick="showCategory('مشاوي')">🔥 مشاوي</button>
-        <button onclick="showCategory('مقالي')">🍤 مقالي</button>
-        <button onclick="showCategory('سلطات')">🥬 سلطات</button>
-        <button onclick="showCategory('مشروبات')">🥤 مشروبات</button>
-      </div>
+  <title>Al Bahar Restaurant</title>
 
-      <div id="items" class="items"></div>
-    </section>
+  <link rel="stylesheet" href="style.css">
+
+</head>
 
 
-    <section class="cart">
+<body>
 
-      <h2>🛒 الطلب</h2>
+  <div class="app">
 
-      <div id="cartItems">
-        <p>لا يوجد أصناف</p>
-      </div>
+    <header>
 
-      <div class="total">
-        المجموع: $<span id="total">0</span>
-      </div>
+      <h1>🐟 مطعم البحر</h1>
 
-      <hr>
+      <p>Fish & Seafood POS</p>
 
-      <h3>بيانات الزبون</h3>
+    </header>
 
-      <input id="name" placeholder="اسم الزبون">
 
-      <input id="phone" placeholder="رقم الهاتف">
+    <main>
 
-      <input id="address" placeholder="العنوان">
+      <!-- MENU -->
 
-      <textarea id="notes" placeholder="ملاحظات"></textarea>
+      <section class="menu">
 
-      <button class="confirm" onclick="confirmOrder()">
-        ✅ تأكيد الطلب
-      </button>
+        <h2>قائمة الطعام</h2>
 
-    </section>
 
-  </main>
+        <div class="categories">
 
-</div>
+          <button onclick="showCategory('مقبلات')">
+            🥗 مقبلات
+          </button>
+
+          <button onclick="showCategory('أسماك')">
+            🐟 أسماك
+          </button>
+
+          <button onclick="showCategory('مشاوي')">
+            🔥 مشاوي
+          </button>
+
+          <button onclick="showCategory('مقالي')">
+            🍤 مقالي
+          </button>
+
+          <button onclick="showCategory('سلطات')">
+            🥬 سلطات
+          </button>
+
+          <button onclick="showCategory('مشروبات')">
+            🥤 مشروبات
+          </button>
+
+        </div>
+
+
+        <div id="items" class="items"></div>
+
+      </section>
+
+
+
+      <!-- ORDER -->
+
+      <section class="cart">
+
+        <h2>🛒 الطلب الحالي</h2>
+
+
+        <div id="cartItems">
+
+          <p>لا يوجد أصناف</p>
+
+        </div>
+
+
+        <div class="total">
+
+          المجموع:
+          $<span id="total">0</span>
+
+        </div>
+
+
+        <hr>
+
+
+        <h3>بيانات الزبون</h3>
+
+
+        <input
+          id="name"
+          type="text"
+          placeholder="اسم الزبون">
+
+
+        <input
+          id="phone"
+          type="tel"
+          placeholder="رقم الهاتف">
+
+
+        <input
+          id="address"
+          type="text"
+          placeholder="العنوان">
+
+
+        <textarea
+          id="notes"
+          placeholder="ملاحظات على الطلب">
+        </textarea>
+
+
+        <button
+          class="confirm"
+          onclick="confirmOrder()">
+
+          ✅ تأكيد الطلب
+
+        </button>
+
+      </section>
+
+    </main>
+
+  </div>
+
+
+  <!-- JAVASCRIPT -->
+
+  <script src="script.js"></script>
+
+</body>
+
+</html>
