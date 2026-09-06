@@ -1,0 +1,58 @@
+<div class="app">
+
+  <header>
+    <h1>🐟 Al Bahar Restaurant</h1>
+    <p>Fish & Seafood POS</p>
+  </header>
+
+  <main>
+
+    <section class="menu">
+      <h2>Menu</h2>
+
+      <div class="categories">
+        <button onclick="showCategory('مقبلات')">🥗 مقبلات</button>
+        <button onclick="showCategory('أسماك')">🐟 أسماك</button>
+        <button onclick="showCategory('مشاوي')">🔥 مشاوي</button>
+        <button onclick="showCategory('مقالي')">🍤 مقالي</button>
+        <button onclick="showCategory('سلطات')">🥬 سلطات</button>
+        <button onclick="showCategory('مشروبات')">🥤 مشروبات</button>
+      </div>
+
+      <div id="items" class="items"></div>
+    </section>
+
+
+    <section class="cart">
+
+      <h2>🛒 الطلب</h2>
+
+      <div id="cartItems">
+        <p>لا يوجد أصناف</p>
+      </div>
+
+      <div class="total">
+        المجموع: $<span id="total">0</span>
+      </div>
+
+      <hr>
+
+      <h3>بيانات الزبون</h3>
+
+      <input id="name" placeholder="اسم الزبون">
+
+      <input id="phone" placeholder="رقم الهاتف">
+
+      <input id="address" placeholder="العنوان">
+
+      <textarea id="notes" placeholder="ملاحظات"></textarea>
+
+      <button class="confirm" onclick="confirmOrder()">
+        ✅ تأكيد الطلب
+      </button>
+
+    </section>
+
+  </main>
+
+</div>
