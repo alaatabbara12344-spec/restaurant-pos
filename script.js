@@ -212,11 +212,8 @@ function confirmOrder() {
     })),
     total: total
   };
-  // حفظ الطلب
   saveOrder(order);
-  // طباعة الإيصال
   printReceipt(order);
-  // تصفير الطلب
   clearOrder();
 }
 /* =========================
@@ -286,10 +283,22 @@ function printReceipt(order) {
       <p>فاتورة رقم #${order.number}</p>
       <p>${order.date}</p>
       <hr>
-      <p><strong>نوع الطلب:</strong> ${order.type}</p>
-      <p><strong>الزبون:</strong> ${order.customer.name || "-"}</p>
-      <p><strong>الهاتف:</strong> ${order.customer.phone || "-"}</p>
-      <p><strong>العنوان:</strong> ${order.customer.address || "-"}</p>
+      <p>
+        <strong>نوع الطلب:</strong>
+        ${order.type}
+      </p>
+      <p>
+        <strong>الزبون:</strong>
+        ${order.customer.name || "-"}
+      </p>
+      <p>
+        <strong>الهاتف:</strong>
+        ${order.customer.phone || "-"}
+      </p>
+      <p>
+        <strong>العنوان:</strong>
+        ${order.customer.address || "-"}
+      </p>
       <table>
         <thead>
           <tr>
@@ -317,10 +326,80 @@ function printReceipt(order) {
       "_blank",
       "width=400,height=600"
     );
+  if (!printWindow) {
+    alert(
+      "المتصفح منع نافذة الطباعة. اسمح بالنوافذ المنبثقة ثم حاول مجددًا."
+    );
+    return;
+  }
   printWindow.document.write(receipt);
   printWindow.document.close();
   printWindow.focus();
   printWindow.print();
+}
+/* =========================
+   عرض الطلبات السابقة
+========================= */
+function showOrders() {
+  const orders =
+    JSON.parse(
+      localStorage.getItem("orders") || "[]"
+    );
+  if (orders.length === 0) {
+    alert("لا يوجد طلبات محفوظة حتى الآن");
+    return;
+  }
+  let ordersHTML = `
+    <div class="orders-page">
+      <h2>📋 الطلبات السابقة</h2>
+      <button onclick="location.reload()">
+        ⬅️ العودة للـPOS
+      </button>
+      <hr>
+  `;
+  [...orders].reverse().forEach(order => {
+    ordersHTML += `
+      <div class="saved-order">
+        <h3>
+          الطلب #${order.number}
+        </h3>
+        <p>
+          📅 ${order.date}
+        </p>
+        <p>
+          👤 ${order.customer.name || "-"}
+        </p>
+        <p>
+          📞 ${order.customer.phone || "-"}
+        </p>
+        <p>
+          🛵 النوع: ${order.type}
+        </p>
+        <p>
+          💰 المجموع:
+          <strong>$${order.total}</strong>
+        </p>
+        <details>
+          <summary>
+            عرض الأصناف
+          </summary>
+          <ul>
+            ${order.items.map(item => `
+              <li>
+                ${item.name}
+                × ${item.quantity}
+                — $${item.total}
+              </li>
+            `).join("")}
+          </ul>
+        </details>
+      </div>
+    `;
+  });
+  ordersHTML += `
+    </div>
+  `;
+  document.body.innerHTML = ordersHTML;
 }
 /* =========================
    تشغيل أول تصنيف
