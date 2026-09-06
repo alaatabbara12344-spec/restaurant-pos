@@ -1,148 +1,288 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
   <meta charset="UTF-8">
+
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1.0">
+
   <title>مطعم البحر - POS</title>
+
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-  <div class="app">
-    <header>
+
+  <!-- شاشة تسجيل الدخول -->
+  <div id="loginScreen" style="
+    position:fixed;
+    inset:0;
+    background:#123b4a;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    z-index:99999;
+    padding:20px;
+  ">
+
+    <div style="
+      background:white;
+      width:100%;
+      max-width:400px;
+      padding:30px;
+      border-radius:18px;
+      text-align:center;
+      box-shadow:0 5px 25px rgba(0,0,0,0.25);
+    ">
+
       <h1>🐟 مطعم البحر</h1>
+
+      <p>
+        تسجيل الدخول إلى النظام
+      </p>
+
+      <input
+        id="loginPassword"
+        type="password"
+        placeholder="كلمة السر"
+        onkeydown="if(event.key === 'Enter') login()"
+        style="
+          width:100%;
+          padding:15px;
+          margin:15px 0 10px;
+          border:1px solid #ccc;
+          border-radius:10px;
+          font-size:17px;
+          text-align:center;
+        "
+      >
+
+      <button
+        type="button"
+        onclick="login()"
+        style="
+          width:100%;
+          padding:15px;
+          border:none;
+          border-radius:10px;
+          background:#16803c;
+          color:white;
+          font-size:17px;
+          font-weight:bold;
+          cursor:pointer;
+        "
+      >
+        🔓 دخول
+      </button>
+
+      <p
+        id="loginError"
+        style="
+          color:#c62828;
+          display:none;
+          margin-top:15px;
+        "
+      >
+        كلمة السر غير صحيحة
+      </p>
+
+    </div>
+
+  </div>
+
+
+  <div class="app">
+
+    <header>
+
+      <h1>🐟 مطعم البحر</h1>
+
       <p>Restaurant POS</p>
+
       <div class="header-buttons">
+
         <button
           type="button"
           class="orders-button"
           onclick="showOrders()">
           📋 الطلبات السابقة
         </button>
+
         <button
           type="button"
           class="orders-button"
           onclick="showMenuManager()">
           ⚙️ إدارة المنيو
         </button>
+
+        <button
+          type="button"
+          class="orders-button"
+          onclick="logout()">
+          🔒 خروج
+        </button>
+
       </div>
+
     </header>
+
     <main>
-      <!-- =========================
-           MENU
-      ========================== -->
+
       <section class="menu">
+
         <h2>🍽️ قائمة الطعام</h2>
-        <!-- نوع الطلب -->
+
         <div class="order-type">
+
           <button
             type="button"
             onclick="setOrderType('طاولة')">
             🪑 طاولة
           </button>
+
           <button
             type="button"
             onclick="setOrderType('سفري')">
             🥡 سفري
           </button>
+
           <button
             type="button"
             onclick="setOrderType('توصيل')">
             🛵 توصيل
           </button>
+
         </div>
-        <!-- التصنيفات -->
+
         <div class="categories">
+
           <button
             type="button"
             onclick="showCategory('مقبلات')">
             🥗 مقبلات
           </button>
+
           <button
             type="button"
             onclick="showCategory('أسماك')">
             🐟 أسماك
           </button>
+
           <button
             type="button"
             onclick="showCategory('مشاوي')">
             🔥 مشاوي
           </button>
+
           <button
             type="button"
             onclick="showCategory('مقالي')">
             🍤 مقالي
           </button>
+
           <button
             type="button"
             onclick="showCategory('سلطات')">
             🥬 سلطات
           </button>
+
           <button
             type="button"
             onclick="showCategory('مشروبات')">
             🥤 مشروبات
           </button>
+
         </div>
-        <!-- الأصناف -->
+
         <div
           id="items"
           class="items">
         </div>
+
       </section>
-      <!-- =========================
-           ORDER
-      ========================== -->
+
+
       <section class="cart">
+
         <h2>🛒 الطلب الحالي</h2>
+
         <div class="order-info">
+
           <strong>نوع الطلب:</strong>
+
           <span id="orderType">
             لم يتم الاختيار
           </span>
+
         </div>
+
         <div id="cartItems">
+
           <p>
             لا يوجد أصناف
           </p>
+
         </div>
+
         <div class="total">
+
           المجموع:
           $<span id="total">0</span>
+
         </div>
+
         <hr>
+
         <h3>👤 بيانات الزبون</h3>
+
         <input
           id="name"
           type="text"
           placeholder="اسم الزبون">
+
         <input
           id="phone"
           type="tel"
           placeholder="رقم الهاتف">
+
         <input
           id="address"
           type="text"
           placeholder="العنوان">
+
         <textarea
           id="notes"
           placeholder="ملاحظات على الطلب"></textarea>
+
         <button
           type="button"
           class="clear"
           onclick="clearOrder()">
+
           🗑️ مسح الطلب
+
         </button>
+
         <button
           type="button"
           class="confirm"
           onclick="confirmOrder()">
+
           ✅ تأكيد الطلب
+
         </button>
+
       </section>
+
     </main>
+
   </div>
+
+
   <script src="script.js"></script>
+
 </body>
+
 </html>
