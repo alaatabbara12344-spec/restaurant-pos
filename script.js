@@ -1,4 +1,7 @@
-const menu = [
+/* =========================
+   قائمة الطعام
+========================= */
+const defaultMenu = [
   // مقبلات
   { name: "حمص", category: "مقبلات", price: 4 },
   { name: "متبل", category: "مقبلات", price: 4 },
@@ -26,8 +29,30 @@ const menu = [
   { name: "7Up", category: "مشروبات", price: 2 },
   { name: "مياه", category: "مشروبات", price: 1 }
 ];
+/* =========================
+   تحميل المنيو المحفوظة
+========================= */
+let menu = JSON.parse(
+  localStorage.getItem("menu")
+);
+if (!Array.isArray(menu)) {
+  menu = [...defaultMenu];
+  localStorage.setItem(
+    "menu",
+    JSON.stringify(menu)
+  );
+}
 let cart = [];
 let orderType = "";
+/* =========================
+   حفظ المنيو
+========================= */
+function saveMenu() {
+  localStorage.setItem(
+    "menu",
+    JSON.stringify(menu)
+  );
+}
 /* =========================
    رقم الطلب
 ========================= */
@@ -112,26 +137,30 @@ function updateCart() {
     const itemTotal =
       item.price * item.quantity;
     total += itemTotal;
-    cartItems.innerHTML += `
-      <div class="cart-item">
-        <span>
-          ${item.name}
-          <br>
-          $${itemTotal}
-        </span>
-        <span class="quantity">
-          <button
-            onclick="changeQuantity('${item.name}', -1)">
-            −
-          </button>
-          ${item.quantity}
-          <button
-            onclick="changeQuantity('${item.name}', 1)">
-            +
-          </button>
-        </span>
-      </div>
+    const div =
+      document.createElement("div");
+    div.className = "cart-item";
+    div.innerHTML = `
+      <span>
+        ${item.name}
+        <br>
+        $${itemTotal}
+      </span>
+      <span class="quantity">
+        <button
+          type="button"
+          onclick="changeQuantity('${item.name}', -1)">
+          −
+        </button>
+        ${item.quantity}
+        <button
+          type="button"
+          onclick="changeQuantity('${item.name}', 1)">
+          +
+        </button>
+      </span>
     `;
+    cartItems.appendChild(div);
   });
   if (cart.length === 0) {
     cartItems.innerHTML =
@@ -375,6 +404,7 @@ function showOrders() {
         ">
           <h2>📋 الطلبات السابقة</h2>
           <button
+            type="button"
             onclick="closeOrders()"
             style="
               padding:10px 15px;
@@ -459,6 +489,415 @@ function showOrders() {
 function closeOrders() {
   const overlay =
     document.getElementById("ordersOverlay");
+  if (overlay) {
+    overlay.remove();
+  }
+}
+/* =========================================================
+   إدارة المنيو
+========================================================= */
+/* =========================
+   فتح إدارة المنيو
+========================= */
+function showMenuManager() {
+  const existing =
+    document.getElementById("menuManagerOverlay");
+  if (existing) {
+    existing.remove();
+  }
+  const categories = [
+    "مقبلات",
+    "أسماك",
+    "مشاوي",
+    "مقالي",
+    "سلطات",
+    "مشروبات"
+  ];
+  let html = `
+    <div id="menuManagerOverlay"
+      style="
+        position:fixed;
+        inset:0;
+        background:rgba(0,0,0,0.6);
+        z-index:10000;
+        padding:15px;
+        overflow:auto;
+      ">
+      <div style="
+        background:white;
+        max-width:900px;
+        margin:20px auto;
+        padding:20px;
+        border-radius:15px;
+        direction:rtl;
+      ">
+        <div style="
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          gap:10px;
+        ">
+          <h2 style="margin:0;">
+            ⚙️ إدارة المنيو
+          </h2>
+          <button
+            type="button"
+            onclick="closeMenuManager()"
+            style="
+              padding:10px 15px;
+              border:none;
+              border-radius:8px;
+              cursor:pointer;
+              font-size:16px;
+            "
+          >
+            ✕ إغلاق
+          </button>
+        </div>
+        <hr>
+        <div style="
+          background:#eef4f6;
+          padding:15px;
+          border-radius:10px;
+          margin-bottom:15px;
+        ">
+          <h3 style="margin-top:0;">
+            ➕ إضافة صنف جديد
+          </h3>
+          <input
+            id="newItemName"
+            type="text"
+            placeholder="اسم الصنف"
+            style="
+              width:100%;
+              padding:12px;
+              margin:5px 0;
+              border:1px solid #ccc;
+              border-radius:8px;
+            "
+          >
+          <input
+            id="newItemPrice"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="السعر بالدولار"
+            style="
+              width:100%;
+              padding:12px;
+              margin:5px 0;
+              border:1px solid #ccc;
+              border-radius:8px;
+            "
+          >
+          <select
+            id="newItemCategory"
+            style="
+              width:100%;
+              padding:12px;
+              margin:5px 0;
+              border:1px solid #ccc;
+              border-radius:8px;
+            "
+          >
+            ${categories.map(category => `
+              <option value="${category}">
+                ${category}
+              </option>
+            `).join("")}
+          </select>
+          <button
+            type="button"
+            onclick="addNewMenuItem()"
+            style="
+              width:100%;
+              padding:13px;
+              margin-top:8px;
+              border:none;
+              border-radius:8px;
+              background:#16803c;
+              color:white;
+              font-size:16px;
+              font-weight:bold;
+              cursor:pointer;
+            "
+          >
+            ➕ إضافة الصنف
+          </button>
+        </div>
+        <h3>
+          🍽️ الأصناف الحالية
+        </h3>
+        <div id="menuManagerItems"></div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    html
+  );
+  renderMenuManager();
+}
+/* =========================
+   عرض أصناف إدارة المنيو
+========================= */
+function renderMenuManager() {
+  const container =
+    document.getElementById("menuManagerItems");
+  if (!container) return;
+  if (menu.length === 0) {
+    container.innerHTML = `
+      <p style="text-align:center;">
+        لا يوجد أصناف
+      </p>
+    `;
+    return;
+  }
+  container.innerHTML = "";
+  menu.forEach((item, index) => {
+    const row =
+      document.createElement("div");
+    row.style.cssText = `
+      background:#f5f6f7;
+      padding:12px;
+      margin:8px 0;
+      border-radius:10px;
+    `;
+    row.innerHTML = `
+      <div style="
+        display:grid;
+        grid-template-columns:1fr 130px 150px;
+        gap:8px;
+        align-items:center;
+      ">
+        <input
+          id="menuName${index}"
+          type="text"
+          value="${item.name}"
+          style="
+            width:100%;
+            padding:10px;
+            border:1px solid #ccc;
+            border-radius:7px;
+          "
+        >
+        <input
+          id="menuPrice${index}"
+          type="number"
+          step="0.01"
+          min="0"
+          value="${item.price}"
+          style="
+            width:100%;
+            padding:10px;
+            border:1px solid #ccc;
+            border-radius:7px;
+          "
+        >
+        <select
+          id="menuCategory${index}"
+          style="
+            width:100%;
+            padding:10px;
+            border:1px solid #ccc;
+            border-radius:7px;
+          "
+        >
+          <option value="مقبلات">مقبلات</option>
+          <option value="أسماك">أسماك</option>
+          <option value="مشاوي">مشاوي</option>
+          <option value="مقالي">مقالي</option>
+          <option value="سلطات">سلطات</option>
+          <option value="مشروبات">مشروبات</option>
+        </select>
+      </div>
+      <div style="
+        display:flex;
+        gap:8px;
+        margin-top:8px;
+      ">
+        <button
+          type="button"
+          onclick="updateMenuItem(${index})"
+          style="
+            flex:1;
+            padding:10px;
+            border:none;
+            border-radius:7px;
+            background:#16803c;
+            color:white;
+            font-weight:bold;
+            cursor:pointer;
+          "
+        >
+          💾 حفظ التعديل
+        </button>
+        <button
+          type="button"
+          onclick="deleteMenuItem(${index})"
+          style="
+            padding:10px 15px;
+            border:none;
+            border-radius:7px;
+            background:#777;
+            color:white;
+            font-weight:bold;
+            cursor:pointer;
+          "
+        >
+          🗑️ حذف
+        </button>
+      </div>
+    `;
+    container.appendChild(row);
+    document.getElementById(
+      `menuCategory${index}`
+    ).value = item.category;
+  });
+}
+/* =========================
+   تعديل صنف
+========================= */
+function updateMenuItem(index) {
+  const name =
+    document.getElementById(
+      `menuName${index}`
+    ).value.trim();
+  const price =
+    Number(
+      document.getElementById(
+        `menuPrice${index}`
+      ).value
+    );
+  const category =
+    document.getElementById(
+      `menuCategory${index}`
+    ).value;
+  if (!name) {
+    alert("اكتب اسم الصنف");
+    return;
+  }
+  if (isNaN(price) || price < 0) {
+    alert("اكتب سعر صحيح");
+    return;
+  }
+  const oldName =
+    menu[index].name;
+  menu[index] = {
+    name: name,
+    category: category,
+    price: price
+  };
+  /*
+     إذا كان الصنف موجودًا حاليًا في الطلب
+     نحدّث اسمه وسعره أيضًا.
+  */
+  cart.forEach(item => {
+    if (item.name === oldName) {
+      item.name = name;
+      item.category = category;
+      item.price = price;
+    }
+  });
+  saveMenu();
+  updateCart();
+  renderMenuManager();
+  showCategory(category);
+  alert("تم حفظ التعديل ✅");
+}
+/* =========================
+   إضافة صنف جديد
+========================= */
+function addNewMenuItem() {
+  const name =
+    document.getElementById(
+      "newItemName"
+    ).value.trim();
+  const price =
+    Number(
+      document.getElementById(
+        "newItemPrice"
+      ).value
+    );
+  const category =
+    document.getElementById(
+      "newItemCategory"
+    ).value;
+  if (!name) {
+    alert("اكتب اسم الصنف");
+    return;
+  }
+  if (isNaN(price) || price < 0) {
+    alert("اكتب سعر صحيح");
+    return;
+  }
+  const exists =
+    menu.some(
+      item =>
+        item.name.toLowerCase() ===
+        name.toLowerCase()
+    );
+  if (exists) {
+    alert("هذا الصنف موجود مسبقًا");
+    return;
+  }
+  menu.push({
+    name: name,
+    category: category,
+    price: price
+  });
+  saveMenu();
+  renderMenuManager();
+  showCategory(category);
+  document.getElementById(
+    "newItemName"
+  ).value = "";
+  document.getElementById(
+    "newItemPrice"
+  ).value = "";
+  alert("تمت إضافة الصنف ✅");
+}
+/* =========================
+   حذف صنف
+========================= */
+function deleteMenuItem(index) {
+  const item =
+    menu[index];
+  if (!item) return;
+  const confirmed =
+    confirm(
+      `هل تريد حذف "${item.name}"؟`
+    );
+  if (!confirmed) return;
+  menu.splice(index, 1);
+  /*
+     إذا كان الصنف موجودًا بالطلب الحالي
+     نحذفه أيضًا.
+  */
+  cart =
+    cart.filter(
+      cartItem =>
+        cartItem.name !== item.name
+    );
+  saveMenu();
+  updateCart();
+  renderMenuManager();
+  /*
+     نعيد عرض التصنيف الحالي إذا كان موجودًا.
+  */
+  if (item.category) {
+    showCategory(item.category);
+  }
+  alert("تم حذف الصنف 🗑️");
+}
+/* =========================
+   إغلاق إدارة المنيو
+========================= */
+function closeMenuManager() {
+  const overlay =
+    document.getElementById(
+      "menuManagerOverlay"
+    );
   if (overlay) {
     overlay.remove();
   }
