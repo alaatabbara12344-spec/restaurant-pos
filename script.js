@@ -91,7 +91,7 @@ const DEVICE_ID =
 const defaultMenu = {
   "مقبلات": [
     {
-      name: "حمص",
+      name: "شكشوكة",
       price: 4
     },
     {
@@ -103,17 +103,17 @@ const defaultMenu = {
       price: 5
     },
     {
-      name: "بطاطا حرة",
+      name: " بطاطا مقلية",
       price: 5
     }
   ],
   "أسماك": [
     {
-      name: "قاروص",
+      name: "براق",
       price: 15
     },
     {
-      name: "دنيس",
+      name:"اجاج",
       price: 16
     },
     {
@@ -131,11 +131,11 @@ const defaultMenu = {
       price: 17
     },
     {
-      name: "روبيان مشوي",
+      name: "قريدس مشوي",
       price: 19
     },
     {
-      name: "كالاماري مشوي",
+      name: "كالامار مشوي",
       price: 16
     }
   ],
@@ -145,11 +145,11 @@ const defaultMenu = {
       price: 15
     },
     {
-      name: "روبيان مقلي",
+      name: "قريدس مقلي",
       price: 17
     },
     {
-      name: "كالاماري مقلي",
+      name: "كالامار مقلي",
       price: 14
     }
   ],
