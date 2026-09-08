@@ -1596,7 +1596,803 @@ function closeOrders() {
     );
   if (overlay) {
     overlay.remove();
+  }// =====================================================
+// CUSTOMERS / CRM
+// =====================================================
+
+let allCustomers = [];
+
+async function showCustomers() {
+  let overlay =
+    document.getElementById(
+      "customersOverlay"
+    );
+
+  if (!overlay) {
+    overlay =
+      document.createElement(
+        "div"
+      );
+
+    overlay.id =
+      "customersOverlay";
+
+    overlay.style.cssText = `
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.6);
+      z-index:99998;
+      padding:20px;
+      overflow:auto;
+    `;
+
+    document.body.appendChild(
+      overlay
+    );
   }
+
+  overlay.innerHTML = `
+    <div style="
+      background:white;
+      max-width:1000px;
+      margin:auto;
+      border-radius:15px;
+      padding:20px;
+      direction:rtl;
+    ">
+
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap:10px;
+        flex-wrap:wrap;
+      ">
+
+        <h2 style="margin:0;">
+          👤 الزبائن
+        </h2>
+
+        <button
+          type="button"
+          onclick="closeCustomers()"
+          style="
+            border:none;
+            background:#c62828;
+            color:white;
+            padding:10px 15px;
+            border-radius:8px;
+            font-size:16px;
+            cursor:pointer;
+          "
+        >
+          ✕ إغلاق
+        </button>
+
+      </div>
+
+      <div style="margin-top:15px;">
+
+        <input
+          id="customerSearch"
+          type="search"
+          placeholder="🔎 ابحث بالاسم أو الهاتف أو العنوان"
+          oninput="filterCustomers()"
+          style="
+            width:100%;
+            box-sizing:border-box;
+            padding:13px;
+            border:1px solid #ccc;
+            border-radius:10px;
+            font-size:16px;
+          "
+        >
+
+      </div>
+
+      <div
+        id="customersCount"
+        style="
+          margin:12px 0;
+          font-size:14px;
+          color:#666;
+        "
+      ></div>
+
+      <div id="customersList">
+        <p style="
+          text-align:center;
+          padding:30px;
+        ">
+          ⏳ جارٍ تحميل الزبائن...
+        </p>
+      </div>
+
+    </div>
+  `;
+
+  overlay.style.display =
+    "block";
+
+  await loadCustomers();
+}
+
+async function loadCustomers() {
+  const list =
+    document.getElementById(
+      "customersList"
+    );
+
+  const count =
+    document.getElementById(
+      "customersCount"
+    );
+
+  if (!list) return;
+
+  if (!navigator.onLine) {
+    list.innerHTML = `
+      <div style="
+        text-align:center;
+        padding:30px;
+      ">
+        🔴 لا يوجد إنترنت.<br>
+        <small>
+          افتح قائمة الزبائن عند عودة الإنترنت.
+        </small>
+      </div>
+    `;
+
+    if (count) {
+      count.textContent = "";
+    }
+
+    return;
+  }
+
+  try {
+    const response =
+      await fetch(
+        SUPABASE_CUSTOMERS_URL +
+        "?select=*&order=name.asc",
+        {
+          method: "GET",
+          headers:
+            supabaseHeaders()
+        }
+      );
+
+    if (!response.ok) {
+      throw new Error(
+        await response.text()
+      );
+    }
+
+    const customers =
+      await response.json();
+
+    allCustomers =
+      await addCustomerOrderStats(
+        Array.isArray(customers)
+          ? customers
+          : []
+      );
+
+    renderCustomers(
+      allCustomers
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Load customers failed:",
+      error
+    );
+
+    list.innerHTML = `
+      <div style="
+        text-align:center;
+        padding:30px;
+        color:#c62828;
+      ">
+        ❌ تعذر تحميل الزبائن.<br>
+        <small>
+          تأكد من الإنترنت وصلاحيات Supabase.
+        </small>
+      </div>
+    `;
+
+    if (count) {
+      count.textContent = "";
+    }
+  }
+}
+
+async function addCustomerOrderStats(
+  customers
+) {
+  const stats =
+    new Map();
+
+  try {
+
+    const response =
+      await fetch(
+        SUPABASE_ORDERS_URL +
+        "?select=id,customer_phone,customer_name,customer_address,total,created_at,order_type" +
+        "&order=created_at.desc&limit=5000",
+        {
+          method: "GET",
+          headers:
+            supabaseHeaders()
+        }
+      );
+
+    if (response.ok) {
+
+      const orders =
+        await response.json();
+
+      orders.forEach(
+        function(order) {
+
+          const phone =
+            normalizePhone(
+              order.customer_phone
+            );
+
+          if (!phone) return;
+
+          if (!stats.has(phone)) {
+            stats.set(
+              phone,
+              {
+                count: 0,
+                lastOrder: null,
+                history: []
+              }
+            );
+          }
+
+          const item =
+            stats.get(phone);
+
+          item.count += 1;
+
+          if (!item.lastOrder) {
+            item.lastOrder =
+              order;
+          }
+
+          item.history.push(
+            order
+          );
+        }
+      );
+    }
+
+  } catch (error) {
+
+    console.error(
+      "Customer order stats failed:",
+      error
+    );
+  }
+
+  return customers.map(
+    function(customer) {
+
+      const phone =
+        normalizePhone(
+          customer.phone
+        );
+
+      const stat =
+        stats.get(phone);
+
+      return {
+        ...customer,
+
+        orderCount:
+          stat
+            ? stat.count
+            : 0,
+
+        lastOrder:
+          stat
+            ? stat.lastOrder
+            : null,
+
+        orderHistory:
+          stat
+            ? stat.history
+            : []
+      };
+    }
+  );
+}
+
+function renderCustomers(
+  customers
+) {
+  const list =
+    document.getElementById(
+      "customersList"
+    );
+
+  const count =
+    document.getElementById(
+      "customersCount"
+    );
+
+  if (!list) return;
+
+  if (
+    !customers ||
+    customers.length === 0
+  ) {
+
+    list.innerHTML = `
+      <div style="
+        text-align:center;
+        padding:30px;
+      ">
+        👤 لا يوجد زبائن.
+      </div>
+    `;
+
+    if (count) {
+      count.textContent =
+        "0 زبون";
+    }
+
+    return;
+  }
+
+  if (count) {
+    count.textContent =
+      `${customers.length} زبون`;
+  }
+
+  list.innerHTML =
+    customers
+      .map(
+        function(customer) {
+
+          const lastOrderText =
+            customer.lastOrder
+              ? formatDate(
+                  customer.lastOrder.created_at
+                )
+              : "لا يوجد";
+
+          return `
+            <button
+              type="button"
+              onclick="showCustomerDetailsByPhone('${escapeAttribute(
+                customer.phone || ""
+              )}')"
+              style="
+                width:100%;
+                text-align:right;
+                border:1px solid #ddd;
+                background:white;
+                border-radius:12px;
+                padding:15px;
+                margin-bottom:10px;
+                cursor:pointer;
+                box-sizing:border-box;
+              "
+            >
+
+              <div style="
+                display:flex;
+                justify-content:space-between;
+                gap:10px;
+                flex-wrap:wrap;
+              ">
+
+                <strong style="font-size:17px;">
+                  👤 ${escapeHtml(
+                    customer.name ||
+                    "بدون اسم"
+                  )}
+                </strong>
+
+                <span style="
+                  background:#eef7f0;
+                  color:#16803c;
+                  padding:5px 9px;
+                  border-radius:15px;
+                  font-size:13px;
+                ">
+                  ${customer.orderCount || 0} طلب
+                </span>
+
+              </div>
+
+              <p style="margin:8px 0 4px;">
+                📞 ${escapeHtml(
+                  customer.phone || "-"
+                )}
+              </p>
+
+              <p style="margin:4px 0;">
+                📍 ${escapeHtml(
+                  customer.address ||
+                  "لا يوجد عنوان"
+                )}
+              </p>
+
+              <p style="
+                margin:4px 0;
+                color:#666;
+                font-size:13px;
+              ">
+                🕒 آخر طلب:
+                ${escapeHtml(
+                  lastOrderText
+                )}
+              </p>
+
+            </button>
+          `;
+        }
+      )
+      .join("");
+}
+
+function filterCustomers() {
+  const input =
+    document.getElementById(
+      "customerSearch"
+    );
+
+  if (!input) return;
+
+  const query =
+    input.value
+      .trim()
+      .toLowerCase();
+
+  if (!query) {
+    renderCustomers(
+      allCustomers
+    );
+
+    return;
+  }
+
+  const filtered =
+    allCustomers.filter(
+      function(customer) {
+
+        return (
+          String(
+            customer.name || ""
+          )
+            .toLowerCase()
+            .includes(query) ||
+
+          String(
+            customer.phone || ""
+          )
+            .toLowerCase()
+            .includes(query) ||
+
+          String(
+            customer.address || ""
+          )
+            .toLowerCase()
+            .includes(query)
+        );
+      }
+    );
+
+  renderCustomers(
+    filtered
+  );
+}
+
+function showCustomerDetailsByPhone(
+  phone
+) {
+  const cleanPhone =
+    normalizePhone(
+      phone
+    );
+
+  const customer =
+    allCustomers.find(
+      function(item) {
+
+        return (
+          normalizePhone(
+            item.phone
+          ) === cleanPhone
+        );
+
+      }
+    );
+
+  if (customer) {
+    showCustomerDetails(
+      customer
+    );
+  }
+}
+
+function showCustomerDetails(
+  customer
+) {
+  let overlay =
+    document.getElementById(
+      "customerDetailsOverlay"
+    );
+
+  if (!overlay) {
+
+    overlay =
+      document.createElement(
+        "div"
+      );
+
+    overlay.id =
+      "customerDetailsOverlay";
+
+    overlay.style.cssText = `
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.65);
+      z-index:99999;
+      padding:20px;
+      overflow:auto;
+    `;
+
+    document.body.appendChild(
+      overlay
+    );
+  }
+
+  const history =
+    Array.isArray(
+      customer.orderHistory
+    )
+      ? customer.orderHistory
+      : [];
+
+  let html = `
+    <div style="
+      background:white;
+      max-width:850px;
+      margin:auto;
+      border-radius:15px;
+      padding:20px;
+      direction:rtl;
+    ">
+
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap:10px;
+      ">
+
+        <h2 style="margin:0;">
+          👤 ${escapeHtml(
+            customer.name ||
+            "بدون اسم"
+          )}
+        </h2>
+
+        <button
+          type="button"
+          onclick="closeCustomerDetails()"
+          style="
+            border:none;
+            background:#c62828;
+            color:white;
+            padding:10px 15px;
+            border-radius:8px;
+            cursor:pointer;
+          "
+        >
+          ✕
+        </button>
+
+      </div>
+
+      <hr>
+
+      <p>
+        <strong>📞 الهاتف:</strong>
+        ${escapeHtml(
+          customer.phone || "-"
+        )}
+      </p>
+
+      <p>
+        <strong>📍 العنوان:</strong>
+        ${escapeHtml(
+          customer.address || "-"
+        )}
+      </p>
+
+      ${
+        customer.notes
+          ? `
+            <p>
+              <strong>📝 ملاحظات:</strong>
+              ${escapeHtml(
+                customer.notes
+              )}
+            </p>
+          `
+          : ""
+      }
+
+      <p>
+        <strong>📦 عدد الطلبات:</strong>
+        ${customer.orderCount || 0}
+      </p>
+
+      <h3>
+        📋 الطلبات السابقة
+      </h3>
+  `;
+
+  if (
+    history.length === 0
+  ) {
+
+    html += `
+      <p>
+        لا يوجد طلبات مسجلة لهذا الزبون.
+      </p>
+    `;
+
+  } else {
+
+    history.forEach(
+      function(order) {
+
+        const orderNumber =
+          order.id || "-";
+
+        html += `
+          <div style="
+            border:1px solid #ddd;
+            border-radius:10px;
+            padding:13px;
+            margin-bottom:10px;
+          ">
+
+            <div style="
+              display:flex;
+              justify-content:space-between;
+              gap:10px;
+              flex-wrap:wrap;
+            ">
+
+              <strong>
+                الطلب #${escapeHtml(
+                  orderNumber
+                )}
+              </strong>
+
+              <strong>
+                $${Number(
+                  order.total || 0
+                ).toFixed(2)}
+              </strong>
+
+            </div>
+
+            <p style="margin:6px 0;">
+              النوع:
+              ${escapeHtml(
+                order.order_type || "-"
+              )}
+            </p>
+
+            <p style="margin:6px 0;">
+              التاريخ:
+              ${escapeHtml(
+                formatDate(
+                  order.created_at
+                )
+              )}
+            </p>
+
+            ${
+              order.id
+                ? `
+                  <button
+                    type="button"
+                    onclick="printCustomerOrderById('${escapeAttribute(
+                      order.id
+                    )}')"
+                    style="
+                      background:#16803c;
+                      color:white;
+                      border:none;
+                      padding:8px 12px;
+                      border-radius:7px;
+                      cursor:pointer;
+                    "
+                  >
+                    🖨️ طباعة
+                  </button>
+                `
+                : ""
+            }
+
+          </div>
+        `;
+      }
+    );
+  }
+
+  html += `
+    </div>
+  `;
+
+  overlay.innerHTML =
+    html;
+
+  overlay.style.display =
+    "block";
+}
+
+function printCustomerOrderById(
+  id
+) {
+  const orders =
+    getLocalOrders();
+
+  const order =
+    orders.find(
+      function(item) {
+        return item.id === id;
+      }
+    );
+
+  if (order) {
+    printReceipt(
+      order
+    );
+
+    return;
+  }
+
+  alert(
+    "هذا الطلب موجود في قاعدة البيانات، لكن نسخة الطباعة ليست محفوظة محلياً على هذا الجهاز."
+  );
+}
+
+function closeCustomerDetails() {
+  const overlay =
+    document.getElementById(
+      "customerDetailsOverlay"
+    );
+
+  if (overlay) {
+    overlay.remove();
+  }
+}
+
+function closeCustomers() {
+  closeCustomerDetails();
+
+  const overlay =
+    document.getElementById(
+      "customersOverlay"
+    );
+
+  if (overlay) {
+    overlay.remove();
+  }
+}
 }
 // =====================================================
 // MENU MANAGER
