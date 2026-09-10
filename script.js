@@ -749,20 +749,42 @@ function exportStructuredMenu(){
   a.href=url;a.download="tabbara-seafood-menu.json";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
 }
 
-function printInvoice(order){
-  if(!order)return alert("لا يوجد طلب للطباعة.");
+function buildInvoiceHtml(order){
   const rows=(order.items||[]).map(i=>{
     const title=[i.name,i.weight?`${Number(i.weight).toFixed(2)} كغ`:"",i.preparation||"",i.size||"",i.option||""].filter(Boolean).join(" - ");
     const offerDetails=i.offerDetails&&i.offerDetails.length?`<div style="font-size:10px;margin-top:3px">${i.offerDetails.map(x=>escapeHtml([x.name,x.weight?`${Number(x.weight).toFixed(2)} كغ`:"",x.size||"",x.quantity>1?`× ${x.quantity}`:""].filter(Boolean).join(" - "))).join("<br>")}</div>`:"";
     return `<tr><td>${escapeHtml(title)}${offerDetails}</td><td style="text-align:center">${i.quantity}</td><td>${money(i.total)}</td></tr>`;
   }).join("");
-  const p=window.open("","_blank","width=400,height=700");if(!p)return alert("المتصفح منع نافذة الطباعة.");
-  p.document.write(`<!doctype html><html dir="rtl"><head><meta charset="UTF-8"><title>Tabbara Seafood</title><style>body{font-family:Arial;width:80mm;margin:auto;padding:10px}h2{text-align:center}table{width:100%;border-collapse:collapse}td,th{border-bottom:1px dashed #999;padding:5px;font-size:12px}.total{text-align:center;font-size:18px;font-weight:bold;margin-top:15px}</style></head><body>
+  return `<!doctype html><html dir="rtl"><head><meta charset="UTF-8"><title>Tabbara Seafood</title><style>body{font-family:Arial;width:80mm;margin:auto;padding:10px}h2{text-align:center}table{width:100%;border-collapse:collapse}td,th{border-bottom:1px dashed #999;padding:5px;font-size:12px}.total{text-align:center;font-size:18px;font-weight:bold;margin-top:15px}</style></head><body>
   <h2>Tabbara Seafood</h2><div style="text-align:center">${escapeHtml(order.order_type||"")}</div>
   ${order.customer_name?`<div>الزبون: ${escapeHtml(order.customer_name)}</div>`:""}${order.customer_phone?`<div>الهاتف: ${escapeHtml(order.customer_phone)}</div>`:""}${order.customer_address?`<div>العنوان: ${escapeHtml(order.customer_address)}</div>`:""}
   <table><thead><tr><th>الصنف</th><th>العدد</th><th>السعر</th></tr></thead><tbody>${rows}</tbody></table>
   <div class="total">المجموع: ${money(order.total)}</div>${order.notes?`<div style="margin-top:15px">ملاحظات: ${escapeHtml(order.notes)}</div>`:""}<div style="text-align:center;margin-top:20px">شكراً لزيارتكم ❤️</div>
-  <script>window.onload=function(){window.print()}<\/script></body></html>`);p.document.close();
+  </body></html>`;
+}
+
+function printInvoice(order){
+  if(!order)return alert("لا يوجد طلب للطباعة.");
+  const frame=document.createElement("iframe");
+  frame.setAttribute("aria-hidden","true");
+  frame.style.position="fixed";
+  frame.style.width="1px";
+  frame.style.height="1px";
+  frame.style.left="-10000px";
+  frame.style.top="-10000px";
+  frame.style.border="0";
+  document.body.appendChild(frame);
+  const doc=frame.contentDocument||frame.contentWindow.document;
+  doc.open();
+  doc.write(buildInvoiceHtml(order));
+  doc.close();
+  const cleanup=()=>{setTimeout(()=>frame.remove(),500);};
+  frame.onload=()=>{
+    setTimeout(()=>{
+      try{frame.contentWindow.focus();frame.contentWindow.print();}
+      finally{cleanup();}
+    },150);
+  };
 }
 
 document.addEventListener("keydown",e=>{if(e.key!=="Enter")return;const l=document.getElementById("loginScreen");if(l&&getComputedStyle(l).display!=="none")login()});

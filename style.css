@@ -47,3 +47,21 @@ textarea{height:75px;resize:vertical}.customer-message{min-height:22px;font-size
 @media(max-width:450px){header h1{font-size:23px}.menu,.cart{padding:14px}.items{gap:8px}.item{padding:16px 5px}.order-type button{font-size:13px;padding:13px 5px}}
 .offer-checklist{max-height:280px;overflow:auto;border:1px solid #ddd;border-radius:8px;padding:6px;background:#fafafa}
 .offer-checklist label{border-bottom:1px solid #eee}
+
+/* Tabbara POS modal system */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:100000;direction:rtl}
+.modal-box{background:#fff;width:min(760px,100%);max-height:90vh;overflow:hidden;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.25);display:flex;flex-direction:column}
+.modal-box .modal-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid #e5e7eb;flex:0 0 auto}
+.modal-box .modal-header h3{margin:0;font-size:20px}
+.modal-box .modal-header button{border:0;background:#eee;border-radius:9px;width:38px;height:38px;font-size:18px;cursor:pointer}
+.modal-body{padding:16px;overflow:auto;direction:rtl}
+.modal-input,.modal-body select{width:100%;padding:12px;border:1px solid #cfd5da;border-radius:9px;background:#fff;font-size:16px;box-sizing:border-box}
+.option-group{margin-bottom:14px}.option-group label{display:block;font-weight:bold;margin-bottom:6px}
+.option-buttons{display:flex;gap:8px;flex-wrap:wrap}.option-btn,.size-option{padding:12px;border:1px solid #cfd5da;border-radius:10px;background:#fff;cursor:pointer;font-weight:bold}
+.option-btn.active,.size-option.active{background:#123b4a;color:#fff;border-color:#123b4a}
+.size-options{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.size-option{display:flex;flex-direction:column;align-items:center;gap:4px}
+.modal-confirm-btn{width:100%;margin-top:14px;padding:13px;border:0;border-radius:10px;background:#16803c;color:#fff;font-size:17px;font-weight:bold;cursor:pointer}
+.menu-item{background:#f7f8f9;padding:18px 10px;border-radius:12px;text-align:center;border:1px solid #e2e5e7;cursor:pointer;min-height:95px}
+.menu-item:hover{background:#eef4f6}.menu-item.disabled{opacity:.5;cursor:not-allowed}
+.menu-item-name{font-size:17px;font-weight:bold}.menu-item-price{margin-top:8px;font-weight:bold}
+@media(max-width:600px){.modal-backdrop{padding:10px;align-items:center}.modal-box{width:100%;max-height:88vh;border-radius:14px}.modal-box .modal-header{padding:12px 14px}.modal-body{padding:12px}.size-options{grid-template-columns:repeat(2,1fr)}}
