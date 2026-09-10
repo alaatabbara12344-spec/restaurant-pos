@@ -1,3 +1,4 @@
+#modalRoot{position:relative;z-index:100000}
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#222;direction:rtl}
 header{background:#123b4a;color:#fff;padding:18px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.12)}
@@ -65,3 +66,8 @@ textarea{height:75px;resize:vertical}.customer-message{min-height:22px;font-size
 .menu-item:hover{background:#eef4f6}.menu-item.disabled{opacity:.5;cursor:not-allowed}
 .menu-item-name{font-size:17px;font-weight:bold}.menu-item-price{margin-top:8px;font-weight:bold}
 @media(max-width:600px){.modal-backdrop{padding:10px;align-items:center}.modal-box{width:100%;max-height:88vh;border-radius:14px}.modal-box .modal-header{padding:12px 14px}.modal-body{padding:12px}.size-options{grid-template-columns:repeat(2,1fr)}}
+
+/* FINAL MODAL/PRINT FIX */
+#modalRoot{position:relative;z-index:100000}
+.modal-backdrop{position:fixed!important;inset:0!important;width:100vw;height:100vh;overflow:hidden!important;background:rgba(0,0,0,.55)!important;display:flex!important;align-items:center!important;justify-content:center!important;z-index:2147483646!important}
+.modal-box{position:relative!important;z-index:2147483647!important;margin:auto!important}
