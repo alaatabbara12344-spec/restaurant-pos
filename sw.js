@@ -1,4 +1,4 @@
-const CACHE_NAME = "tabbara-seafood-pos-v2";
+const CACHE_NAME = "tabbara-seafood-pos-v4";
 const FILES_TO_CACHE = [
   "./",
   "./index.html",
