@@ -221,6 +221,7 @@ function openItem(id){
   if(item.type==="weight")return openWeightModal(item);
   if(item.type==="sizes")return openSizesModal(item);
   if(item.type==="meal")return openMealModal(item);
+  if(item.type==="offer")return addOfferToCart(item);
   addToCart({id:generateId("cart"),menuItemId:item.id,name:item.name,quantity:1,unitPrice:Number(item.price||0),total:Number(item.price||0)});
   renderCart();
 }
@@ -246,10 +247,13 @@ function confirmWeightItem(){
   if(!w||w<=0)return alert("أدخل وزن صحيح");
   const prep=document.getElementById("preparationInput")?.value||"ني";
   const p=item.pricing||{};
-  let unit=Number(p.base||0);
-  if(prep==="مشوي")unit+=Number(p.grill||0);
-  if(prep==="مقلي")unit+=Number(p.fry||0);
-  addToCart({id:generateId("cart"),menuItemId:item.id,name:item.name,preparation:prep,weight:w,quantity:1,unitPrice:unit,total:unit*w});
+  const base=Number(p.base||0);
+  const grill=Number(p.grill||0);
+  const fry=Number(p.fry||0);
+  const preparationCost=prep==="مشوي"?grill:prep==="مقلي"?fry:0;
+  const unitPrice=base+preparationCost;
+  const total=(base+preparationCost)*w;
+  addToCart({id:generateId("cart"),menuItemId:item.id,name:item.name,preparation:prep,weight:w,quantity:1,unitPrice,total});
   closeModal();renderCart();
 }
 function openSizesModal(item){
@@ -277,6 +281,14 @@ function confirmMealItem(type){
   closeModal();renderCart();
 }
 
+function addOfferToCart(item){
+  const details=(item.includedItems||[]).map(x=>{
+    const mi=getItemById(x.menuItemId);
+    return {name:mi?.name||"",weight:x.weight||null,size:x.size||null,quantity:x.quantity||1};
+  });
+  addToCart({id:generateId("cart"),menuItemId:item.id,name:item.name,quantity:1,unitPrice:Number(item.price||0),total:Number(item.price||0),offerDetails:details});
+}
+
 function addToCart(item){cart.push(item);renderCart();}
 function removeFromCart(id){cart=cart.filter(i=>i.id!==id);renderCart();}
 function changeCartQuantity(id,amount){
@@ -290,7 +302,8 @@ function renderCart(){
   if(!cart.length)c.innerHTML='<div class="empty-cart">السلة فارغة</div>';
   else c.innerHTML=cart.map(i=>{
     let d=i.weight?`${Number(i.weight).toFixed(2)} كغ • ${escapeHtml(i.preparation||"ني")}`:i.size?escapeHtml(i.size):i.option?escapeHtml(i.option):"";
-    return `<div class="cart-item"><div class="cart-item-info"><strong>${escapeHtml(i.name)}</strong>${d?`<small>${d}</small>`:""}</div>
+    const offerDetails=i.offerDetails&&i.offerDetails.length?`<small style="display:block;margin-top:4px">${i.offerDetails.map(x=>escapeHtml([x.name,x.weight?`${Number(x.weight).toFixed(2)} كغ`:"",x.size||"",x.quantity>1?`× ${x.quantity}`:""].filter(Boolean).join(" - "))).join(" + ")}</small>`:"";
+    return `<div class="cart-item"><div class="cart-item-info"><strong>${escapeHtml(i.name)}</strong>${d?`<small>${d}</small>`:""}${offerDetails}</div>
     <div class="cart-item-controls"><button onclick="changeCartQuantity('${i.id}',-1)">−</button><span>${i.quantity||1}</span><button onclick="changeCartQuantity('${i.id}',1)">+</button><button class="remove-btn" onclick="removeFromCart('${i.id}')">🗑</button></div>
     <div class="cart-item-total">${money(i.total)}</div></div>`;
   }).join("");
@@ -373,7 +386,7 @@ async function confirmOrder(){
     id:generateId("order"),
     order_type:selectedOrderType,
     customer_name:name||null,customer_phone:phone||null,customer_address:address||null,notes:notes||null,
-    items:cart.map(i=>({id:i.id,menu_item_id:i.menuItemId||null,name:i.name,category:getItemById(i.menuItemId)?.category||null,quantity:Number(i.quantity||1),unit_price:Number(i.unitPrice||0),total:Number(i.total||0),weight:i.weight||null,preparation:i.preparation||null,size:i.size||null,option:i.option||null})),
+    items:cart.map(i=>({id:i.id,menu_item_id:i.menuItemId||null,name:i.name,category:getItemById(i.menuItemId)?.category||null,quantity:Number(i.quantity||1),unit_price:Number(i.unitPrice||0),total:Number(i.total||0),weight:i.weight||null,preparation:i.preparation||null,size:i.size||null,option:i.option||null,offerDetails:i.offerDetails||null})),
     total:Number(getTotal().toFixed(2)),device_id:getDeviceId(),sync_status:navigator.onLine?"synced":"pending",created_at:new Date().toISOString()
   };
   if(phone){try{await saveCustomer({phone,name,address,notes})}catch(e){console.warn(e)}}
@@ -390,6 +403,27 @@ async function confirmOrder(){
   </div>`);
 }
 
+async function deletePreviousOrder(orderId){
+  if(!orderId)return alert("رقم الطلب غير موجود.");
+  if(!navigator.onLine)return alert("لا يمكن حذف الطلب بدون إنترنت.");
+  if(!confirm("أكيد بدك تحذف هالطلب؟\nالحذف من الطلبات فقط، وبيانات الزبون ما بتنحذف."))return;
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${encodeURIComponent(orderId)}`,{
+      method:"DELETE",
+      headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,Prefer:"return=minimal"}
+    });
+    if(!r.ok)throw new Error("Delete failed: "+r.status);
+    await showOrders();
+  }catch(e){console.error(e);alert("تعذر حذف الطلب. تأكد من صلاحية الحذف في Supabase.")}
+}
+
+function getOrderItemsHtml(order){
+  return (order.items||[]).map(i=>{
+    const details=[i.weight?`${Number(i.weight).toFixed(2)} كغ`:"",i.preparation||"",i.size||"",i.option||"",i.quantity>1?`× ${i.quantity}`:""].filter(Boolean).join(" • ");
+    return `<div style="padding:8px 0;border-bottom:1px dashed #ddd"><strong>${escapeHtml(i.name||"")}</strong>${details?`<div style="font-size:12px;color:#666;margin-top:3px">${escapeHtml(details)}</div>`:""}<div style="font-size:13px;margin-top:3px">${money(i.total)}</div></div>`;
+  }).join("");
+}
+
 async function showOrders(){
   if(!navigator.onLine){return modal("الطلبات السابقة",'<div style="padding:15px;text-align:center"><p>أنت حالياً بدون إنترنت.</p><p>الطلبات الموجودة على السيرفر غير متاحة حالياً.</p></div>')}
   try{
@@ -404,9 +438,29 @@ async function showOrders(){
       ${o.customer_name?`<div>الزبون: ${escapeHtml(o.customer_name)}</div>`:""}
       ${o.customer_phone?`<div>الهاتف: ${escapeHtml(o.customer_phone)}</div>`:""}
       <div style="margin-top:8px;font-weight:bold">المجموع: ${money(o.total)}</div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:12px">
+        <button class="primary" onclick='printInvoice(${JSON.stringify(o).replace(/'/g,"&#39;")})' style="flex:1;min-width:120px;padding:10px;border:0;border-radius:10px">🖨️ إعادة طباعة</button>
+        <button onclick='showOrderDetails(${JSON.stringify(o).replace(/'/g,"&#39;")})' style="flex:1;min-width:120px;padding:10px;border:1px solid #ddd;border-radius:10px;background:#fff">👁️ التفاصيل</button>
+        <button onclick='deletePreviousOrder(${JSON.stringify(o.id)})' style="flex:1;min-width:100px;padding:10px;border:1px solid #dc2626;color:#b91c1c;background:#fff;border-radius:10px">🗑️ حذف</button>
+      </div>
     </div>`).join("");
     modal("الطلبات السابقة",`<div style="max-height:70vh;overflow:auto">${html}</div>`);
   }catch(e){console.error(e);modal("الطلبات السابقة",'<div style="text-align:center;padding:20px">تعذر تحميل الطلبات.</div>')}
+}
+
+function showOrderDetails(order){
+  if(!order)return;
+  const items=getOrderItemsHtml(order);
+  modal("تفاصيل الطلب",`<div>
+    <div style="margin-bottom:8px"><strong>نوع الطلب:</strong> ${escapeHtml(order.order_type||"")}</div>
+    ${order.customer_name?`<div><strong>الزبون:</strong> ${escapeHtml(order.customer_name)}</div>`:""}
+    ${order.customer_phone?`<div><strong>الهاتف:</strong> ${escapeHtml(order.customer_phone)}</div>`:""}
+    ${order.customer_address?`<div><strong>العنوان:</strong> ${escapeHtml(order.customer_address)}</div>`:""}
+    <div style="margin-top:12px">${items||"لا يوجد أصناف"}</div>
+    <div style="font-size:20px;font-weight:bold;text-align:center;margin:15px 0">المجموع: ${money(order.total)}</div>
+    ${order.notes?`<div style="padding:8px;background:#f7f7f7;border-radius:8px">ملاحظات: ${escapeHtml(order.notes)}</div>`:""}
+    <button class="primary" onclick='printInvoice(${JSON.stringify(order).replace(/'/g,"&#39;")})' style="width:100%;margin-top:12px;padding:12px;border:0;border-radius:10px">🖨️ إعادة طباعة</button>
+  </div>`);
 }
 
 // ---------------- MENU MANAGER ----------------
@@ -495,40 +549,89 @@ function saveEditedMenuItem(id){
 function toggleAvailability(id){const i=getItemById(id);if(!i)return;i.available=i.available===false;saveMenu();showMenuManager();renderItems();}
 function deleteMenuItem(id){const i=getItemById(id);if(!i)return;if(!confirm(`حذف "${i.name}" من المنيو؟`))return;menu=menu.filter(x=>x.id!==id);saveMenu();showMenuManager();renderItems();}
 
+function getOfferItemRow(item,index){
+  if(item.type==="weight")return `<div class="offer-builder-row" style="border:1px solid #ddd;border-radius:10px;padding:9px;margin:7px 0">
+    <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" class="offerItemCheck" value="${item.id}" onchange="toggleOfferRow(this)"><strong>${escapeHtml(item.name)}</strong></label>
+    <div class="offer-extra" data-for="${item.id}" style="display:none;margin-top:8px"><label>الوزن بالكيلو</label><input class="offerWeight" data-item-id="${item.id}" type="number" min="0.01" step="0.01" value="1"></div>
+  </div>`;
+  if(item.type==="sizes")return `<div class="offer-builder-row" style="border:1px solid #ddd;border-radius:10px;padding:9px;margin:7px 0">
+    <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" class="offerItemCheck" value="${item.id}" onchange="toggleOfferRow(this)"><strong>${escapeHtml(item.name)}</strong></label>
+    <div class="offer-extra" data-for="${item.id}" style="display:none;margin-top:8px"><label>الحجم</label><select class="offerSize" data-item-id="${item.id}">${Object.keys(item.sizes||{}).map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("")}</select></div>
+  </div>`;
+  return `<div class="offer-builder-row" style="border:1px solid #ddd;border-radius:10px;padding:9px;margin:7px 0">
+    <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" class="offerItemCheck" value="${item.id}" onchange="toggleOfferRow(this)"><strong>${escapeHtml(item.name)}</strong></label>
+    <div class="offer-extra" data-for="${item.id}" style="display:none;margin-top:8px"><label>الكمية</label><input class="offerQuantity" data-item-id="${item.id}" type="number" min="1" step="1" value="1"></div>
+  </div>`;
+}
+function toggleOfferRow(check){
+  const row=check.closest(".offer-builder-row");
+  const extra=row?.querySelector(".offer-extra");
+  if(extra)extra.style.display=check.checked?"block":"none";
+}
 function openAddOffer(){
-  const items=menu.filter(i=>i.available!==false);
-  modal("إضافة عرض",`<label>اسم العرض</label><input id="offerName" type="text">
-    <label>سعر العرض النهائي</label><input id="offerPrice" type="number" step="0.01">
-    <label>الأصناف داخل العرض</label><div style="max-height:45vh;overflow:auto;border:1px solid #ddd;padding:8px;border-radius:10px">
-    ${items.map(i=>`<label style="display:flex;gap:8px;align-items:center;padding:7px"><input type="checkbox" class="offerItemCheck" value="${i.id}"><span>${escapeHtml(i.name)}</span></label>`).join("")}</div>
+  const items=menu.filter(i=>i.category!=="🎁 العروض"&&i.available!==false);
+  modal("إضافة عرض",`<label>اسم العرض</label><input id="offerName" type="text" placeholder="مثلاً: عرض العائلة">
+    <label>سعر العرض النهائي</label><input id="offerPrice" type="number" step="0.01" placeholder="مثلاً 25">
+    <div style="margin:12px 0 6px;font-weight:bold">مكونات العرض</div>
+    <div style="font-size:12px;color:#666;margin-bottom:8px">إذا اخترت صنفاً بالوزن، حدد وزنه. التفاصيل ستظهر على الفاتورة.</div>
+    <div style="max-height:45vh;overflow:auto">${items.map((i,n)=>getOfferItemRow(i,n)).join("")}</div>
     <button class="primary" onclick="saveOffer()" style="width:100%;margin-top:15px">حفظ العرض</button>`);
 }
 function saveOffer(){
   const name=document.getElementById("offerName")?.value.trim(),price=Number(document.getElementById("offerPrice")?.value),checks=[...document.querySelectorAll(".offerItemCheck:checked")];
-  if(!name)return alert("اكتب اسم العرض.");if(!Number.isFinite(price))return alert("اكتب سعر العرض.");if(!checks.length)return alert("اختار أصناف العرض.");
-  menu.push({id:generateId("offer"),name,category:"🎁 العروض",type:"offer",price,includedItems:checks.map(c=>({menuItemId:c.value,quantity:1})),available:true});
+  if(!name)return alert("اكتب اسم العرض.");
+  if(!Number.isFinite(price)||price<0)return alert("اكتب سعر العرض.");
+  if(!checks.length)return alert("اختار أصناف العرض.");
+  const includedItems=checks.map(c=>{
+    const item=getItemById(c.value);
+    const r={menuItemId:c.value,quantity:1};
+    if(item?.type==="weight"){
+      const w=Number(document.querySelector(`.offerWeight[data-item-id="${CSS.escape(c.value)}"]`)?.value||1);
+      if(!w||w<=0)throw new Error(`وزن ${item.name} غير صحيح`);
+      r.weight=w;
+    }else if(item?.type==="sizes"){
+      r.size=document.querySelector(`.offerSize[data-item-id="${CSS.escape(c.value)}"]`)?.value||null;
+    }else{
+      r.quantity=Math.max(1,Number(document.querySelector(`.offerQuantity[data-item-id="${CSS.escape(c.value)}"]`)?.value||1));
+    }
+    return r;
+  });
+  menu.push({id:generateId("offer"),name,category:"🎁 العروض",type:"offer",price,includedItems,available:true});
   saveMenu();showMenuManager();renderItems();
 }
+
 function editOfferItem(item){
-  const availableItems=menu.filter(i=>i.id!==item.id && i.available!==false);
-  const selected=new Set((item.includedItems||[]).map(x=>x.menuItemId));
+  const items=menu.filter(i=>i.category!=="🎁 العروض"&&i.available!==false);
+  const selected=new Map((item.includedItems||[]).map(x=>[x.menuItemId,x]));
   modal("تعديل العرض",`<label>اسم العرض</label><input id="offerName" type="text" value="${escapeHtml(item.name)}">
     <label>سعر العرض النهائي</label><input id="offerPrice" type="number" step="0.01" value="${Number(item.price||0)}">
-    <label>الأصناف داخل العرض</label><div style="max-height:45vh;overflow:auto;border:1px solid #ddd;padding:8px;border-radius:10px">
-    ${availableItems.map(i=>`<label style="display:flex;gap:8px;align-items:center;padding:7px"><input type="checkbox" class="offerItemCheck" value="${i.id}" ${selected.has(i.id)?"checked":""}><span>${escapeHtml(i.name)}</span></label>`).join("")}</div>
+    <div style="margin:12px 0 6px;font-weight:bold">مكونات العرض</div>
+    <div style="font-size:12px;color:#666;margin-bottom:8px">الوزن/الحجم والكمية محفوظة ضمن العرض وتظهر على الفاتورة.</div>
+    <div style="max-height:45vh;overflow:auto">${items.map((i,n)=>{
+      const x=selected.get(i.id);
+      const checked=x?"checked":"";
+      const extra=i.type==="weight"?`<div class="offer-extra" data-for="${i.id}" style="display:${x?"block":"none"};margin-top:8px"><label>الوزن بالكيلو</label><input class="offerWeight" data-item-id="${i.id}" type="number" min="0.01" step="0.01" value="${x?.weight??1}"></div>`:i.type==="sizes"?`<div class="offer-extra" data-for="${i.id}" style="display:${x?"block":"none"};margin-top:8px"><label>الحجم</label><select class="offerSize" data-item-id="${i.id}">${Object.keys(i.sizes||{}).map(s=>`<option value="${escapeHtml(s)}" ${x?.size===s?"selected":""}>${escapeHtml(s)}</option>`).join("")}</select></div>`:`<div class="offer-extra" data-for="${i.id}" style="display:${x?"block":"none"};margin-top:8px"><label>الكمية</label><input class="offerQuantity" data-item-id="${i.id}" type="number" min="1" step="1" value="${x?.quantity??1}"></div>`;
+      return `<div class="offer-builder-row" style="border:1px solid #ddd;border-radius:10px;padding:9px;margin:7px 0"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" class="offerItemCheck" value="${i.id}" ${checked} onchange="toggleOfferRow(this)"><strong>${escapeHtml(i.name)}</strong></label>${extra}</div>`;
+    }).join("")}</div>
     <button class="primary" onclick="saveEditedOffer('${item.id}')" style="width:100%;margin-top:15px">حفظ التعديل</button>`);
 }
 function saveEditedOffer(id){
   const item=getItemById(id);if(!item)return;
-  const name=document.getElementById("offerName")?.value.trim();
-  const price=Number(document.getElementById("offerPrice")?.value);
-  const checks=[...document.querySelectorAll(".offerItemCheck:checked")];
+  const name=document.getElementById("offerName")?.value.trim(),price=Number(document.getElementById("offerPrice")?.value),checks=[...document.querySelectorAll(".offerItemCheck:checked")];
   if(!name)return alert("اكتب اسم العرض.");
   if(!Number.isFinite(price)||price<0)return alert("اكتب سعر العرض.");
   if(!checks.length)return alert("اختار أصناف العرض.");
-  item.name=name;item.category="🎁 العروض";item.type="offer";item.price=price;
-  item.includedItems=checks.map(c=>({menuItemId:c.value,quantity:1}));
-  saveMenu();showMenuManager();renderItems();
+  try{
+    item.name=name;item.price=price;
+    item.includedItems=checks.map(c=>{
+      const mi=getItemById(c.value),r={menuItemId:c.value,quantity:1};
+      if(mi?.type==="weight")r.weight=Number(document.querySelector(`.offerWeight[data-item-id="${CSS.escape(c.value)}"]`)?.value||1);
+      else if(mi?.type==="sizes")r.size=document.querySelector(`.offerSize[data-item-id="${CSS.escape(c.value)}"]`)?.value||null;
+      else r.quantity=Math.max(1,Number(document.querySelector(`.offerQuantity[data-item-id="${CSS.escape(c.value)}"]`)?.value||1));
+      return r;
+    });
+    saveMenu();showMenuManager();renderItems();
+  }catch(e){alert(e.message||"تعذر حفظ العرض.")}
 }
 
 function getStructuredMenu(){
@@ -538,7 +641,7 @@ function getStructuredMenu(){
     if(i.type==="weight"){r.basePrice=Number(i.pricing?.base||0);r.grillSurcharge=Number(i.pricing?.grill||0);r.frySurcharge=Number(i.pricing?.fry||0);r.unit="kg";}
     if(i.type==="sizes")r.sizes={...(i.sizes||{})};
     if(i.type==="meal"){r.mealPrice=Number(i.prices?.وجبة||0);r.sandwichPrice=Number(i.prices?.ساندويش||0);}
-    if(i.type==="offer")r.includedItems=(i.includedItems||[]).map(x=>({id:x.menuItemId,name:getItemById(x.menuItemId)?.name||"",quantity:x.quantity||1}));
+    if(i.type==="offer")r.includedItems=(i.includedItems||[]).map(x=>({id:x.menuItemId,name:getItemById(x.menuItemId)?.name||"",quantity:x.quantity||1,weight:x.weight||null,size:x.size||null}));
     return r;
   });
 }
@@ -549,7 +652,11 @@ function exportStructuredMenu(){
 
 function printInvoice(order){
   if(!order)return alert("لا يوجد طلب للطباعة.");
-  const rows=(order.items||[]).map(i=>`<tr><td>${escapeHtml([i.name,i.weight?`${i.weight} كغ`:"",i.preparation||"",i.size||"",i.option||""].filter(Boolean).join(" - "))}</td><td style="text-align:center">${i.quantity}</td><td>${money(i.total)}</td></tr>`).join("");
+  const rows=(order.items||[]).map(i=>{
+    const title=[i.name,i.weight?`${Number(i.weight).toFixed(2)} كغ`:"",i.preparation||"",i.size||"",i.option||""].filter(Boolean).join(" - ");
+    const offerDetails=i.offerDetails&&i.offerDetails.length?`<div style="font-size:10px;margin-top:3px">${i.offerDetails.map(x=>escapeHtml([x.name,x.weight?`${Number(x.weight).toFixed(2)} كغ`:"",x.size||"",x.quantity>1?`× ${x.quantity}`:""].filter(Boolean).join(" - "))).join("<br>")}</div>`:"";
+    return `<tr><td>${escapeHtml(title)}${offerDetails}</td><td style="text-align:center">${i.quantity}</td><td>${money(i.total)}</td></tr>`;
+  }).join("");
   const p=window.open("","_blank","width=400,height=700");if(!p)return alert("المتصفح منع نافذة الطباعة.");
   p.document.write(`<!doctype html><html dir="rtl"><head><meta charset="UTF-8"><title>Tabbara Seafood</title><style>body{font-family:Arial;width:80mm;margin:auto;padding:10px}h2{text-align:center}table{width:100%;border-collapse:collapse}td,th{border-bottom:1px dashed #999;padding:5px;font-size:12px}.total{text-align:center;font-size:18px;font-weight:bold;margin-top:15px}</style></head><body>
   <h2>Tabbara Seafood</h2><div style="text-align:center">${escapeHtml(order.order_type||"")}</div>
