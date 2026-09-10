@@ -765,28 +765,53 @@ function buildInvoiceHtml(order){
 
 function printInvoice(order){
   if(!order)return alert("لا يوجد طلب للطباعة.");
-  const frame=document.createElement("iframe");
-  frame.setAttribute("aria-hidden","true");
-  frame.style.position="fixed";
-  frame.style.width="1px";
-  frame.style.height="1px";
-  frame.style.left="-10000px";
-  frame.style.top="-10000px";
-  frame.style.border="0";
-  document.body.appendChild(frame);
-  const doc=frame.contentDocument||frame.contentWindow.document;
-  doc.open();
-  doc.write(buildInvoiceHtml(order));
-  doc.close();
-  const cleanup=()=>{setTimeout(()=>frame.remove(),500);};
-  frame.onload=()=>{
-    setTimeout(()=>{
-      try{frame.contentWindow.focus();frame.contentWindow.print();}
-      finally{cleanup();}
-    },150);
-  };
-}
 
+  // iPhone/iPad Safari and many POS browsers do not reliably print from a
+  // hidden iframe. Print from the current page instead, then restore the POS.
+  const oldArea=document.getElementById("posPrintArea");
+  if(oldArea)oldArea.remove();
+  const oldStyle=document.getElementById("posPrintStyle");
+  if(oldStyle)oldStyle.remove();
+
+  const parser=new DOMParser();
+  const parsed=parser.parseFromString(buildInvoiceHtml(order),"text/html");
+  const area=document.createElement("div");
+  area.id="posPrintArea";
+  area.innerHTML=parsed.body?parsed.body.innerHTML:"";
+  document.body.appendChild(area);
+
+  const style=document.createElement("style");
+  style.id="posPrintStyle";
+  style.textContent=`
+    @media screen{
+      #posPrintArea{display:none!important}
+    }
+    @media print{
+      @page{size:80mm auto;margin:0}
+      html,body{width:80mm!important;margin:0!important;padding:0!important;background:#fff!important}
+      body>*:not(#posPrintArea){display:none!important}
+      #posPrintArea{display:block!important;width:80mm!important;margin:0 auto!important;padding:0!important}
+      #posPrintArea *{box-sizing:border-box}
+    }
+  `;
+  document.head.appendChild(style);
+
+  const cleanup=()=>{
+    area.remove();
+    style.remove();
+    window.removeEventListener("afterprint",cleanup);
+  };
+  window.addEventListener("afterprint",cleanup,{once:true});
+
+  // Must be called directly from the user's Print button click.
+  try{
+    window.focus();
+    window.print();
+  }catch(e){
+    cleanup();
+    alert("تعذّرت الطباعة على هذا الجهاز. جرّب الطباعة من Safari/Chrome.");
+  }
+}
 document.addEventListener("keydown",e=>{if(e.key!=="Enter")return;const l=document.getElementById("loginScreen");if(l&&getComputedStyle(l).display!=="none")login()});
 document.addEventListener("DOMContentLoaded",()=>{
   const p=document.getElementById("phone");if(p){p.addEventListener("change",handlePhoneChange);p.addEventListener("blur",handlePhoneChange)}
