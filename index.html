@@ -1,312 +1,76 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-
 <head>
   <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0">
-
-  <meta
-    name="theme-color"
-    content="#123b4a">
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#123b4a">
   <title>Tabbara Seafood - POS</title>
-
-  <link
-    rel="stylesheet"
-    href="style.css">
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-
-  <!-- تسجيل الدخول -->
-  <div
-    id="loginScreen"
-    class="login-screen"
-  >
-
+  <div id="loginScreen" class="login-screen">
     <div class="login-box">
-
       <h1>🐟 Tabbara Seafood</h1>
-
-      <p>
-        تسجيل الدخول إلى النظام
-      </p>
-
-      <input
-        id="loginPassword"
-        type="password"
-        placeholder="كلمة السر"
-        onkeydown="if(event.key==='Enter') login()"
-      >
-
-      <button
-        type="button"
-        onclick="login()"
-      >
-        🔓 دخول
-      </button>
-
-      <p
-        id="loginError"
-        class="login-error"
-      >
-        كلمة السر غير صحيحة
-      </p>
-
+      <p>تسجيل الدخول إلى النظام</p>
+      <input id="loginPassword" type="password" placeholder="كلمة السر"
+             onkeydown="if(event.key==='Enter') login()">
+      <button onclick="login()">🔓 دخول</button>
+      <p id="loginError" class="login-error">كلمة السر غير صحيحة</p>
     </div>
-
   </div>
 
-
-  <!-- التطبيق -->
   <div class="app">
-
     <header>
-
-      <h1>
-        🐟 Tabbara Seafood
-      </h1>
-
-      <p>
-        Restaurant POS
-      </p>
-
+      <h1>🐟 Tabbara Seafood</h1>
+      <p>Restaurant POS</p>
       <div class="header-buttons">
-
-        <span
-          id="connectionStatus"
-          class="status-badge"
-        >
-          ...
-        </span>
-
-        <button
-          type="button"
-          class="orders-button"
-          onclick="showOrders()"
-        >
-          📋 الطلبات السابقة
-        </button>
-
-        <button
-          type="button"
-          class="orders-button"
-          onclick="showMenuManager()"
-        >
-          ⚙️ إدارة المنيو
-        </button>
-
-        <button
-          type="button"
-          class="orders-button"
-          onclick="logout()"
-        >
-          🔒 خروج
-        </button>
-
+        <span id="connectionStatus" class="status-badge">...</span>
+        <button class="orders-button" onclick="showOrders()">📋 الطلبات السابقة</button>
+        <button class="orders-button" onclick="showMenuManager()">⚙️ إدارة المنيو</button>
+        <button class="orders-button" onclick="logout()">🔒 خروج</button>
       </div>
-
     </header>
 
-
     <main>
-
-      <!-- قائمة الطعام -->
       <section class="menu">
+        <h2>🍽️ قائمة الطعام</h2>
 
-        <h2>
-          🍽️ قائمة الطعام
-        </h2>
-
-
-        <!-- نوع الطلب -->
         <div class="order-type">
-
-          <button
-            type="button"
-            id="deliveryBtn"
-            onclick="setOrderType('Delevery')"
-          >
-            🛵 Delevery
-          </button>
-
-          <button
-            type="button"
-            id="pickupBtn"
-            onclick="setOrderType('استلام من المحل')"
-          >
-            🏪 استلام من المحل
-          </button>
-
+          <button onclick="setOrderType('Delevery')" id="deliveryBtn">🛵 Delevery</button>
+          <button onclick="setOrderType('استلام من المحل')" id="pickupBtn">🏪 استلام من المحل</button>
         </div>
 
-
-        <!-- الأقسام -->
-        <div
-          id="categories"
-          class="categories"
-        >
-        </div>
-
-
-        <!-- الأصناف -->
-        <div
-          id="items"
-          class="items"
-        >
-        </div>
-
+        <div id="categories" class="categories"></div>
+        <div id="items" class="items"></div>
       </section>
 
-
-      <!-- الطلب الحالي -->
       <section class="cart">
-
-        <h2>
-          🛒 الطلب الحالي
-        </h2>
-
-
-        <div class="order-info">
-
-          <strong>
-            نوع الطلب:
-          </strong>
-
-          <span id="orderType">
-            لم يتم الاختيار
-          </span>
-
-        </div>
-
-
-        <div id="cartItems">
-
-          <p>
-            لا يوجد أصناف
-          </p>
-
-        </div>
-
-
-        <div class="total">
-
-          المجموع:
-          $<span id="total">0.00</span>
-
-        </div>
-
-
+        <h2>🛒 الطلب الحالي</h2>
+        <div class="order-info"><strong>نوع الطلب:</strong> <span id="orderType">لم يتم الاختيار</span></div>
+        <div id="cartItems"><p>لا يوجد أصناف</p></div>
+        <div class="total">المجموع: $<span id="total">0.00</span></div>
         <hr>
 
+        <h3>👤 بيانات الزبون</h3>
+        <input id="name" type="text" placeholder="اسم الزبون">
+        <input id="phone" type="tel" placeholder="رقم الهاتف">
+        <input id="address" type="text" placeholder="العنوان">
+        <textarea id="notes" placeholder="ملاحظات على الطلب"></textarea>
+        <div id="customerMessage" class="customer-message"></div>
 
-        <h3>
-          👤 بيانات الزبون
-        </h3>
-
-
-        <input
-          id="name"
-          type="text"
-          placeholder="اسم الزبون"
-        >
-
-
-        <input
-          id="phone"
-          type="tel"
-          placeholder="رقم الهاتف"
-        >
-
-
-        <input
-          id="address"
-          type="text"
-          placeholder="العنوان"
-        >
-
-
-        <textarea
-          id="notes"
-          placeholder="ملاحظات على الطلب"
-        ></textarea>
-
-
-        <div
-          id="customerMessage"
-          class="customer-message"
-        >
-        </div>
-
-
-        <button
-          type="button"
-          class="clear"
-          onclick="clearOrder()"
-        >
-          🗑️ مسح الطلب
-        </button>
-
-
-        <button
-          type="button"
-          class="confirm"
-          onclick="confirmOrder()"
-        >
-          ✅ تأكيد الطلب
-        </button>
-
+        <button class="clear" onclick="clearOrder()">🗑️ مسح الطلب</button>
+        <button class="confirm" onclick="confirmOrder()">✅ تأكيد الطلب</button>
       </section>
-
     </main>
-
   </div>
 
-
-  <!-- النوافذ المنبثقة -->
   <div id="modalRoot"></div>
 
-
   <script src="script.js"></script>
-
-
-  <!-- Offline -->
   <script>
-
     if ("serviceWorker" in navigator) {
-
-      window.addEventListener(
-        "load",
-        function () {
-
-          navigator.serviceWorker
-            .register("./sw.js")
-            .then(function () {
-
-              console.log(
-                "Service Worker registered"
-              );
-
-            })
-            .catch(function (error) {
-
-              console.error(
-                "Service Worker error:",
-                error
-              );
-
-            });
-
-        }
-      );
-
+      window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"));
     }
-
   </script>
-
 </body>
-
 </html>

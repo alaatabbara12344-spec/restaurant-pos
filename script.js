@@ -71,6 +71,75 @@ let selectedOrderType = "";
 let currentCategory = "";
 let currentModalItem = null;
 
+function cloudRowToLocal(row) {
+  const data = row.data && typeof row.data === "object" ? row.data : {};
+  const categoryMap = {
+    "الأسماك":"🐟 الأسماك",
+    "ثمار البحر":"🦐 ثمار البحر",
+    "الوجبات والساندويش":"🍽️ الوجبات والساندويش",
+    "العروض":"🎁 العروض",
+    "المقبلات":"🥗 المقبلات",
+    "السلطات":"🥬 السلطات",
+    "المشروبات":"🥤 المشروبات"
+  };
+  const item = {
+    id: String(row.id),
+    name: row.name || "",
+    category: categoryMap[row.category] || row.category || "",
+    type: row.type || "fixed",
+    available: row.available !== false
+  };
+
+  if (item.type === "weight") {
+    item.pricing = {
+      base: Number(data.base ?? data.basePrice ?? 0),
+      grill: Number(data.grill ?? data.grillSurcharge ?? 0),
+      fry: Number(data.fry ?? data.frySurcharge ?? 0)
+    };
+  } else if (item.type === "sizes") {
+    item.sizes = { ...(data.sizes || {}) };
+  } else if (item.type === "meal") {
+    item.prices = {
+      وجبة: Number(data.meal ?? data.وجبة ?? data.prices?.وجبة ?? 0),
+      ساندويش: Number(data.sandwich ?? data.ساندويش ?? data.prices?.ساندويش ?? 0)
+    };
+  } else if (item.type === "offer") {
+    item.price = Number(data.price ?? row.price ?? 0);
+    item.includedItems = Array.isArray(data.includedItems) ? data.includedItems.map(x => ({...x})) : [];
+  } else {
+    item.price = Number(data.price ?? row.price ?? 0);
+  }
+  return item;
+}
+
+function localToCloudRow(item) {
+  const data = {};
+  if (item.type === "weight") {
+    data.base = Number(item.pricing?.base || 0);
+    data.grill = Number(item.pricing?.grill || 0);
+    data.fry = Number(item.pricing?.fry || 0);
+  } else if (item.type === "sizes") {
+    data.sizes = {...(item.sizes || {})};
+  } else if (item.type === "meal") {
+    data.meal = Number(item.prices?.وجبة || 0);
+    data.sandwich = Number(item.prices?.ساندويش || 0);
+  } else if (item.type === "offer") {
+    data.price = Number(item.price || 0);
+    data.includedItems = Array.isArray(item.includedItems) ? item.includedItems.map(x => ({...x})) : [];
+  } else {
+    data.price = Number(item.price || 0);
+  }
+  return {
+    id: String(item.id),
+    name: item.name || "",
+    category: item.category || "",
+    type: item.type || "fixed",
+    available: item.available !== false,
+    data,
+    updated_at: new Date().toISOString()
+  };
+}
+
 function loadMenu() {
   try {
     const saved = localStorage.getItem(MENU_STORAGE_KEY);
@@ -80,41 +149,71 @@ function loadMenu() {
     }
   } catch(e) { console.error(e); }
   menu = JSON.parse(JSON.stringify(DEFAULT_MENU));
-  saveMenu();
+  localStorage.setItem(MENU_STORAGE_KEY, JSON.stringify(menu));
 }
+
+let menuSaveTimer = null;
 function saveMenu() {
   localStorage.setItem(MENU_STORAGE_KEY, JSON.stringify(menu));
-  syncMenuToCloud();
+  clearTimeout(menuSaveTimer);
+  menuSaveTimer = setTimeout(() => syncMenuToCloud(), 150);
 }
+
 async function syncMenuFromCloud() {
   if (!navigator.onLine) return false;
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/pos_menu?id=eq.${CLOUD_MENU_ID}&select=menu`, {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/pos_menu?select=id,name,category,type,available,data,updated_at&order=updated_at.asc`, {
       headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY}
     });
-    if (!r.ok) return false;
+    if (!r.ok) throw new Error("Menu download failed: "+r.status);
     const rows = await r.json();
-    if (rows[0] && Array.isArray(rows[0].menu) && rows[0].menu.length) {
-      menu = rows[0].menu;
-      localStorage.setItem(MENU_STORAGE_KEY, JSON.stringify(menu));
-      renderCategories(); renderItems();
-      return true;
-    }
-    await syncMenuToCloud();
-  } catch(e) { console.warn("Cloud menu sync unavailable:",e); }
-  return false;
+    if (!Array.isArray(rows) || !rows.length) return false;
+
+    menu = rows.map(cloudRowToLocal);
+    localStorage.setItem(MENU_STORAGE_KEY, JSON.stringify(menu));
+    renderCategories(); renderItems(); renderCart();
+    return true;
+  } catch(e) {
+    console.warn("Cloud menu sync unavailable:",e);
+    return false;
+  }
 }
+
 async function syncMenuToCloud() {
   if (!navigator.onLine || !Array.isArray(menu) || !menu.length) return false;
   try {
+    const headers={apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY};
+    const rows = menu.map(localToCloudRow);
     const r = await fetch(`${SUPABASE_URL}/rest/v1/pos_menu?on_conflict=id`, {
       method:"POST",
-      headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},
-      body:JSON.stringify({id:CLOUD_MENU_ID,menu,updated_at:new Date().toISOString()})
+      headers:{...headers,"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},
+      body:JSON.stringify(rows)
     });
     if (!r.ok) throw new Error("Menu sync failed: "+r.status);
+
+    // Remove cloud menu items that were deliberately deleted on this device.
+    const currentIds = new Set(menu.map(i=>String(i.id)));
+    const all = await fetch(`${SUPABASE_URL}/rest/v1/pos_menu?select=id`, {headers});
+    if (all.ok) {
+      const cloudRows = await all.json();
+      const deletedIds = cloudRows.map(x=>String(x.id)).filter(id=>!currentIds.has(id));
+      for (const id of deletedIds) {
+        await fetch(`${SUPABASE_URL}/rest/v1/pos_menu?id=eq.${encodeURIComponent(id)}`, {method:"DELETE",headers});
+      }
+    }
     return true;
-  } catch(e) { console.warn("Menu cloud save failed:",e); return false; }
+  } catch(e) {
+    console.warn("Menu cloud save failed:",e);
+    return false;
+  }
+}
+
+let menuSyncInterval = null;
+function startMenuAutoSync() {
+  if (menuSyncInterval) clearInterval(menuSyncInterval);
+  menuSyncInterval = setInterval(() => {
+    if (navigator.onLine) syncMenuFromCloud();
+  }, 10000);
 }
 
 function money(v) { return Number(v || 0).toFixed(2); }
@@ -677,7 +776,13 @@ async function initPOS(){
     if(localStorage.getItem("tabbaraLoggedIn")==="true")showApp();
     else {const l=document.getElementById("loginScreen");if(l)l.style.display="flex";}
     if(navigator.onLine){
-      setTimeout(async()=>{await syncMenuFromCloud();await syncPendingOrders();},700);
+      setTimeout(async()=>{
+        await syncMenuFromCloud();
+        await syncPendingOrders();
+        startMenuAutoSync();
+      },300);
+    } else {
+      startMenuAutoSync();
     }
   }catch(e){console.error("POS initialization error:",e)}
 }
