@@ -87,7 +87,16 @@ function money(v) { return Number(v || 0).toFixed(2); }
 function escapeHtml(v) {
   return String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
 }
-function generateId(prefix="id") { return prefix+"-"+Date.now()+"-"+Math.random().toString(36).substring(2,9); }
+function generateId(prefix="id") {
+  if (prefix === "order") {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,function(c){
+      const r=Math.random()*16|0, v=c==="x"?r:(r&0x3|0x8);
+      return v.toString(16);
+    });
+  }
+  return prefix+"-"+Date.now()+"-"+Math.random().toString(36).substring(2,9);
+}
 function getItemById(id) { return menu.find(i => i.id === id); }
 function getTotal() { return cart.reduce((s,i)=>s+Number(i.total||0),0); }
 function getDeviceId() { return deviceId; }
@@ -391,7 +400,7 @@ function showMenuManager(){
     </div></div>`).join("");
   modal("إدارة المنيو",`<div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:15px">
-      <button class="primary" onclick="openAddMenuItem" style="padding:12px;border:0;border-radius:10px">➕ إضافة صنف</button>
+      <button class="primary" onclick="openAddMenuItem()" style="padding:12px;border:0;border-radius:10px">➕ إضافة صنف</button>
       <button onclick="openAddOffer()" style="padding:12px;border:0;border-radius:10px">🎁 إضافة عرض</button>
     </div>
     <div style="max-height:65vh;overflow:auto">${rows||'<div style="text-align:center;padding:20px">لا يوجد أصناف.</div>'}</div>
