@@ -11,6 +11,7 @@ const CUSTOMER_STORAGE_KEY = "tabbaraCustomers";
 const PENDING_ORDERS_KEY = "tabbara_pending_orders";
 const MENU_STORAGE_KEY = "tabbaraMenu";
 const DEVICE_ID_KEY = "tabbaraDeviceId";
+const CLOUD_MENU_ID = "1";
 
 let deviceId = localStorage.getItem(DEVICE_ID_KEY);
 if (!deviceId) {
@@ -81,7 +82,40 @@ function loadMenu() {
   menu = JSON.parse(JSON.stringify(DEFAULT_MENU));
   saveMenu();
 }
-function saveMenu() { localStorage.setItem(MENU_STORAGE_KEY, JSON.stringify(menu)); }
+function saveMenu() {
+  localStorage.setItem(MENU_STORAGE_KEY, JSON.stringify(menu));
+  syncMenuToCloud();
+}
+async function syncMenuFromCloud() {
+  if (!navigator.onLine) return false;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/pos_menu?id=eq.${CLOUD_MENU_ID}&select=menu`, {
+      headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY}
+    });
+    if (!r.ok) return false;
+    const rows = await r.json();
+    if (rows[0] && Array.isArray(rows[0].menu) && rows[0].menu.length) {
+      menu = rows[0].menu;
+      localStorage.setItem(MENU_STORAGE_KEY, JSON.stringify(menu));
+      renderCategories(); renderItems();
+      return true;
+    }
+    await syncMenuToCloud();
+  } catch(e) { console.warn("Cloud menu sync unavailable:",e); }
+  return false;
+}
+async function syncMenuToCloud() {
+  if (!navigator.onLine || !Array.isArray(menu) || !menu.length) return false;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/pos_menu?on_conflict=id`, {
+      method:"POST",
+      headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},
+      body:JSON.stringify({id:CLOUD_MENU_ID,menu,updated_at:new Date().toISOString()})
+    });
+    if (!r.ok) throw new Error("Menu sync failed: "+r.status);
+    return true;
+  } catch(e) { console.warn("Menu cloud save failed:",e); return false; }
+}
 
 function money(v) { return Number(v || 0).toFixed(2); }
 function escapeHtml(v) {
@@ -105,7 +139,9 @@ function normalizePhone(phone) {
   if (phone == null) return "";
   let value = String(phone).trim().replace(/[\s\-().]/g,"");
   if (value.startsWith("00")) value = "+" + value.substring(2);
-  if (/^(03|70|71|76|78|79|81)/.test(value)) value = "+961" + value;
+  if (value.startsWith("+961")) return "+961" + value.substring(4).replace(/^0/,"");
+  if (value.startsWith("961")) return "+961" + value.substring(3).replace(/^0/,"");
+  if (/^(03|70|71|76|78|79|81)/.test(value)) value = "+961" + value.substring(1);
   return value;
 }
 
@@ -129,7 +165,7 @@ function updateConnectionStatus(){
   e.textContent=navigator.onLine?"🟢 متصل":"🔴 بدون إنترنت";
   e.style.color=navigator.onLine?"#16a34a":"#dc2626";
 }
-window.addEventListener("online",()=>{updateConnectionStatus();syncPendingOrders();});
+window.addEventListener("online",async()=>{updateConnectionStatus();await syncMenuFromCloud();await syncPendingOrders();});
 window.addEventListener("offline",updateConnectionStatus);
 
 function modal(title,content){
@@ -291,7 +327,7 @@ async function saveCustomer(c){
   cacheCustomer(r);
   if(!navigator.onLine)return r;
   try{
-    await fetch(`${SUPABASE_URL}/rest/v1/customers`,{method:"POST",headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"resolution=merge-duplicates"},body:JSON.stringify(r)});
+    await fetch(`${SUPABASE_URL}/rest/v1/customers?on_conflict=phone`,{method:"POST",headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(r)});
   }catch(e){console.error(e)}
   return r;
 }
@@ -436,8 +472,9 @@ function saveNewMenuItem(){
 }
 function editMenuItem(id){
   const item=getItemById(id);if(!item)return alert("الصنف غير موجود.");
+  if(item.type==="offer") return editOfferItem(item);
   modal("تعديل الصنف",`<label>اسم الصنف</label><input id="managerName" type="text" value="${escapeHtml(item.name)}">
-    <label>التصنيف</label><select id="managerCategory">${CATEGORIES.map(c=>`<option value="${escapeHtml(c)}" ${c===item.category?"selected":""}>${escapeHtml(c)}</option>`).join("")}</select>
+    <label>التصنيف</label><select id="managerCategory">${CATEGORIES.filter(c=>c!=="🎁 العروض").map(c=>`<option value="${escapeHtml(c)}" ${c===item.category?"selected":""}>${escapeHtml(c)}</option>`).join("")}</select>
     <label>نوع الصنف</label><select id="managerType" onchange="updateManagerTypeFields()">
     <option value="fixed" ${item.type==="fixed"?"selected":""}>سعر ثابت</option><option value="weight" ${item.type==="weight"?"selected":""}>بالوزن</option>
     <option value="sizes" ${item.type==="sizes"?"selected":""}>أحجام</option><option value="meal" ${item.type==="meal"?"selected":""}>وجبة / ساندويش</option></select>
@@ -472,6 +509,28 @@ function saveOffer(){
   menu.push({id:generateId("offer"),name,category:"🎁 العروض",type:"offer",price,includedItems:checks.map(c=>({menuItemId:c.value,quantity:1})),available:true});
   saveMenu();showMenuManager();renderItems();
 }
+function editOfferItem(item){
+  const availableItems=menu.filter(i=>i.id!==item.id && i.available!==false);
+  const selected=new Set((item.includedItems||[]).map(x=>x.menuItemId));
+  modal("تعديل العرض",`<label>اسم العرض</label><input id="offerName" type="text" value="${escapeHtml(item.name)}">
+    <label>سعر العرض النهائي</label><input id="offerPrice" type="number" step="0.01" value="${Number(item.price||0)}">
+    <label>الأصناف داخل العرض</label><div style="max-height:45vh;overflow:auto;border:1px solid #ddd;padding:8px;border-radius:10px">
+    ${availableItems.map(i=>`<label style="display:flex;gap:8px;align-items:center;padding:7px"><input type="checkbox" class="offerItemCheck" value="${i.id}" ${selected.has(i.id)?"checked":""}><span>${escapeHtml(i.name)}</span></label>`).join("")}</div>
+    <button class="primary" onclick="saveEditedOffer('${item.id}')" style="width:100%;margin-top:15px">حفظ التعديل</button>`);
+}
+function saveEditedOffer(id){
+  const item=getItemById(id);if(!item)return;
+  const name=document.getElementById("offerName")?.value.trim();
+  const price=Number(document.getElementById("offerPrice")?.value);
+  const checks=[...document.querySelectorAll(".offerItemCheck:checked")];
+  if(!name)return alert("اكتب اسم العرض.");
+  if(!Number.isFinite(price)||price<0)return alert("اكتب سعر العرض.");
+  if(!checks.length)return alert("اختار أصناف العرض.");
+  item.name=name;item.category="🎁 العروض";item.type="offer";item.price=price;
+  item.includedItems=checks.map(c=>({menuItemId:c.value,quantity:1}));
+  saveMenu();showMenuManager();renderItems();
+}
+
 function getStructuredMenu(){
   return menu.map(i=>{
     const r={id:i.id,name:i.name,category:i.category,type:i.type,available:i.available!==false};
@@ -510,7 +569,9 @@ async function initPOS(){
     loadMenu();loadCustomers();loadPendingOrders();getDeviceId();updateConnectionStatus();renderCategories();renderCart();
     if(localStorage.getItem("tabbaraLoggedIn")==="true")showApp();
     else {const l=document.getElementById("loginScreen");if(l)l.style.display="flex";}
-    if(navigator.onLine)setTimeout(syncPendingOrders,1000);
+    if(navigator.onLine){
+      setTimeout(async()=>{await syncMenuFromCloud();await syncPendingOrders();},700);
+    }
   }catch(e){console.error("POS initialization error:",e)}
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",initPOS);else initPOS();
