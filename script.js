@@ -1,3867 +1,2223 @@
-// =====================================================
-// Tabbara Seafood POS
-// Complete POS System
-// Part 1 / 6
-// =====================================================
+// ============================================================
+// TABBARA SEAFOOD POS
+// script.js — Part 1 / 6
+// ============================================================
 
-const SUPABASE_URL =
-  "https://tpvhxauivmjgfcugpldp.supabase.co";
+const SUPABASE_URL = "https://tpvhxauivmjgfcugpldp.supabase.co";
+const SUPABASE_KEY = "sb_publishable_0n__ZztsS8BQtdVn5lhmmA_WWuHjVg7";
 
-const SUPABASE_KEY =
-  "sb_publishable_0n__ZztsS8BQtdVn5lhmmA_WWuHjVg7";
+const LOGIN_PASSWORD = "1234";
 
-const LOGIN_PASSWORD =
-  "1234";
-
-
-// =====================================================
-// الإعدادات
-// =====================================================
-
-const CUSTOMER_STORAGE_KEY =
-  "tabbaraCustomers";
-
-const PENDING_ORDERS_KEY =
-  "tabbaraPendingOrders";
-
-const MENU_STORAGE_KEY =
-  "tabbaraMenu";
-
-const DEVICE_ID_KEY =
-  "tabbaraDeviceId";
+const CUSTOMER_STORAGE_KEY = "tabbaraCustomers";
+const PENDING_ORDERS_KEY = "tabbaraPendingOrders";
+const MENU_STORAGE_KEY = "tabbaraMenu";
+const DEVICE_ID_KEY = "tabbaraDeviceId";
 
 
-// =====================================================
-// Device ID
-// =====================================================
+// ============================================================
+// DEVICE ID
+// ============================================================
 
-let deviceId =
-  localStorage.getItem(
-    DEVICE_ID_KEY
-  );
+let deviceId = localStorage.getItem(DEVICE_ID_KEY);
 
 if (!deviceId) {
-
   deviceId =
-    crypto.randomUUID();
+    "device-" +
+    Date.now() +
+    "-" +
+    Math.random().toString(36).substring(2, 10);
 
-  localStorage.setItem(
-    DEVICE_ID_KEY,
-    deviceId
-  );
-
+  localStorage.setItem(DEVICE_ID_KEY, deviceId);
 }
 
 
-// =====================================================
-// المنيو الافتراضية
-// =====================================================
+// ============================================================
+// MENU
+// ============================================================
 
 const DEFAULT_MENU = [
 
-  // ---------------------------------------------------
-  // الأسماك
-  // ---------------------------------------------------
+  // ----------------------------------------------------------
+  // FISH
+  // ----------------------------------------------------------
 
   {
-    id: "fish_ajaj",
+    id: "fish-ajaj",
+    category: "🐟 الأسماك",
     name: "أجاج",
-    category: "🐟 الأسماك",
     type: "weight",
-
-    pricing: {
-      base: 12,
-      grill: 3,
-      fry: 4
-    },
-
+    price: 12,
+    grill: 3,
+    fry: 4,
     available: true
   },
 
   {
-    id: "fish_boraq",
+    id: "fish-boraq",
+    category: "🐟 الأسماك",
     name: "براق",
-    category: "🐟 الأسماك",
     type: "weight",
-
-    pricing: {
-      base: 14,
-      grill: 3,
-      fry: 4
-    },
-
+    price: 14,
+    grill: 3,
+    fry: 4,
     available: true
   },
 
   {
-    id: "fish_sardine",
+    id: "fish-sardine",
+    category: "🐟 الأسماك",
     name: "سردين",
-    category: "🐟 الأسماك",
     type: "weight",
-
-    pricing: {
-      base: 8,
-      grill: 2,
-      fry: 3
-    },
-
-    available: true
-  },
-
-  {
-    id: "fish_laqz_sandy",
-    name: "لقز رملي",
-    category: "🐟 الأسماك",
-    type: "weight",
-
-    pricing: {
-      base: 16,
-      grill: 3,
-      fry: 4
-    },
-
-    available: true
-  },
-
-  {
-    id: "fish_laqz_rocky",
-    name: "لقز صخري",
-    category: "🐟 الأسماك",
-    type: "weight",
-
-    pricing: {
-      base: 18,
-      grill: 3,
-      fry: 4
-    },
-
-    available: true
-  },
-
-  {
-    id: "fish_sultan",
-    name: "سلطان",
-    category: "🐟 الأسماك",
-    type: "weight",
-
-    pricing: {
-      base: 15,
-      grill: 3,
-      fry: 4
-    },
-
-    available: true
-  },
-
-  {
-    id: "fish_masqar",
-    name: "مسقار",
-    category: "🐟 الأسماك",
-    type: "weight",
-
-    pricing: {
-      base: 13,
-      grill: 3,
-      fry: 4
-    },
-
-    available: true
-  },
-
-  {
-    id: "fish_malifa",
-    name: "مليفة",
-    category: "🐟 الأسماك",
-    type: "weight",
-
-    pricing: {
-      base: 12,
-      grill: 3,
-      fry: 4
-    },
-
-    available: true
-  },
-
-  {
-    id: "fish_jarbidi",
-    name: "جربيدي",
-    category: "🐟 الأسماك",
-    type: "weight",
-
-    pricing: {
-      base: 14,
-      grill: 3,
-      fry: 4
-    },
-
-    available: true
-  },
-
-  {
-    id: "fish_armout_blond",
-    name: "عرموط أشقر",
-    category: "🐟 الأسماك",
-    type: "weight",
-
-    pricing: {
-      base: 11,
-      grill: 3,
-      fry: 4
-    },
-
-    available: true
-  },
-
-  {
-    id: "fish_armout_cut",
-    name: "عرموط مقطع",
-    category: "🐟 الأسماك",
-    type: "weight",
-
-    pricing: {
-      base: 12,
-      grill: 3,
-      fry: 4
-    },
-
-    available: true
-  },
-
-
-  // ---------------------------------------------------
-  // ثمار البحر
-  // ---------------------------------------------------
-
-  {
-    id: "seafood_shrimp_medium",
-    name: "قريدس وسط",
-    category: "🦐 ثمار البحر",
-    type: "weight",
-
-    pricing: {
-      base: 16,
-      grill: 2,
-      fry: 3
-    },
-
-    available: true
-  },
-
-  {
-    id: "seafood_shrimp_large",
-    name: "قريدس كبير",
-    category: "🦐 ثمار البحر",
-    type: "weight",
-
-    pricing: {
-      base: 20,
-      grill: 2,
-      fry: 3
-    },
-
-    available: true
-  },
-
-  {
-    id: "seafood_calamari",
-    name: "كالامار",
-    category: "🦐 ثمار البحر",
-    type: "weight",
-
-    pricing: {
-      base: 14,
-      grill: 2,
-      fry: 3
-    },
-
-    available: true
-  },
-
-  {
-    id: "seafood_fillet_fresh",
-    name: "فيليه طازج",
-    category: "🦐 ثمار البحر",
-    type: "weight",
-
-    pricing: {
-      base: 17,
-      grill: 3,
-      fry: 4
-    },
-
-    available: true
-  },
-
-  {
-    id: "seafood_fillet_crispy",
-    name: "فيليه مقرمش",
-    category: "🦐 ثمار البحر",
-    type: "weight",
-
-    pricing: {
-      base: 18,
-      grill: 2,
-      fry: 3
-    },
-
-    available: true
-  },
-
-  {
-    id: "seafood_mix",
-    name: "ثمار البحر",
-    category: "🦐 ثمار البحر",
-    type: "sizes",
-
-    sizes: {
-      صغير: 15,
-      وسط: 22,
-      سطل: 35
-    },
-
-    available: true
-  },
-
-
-  // ---------------------------------------------------
-  // الوجبات والساندويش
-  // ---------------------------------------------------
-
-  {
-    id: "meal_free_fish",
-    name: "سمكة حرة",
-    category: "🍽️ الوجبات والساندويش",
-    type: "meal",
-
-    prices: {
-      وجبة: 15,
-      ساندويش: 8
-    },
-
-    available: true
-  },
-
-  {
-    id: "meal_shrimp",
-    name: "قريدس",
-    category: "🍽️ الوجبات والساندويش",
-    type: "meal",
-
-    prices: {
-      وجبة: 15,
-      ساندويش: 8
-    },
-
-    available: true
-  },
-
-  {
-    id: "meal_seafood",
-    name: "ثمار البحر",
-    category: "🍽️ الوجبات والساندويش",
-    type: "meal",
-
-    prices: {
-      وجبة: 16,
-      ساندويش: 9
-    },
-
-    available: true
-  },
-
-  {
-    id: "meal_calamari",
-    name: "كالامار",
-    category: "🍽️ الوجبات والساندويش",
-    type: "meal",
-
-    prices: {
-      وجبة: 14,
-      ساندويش: 8
-    },
-
-    available: true
-  },
-
-  {
-    id: "meal_sardine",
-    name: "سردين",
-    category: "🍽️ الوجبات والساندويش",
-    type: "meal",
-
-    prices: {
-      وجبة: 11,
-      ساندويش: 7
-    },
-
-    available: true
-  },
-
-
-  // ---------------------------------------------------
-  // المقبلات
-  // ---------------------------------------------------
-
-  {
-    id: "app_sayadieh",
-    name: "صيادية",
-    category: "🥗 المقبلات",
-    type: "sizes",
-
-    sizes: {
-      صغير: 5,
-      وسط: 8,
-      كبير: 11
-    },
-
-    available: true
-  },
-
-  {
-    id: "app_mtabbal",
-    name: "متبل",
-    category: "🥗 المقبلات",
-    type: "fixed",
-
-    price: 4,
-
-    available: true
-  },
-
-  {
-    id: "app_shakshuka",
-    name: "شكشوكة",
-    category: "🥗 المقبلات",
-    type: "fixed",
-
-    price: 5,
-
-    available: true
-  },
-
-  {
-    id: "app_tarator",
-    name: "طرطور كبير",
-    category: "🥗 المقبلات",
-    type: "fixed",
-
-    price: 4,
-
-    available: true
-  },
-
-  {
-    id: "app_fries",
-    name: "بطاطا مقلية",
-    category: "🥗 المقبلات",
-    type: "sizes",
-
-    sizes: {
-      صغير: 3,
-      وسط: 5,
-      كبير: 7
-    },
-
-    available: true
-  },
-
-
-  // ---------------------------------------------------
-  // السلطات
-  // ---------------------------------------------------
-
-  {
-    id: "salad_tabouleh",
-    name: "تبولة",
-    category: "🥬 السلطات",
-    type: "fixed",
-
-    price: 6,
-
-    available: true
-  },
-
-  {
-    id: "salad_fattoush",
-    name: "فتوش",
-    category: "🥬 السلطات",
-    type: "fixed",
-
-    price: 6,
-
-    available: true
-  },
-
-  {
-    id: "salad_crab",
-    name: "سلطة كراب",
-    category: "🥬 السلطات",
-    type: "fixed",
-
     price: 8,
+    grill: 2,
+    fry: 3,
+    available: true
+  },
 
+  {
+    id: "fish-la2ez-ramli",
+    category: "🐟 الأسماك",
+    name: "لقز رملي",
+    type: "weight",
+    price: 16,
+    grill: 3,
+    fry: 4,
+    available: true
+  },
+
+  {
+    id: "fish-la2ez-sakhri",
+    category: "🐟 الأسماك",
+    name: "لقز صخري",
+    type: "weight",
+    price: 18,
+    grill: 3,
+    fry: 4,
+    available: true
+  },
+
+  {
+    id: "fish-sultan",
+    category: "🐟 الأسماك",
+    name: "سلطان",
+    type: "weight",
+    price: 15,
+    grill: 3,
+    fry: 4,
+    available: true
+  },
+
+  {
+    id: "fish-masqar",
+    category: "🐟 الأسماك",
+    name: "مسقار",
+    type: "weight",
+    price: 13,
+    grill: 3,
+    fry: 4,
+    available: true
+  },
+
+  {
+    id: "fish-malifa",
+    category: "🐟 الأسماك",
+    name: "مليفة",
+    type: "weight",
+    price: 12,
+    grill: 3,
+    fry: 4,
+    available: true
+  },
+
+  {
+    id: "fish-jarbidi",
+    category: "🐟 الأسماك",
+    name: "جربيدي",
+    type: "weight",
+    price: 14,
+    grill: 3,
+    fry: 4,
+    available: true
+  },
+
+  {
+    id: "fish-armout-ashqar",
+    category: "🐟 الأسماك",
+    name: "عرموط أشقر",
+    type: "weight",
+    price: 11,
+    grill: 3,
+    fry: 4,
+    available: true
+  },
+
+  {
+    id: "fish-armout-moqatta",
+    category: "🐟 الأسماك",
+    name: "عرموط مقطع",
+    type: "weight",
+    price: 12,
+    grill: 3,
+    fry: 4,
     available: true
   },
 
 
-  // ---------------------------------------------------
-  // المشروبات
-  // ---------------------------------------------------
+  // ----------------------------------------------------------
+  // SEAFOOD
+  // ----------------------------------------------------------
 
   {
-    id: "drink_pepsi",
+    id: "sea-shrimp-medium",
+    category: "🦐 ثمار البحر",
+    name: "قريدس وسط",
+    type: "weight",
+    price: 16,
+    grill: 2,
+    fry: 3,
+    available: true
+  },
+
+  {
+    id: "sea-shrimp-large",
+    category: "🦐 ثمار البحر",
+    name: "قريدس كبير",
+    type: "weight",
+    price: 20,
+    grill: 2,
+    fry: 3,
+    available: true
+  },
+
+  {
+    id: "sea-calamari",
+    category: "🦐 ثمار البحر",
+    name: "كالامار",
+    type: "weight",
+    price: 14,
+    grill: 2,
+    fry: 3,
+    available: true
+  },
+
+  {
+    id: "sea-fillet-fresh",
+    category: "🦐 ثمار البحر",
+    name: "فيليه طازج",
+    type: "weight",
+    price: 17,
+    grill: 3,
+    fry: 4,
+    available: true
+  },
+
+  {
+    id: "sea-fillet-crispy",
+    category: "🦐 ثمار البحر",
+    name: "فيليه مقرمش",
+    type: "weight",
+    price: 18,
+    grill: 2,
+    fry: 3,
+    available: true
+  },
+
+  {
+    id: "sea-mix",
+    category: "🦐 ثمار البحر",
+    name: "ثمار البحر",
+    type: "sizes",
+    sizes: [
+      {
+        name: "صغير",
+        price: 15
+      },
+      {
+        name: "وسط",
+        price: 22
+      },
+      {
+        name: "سطل",
+        price: 35
+      }
+    ],
+    available: true
+  },
+
+
+  // ----------------------------------------------------------
+  // MEALS & SANDWICHES
+  // ----------------------------------------------------------
+
+  {
+    id: "meal-harra-fish",
+    category: "🍽️ الوجبات والساندويش",
+    name: "سمكة حرة",
+    type: "meal",
+    mealPrice: 15,
+    sandwichPrice: 8,
+    available: true
+  },
+
+  {
+    id: "meal-shrimp",
+    category: "🍽️ الوجبات والساندويش",
+    name: "قريدس",
+    type: "meal",
+    mealPrice: 15,
+    sandwichPrice: 8,
+    available: true
+  },
+
+  {
+    id: "meal-seafood",
+    category: "🍽️ الوجبات والساندويش",
+    name: "ثمار البحر",
+    type: "meal",
+    mealPrice: 16,
+    sandwichPrice: 9,
+    available: true
+  },
+
+  {
+    id: "meal-calamari",
+    category: "🍽️ الوجبات والساندويش",
+    name: "كالامار",
+    type: "meal",
+    mealPrice: 14,
+    sandwichPrice: 8,
+    available: true
+  },
+
+  {
+    id: "meal-sardine",
+    category: "🍽️ الوجبات والساندويش",
+    name: "سردين",
+    type: "meal",
+    mealPrice: 11,
+    sandwichPrice: 7,
+    available: true
+  },
+
+
+  // ----------------------------------------------------------
+  // APPETIZERS
+  // ----------------------------------------------------------
+
+  {
+    id: "app-sayyadieh",
+    category: "🥗 المقبلات",
+    name: "صيادية",
+    type: "sizes",
+    sizes: [
+      {
+        name: "صغير",
+        price: 5
+      },
+      {
+        name: "وسط",
+        price: 8
+      },
+      {
+        name: "كبير",
+        price: 11
+      }
+    ],
+    available: true
+  },
+
+  {
+    id: "app-mtabbal",
+    category: "🥗 المقبلات",
+    name: "متبل",
+    type: "fixed",
+    price: 4,
+    available: true
+  },
+
+  {
+    id: "app-shakshouka",
+    category: "🥗 المقبلات",
+    name: "شكشوكة",
+    type: "fixed",
+    price: 5,
+    available: true
+  },
+
+  {
+    id: "app-tarator",
+    category: "🥗 المقبلات",
+    name: "طرطور كبير",
+    type: "fixed",
+    price: 4,
+    available: true
+  },
+
+  {
+    id: "app-fries",
+    category: "🥗 المقبلات",
+    name: "بطاطا مقلية",
+    type: "sizes",
+    sizes: [
+      {
+        name: "صغير",
+        price: 3
+      },
+      {
+        name: "وسط",
+        price: 5
+      },
+      {
+        name: "كبير",
+        price: 7
+      }
+    ],
+    available: true
+  },
+
+
+  // ----------------------------------------------------------
+  // SALADS
+  // ----------------------------------------------------------
+
+  {
+    id: "salad-tabbouleh",
+    category: "🥬 السلطات",
+    name: "تبولة",
+    type: "fixed",
+    price: 6,
+    available: true
+  },
+
+  {
+    id: "salad-fattoush",
+    category: "🥬 السلطات",
+    name: "فتوش",
+    type: "fixed",
+    price: 6,
+    available: true
+  },
+
+  {
+    id: "salad-crab",
+    category: "🥬 السلطات",
+    name: "سلطة كراب",
+    type: "fixed",
+    price: 8,
+    available: true
+  },
+
+
+  // ----------------------------------------------------------
+  // DRINKS
+  // ----------------------------------------------------------
+
+  {
+    id: "drink-pepsi",
+    category: "🥤 المشروبات",
     name: "Pepsi",
-    category: "🥤 المشروبات",
     type: "sizes",
-
-    sizes: {
-      صغير: 2,
-      كبير: 3
-    },
-
+    sizes: [
+      {
+        name: "صغير",
+        price: 2
+      },
+      {
+        name: "كبير",
+        price: 3
+      }
+    ],
     available: true
   },
 
   {
-    id: "drink_7up",
+    id: "drink-7up",
+    category: "🥤 المشروبات",
     name: "7up",
-    category: "🥤 المشروبات",
     type: "sizes",
-
-    sizes: {
-      صغير: 2,
-      كبير: 3
-    },
-
+    sizes: [
+      {
+        name: "صغير",
+        price: 2
+      },
+      {
+        name: "كبير",
+        price: 3
+      }
+    ],
     available: true
   },
 
   {
-    id: "drink_miranda",
-    name: "Miranda",
+    id: "drink-miranda",
     category: "🥤 المشروبات",
+    name: "Miranda",
     type: "sizes",
-
-    sizes: {
-      صغير: 2,
-      كبير: 3
-    },
-
+    sizes: [
+      {
+        name: "صغير",
+        price: 2
+      },
+      {
+        name: "كبير",
+        price: 3
+      }
+    ],
     available: true
   }
 
 ];
 
 
-// =====================================================
-// التصنيفات
-// =====================================================
+// ============================================================
+// CATEGORIES
+// ============================================================
 
 const CATEGORIES = [
-
   "🐟 الأسماك",
-
   "🦐 ثمار البحر",
-
   "🍽️ الوجبات والساندويش",
-
   "🎁 العروض",
-
   "🥗 المقبلات",
-
   "🥬 السلطات",
-
   "🥤 المشروبات"
-
 ];
 
 
-// =====================================================
-// متغيرات التطبيق
-// =====================================================
+// ============================================================
+// GLOBAL STATE
+// ============================================================
 
 let menu = [];
-
 let cart = [];
 
-let selectedOrderType =
-  "";
-
-let currentCategory =
-  "";
-
-let currentModalItem =
-  null;
+let selectedOrderType = "";
+let currentCategory = "";
+let currentModalItem = null;
 
 
-// =====================================================
-// تحميل المنيو
-// =====================================================
+// ============================================================
+// LOAD / SAVE MENU
+// ============================================================
 
 function loadMenu() {
-
   try {
+    const saved = localStorage.getItem(MENU_STORAGE_KEY);
 
-    const saved =
-      localStorage.getItem(
-        MENU_STORAGE_KEY
-      );
+    if (saved) {
+      const parsed = JSON.parse(saved);
 
-
-    if (
-      saved
-    ) {
-
-      const parsed =
-        JSON.parse(
-          saved
-        );
-
-
-      if (
-        Array.isArray(
-          parsed
-        ) &&
-        parsed.length
-      ) {
-
-        menu =
-          parsed;
-
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        menu = parsed;
         return;
-
       }
-
     }
-
+  } catch (error) {
+    console.error("Error loading menu:", error);
   }
 
-  catch (error) {
-
-    console.error(
-      "Menu load error:",
-      error
-    );
-
-  }
-
-
-  menu =
-    JSON.parse(
-      JSON.stringify(
-        DEFAULT_MENU
-      )
-    );
-
+  menu = JSON.parse(JSON.stringify(DEFAULT_MENU));
 }
 
-
-// =====================================================
-// حفظ المنيو
-// =====================================================
 
 function saveMenu() {
-
-  localStorage.setItem(
-    MENU_STORAGE_KEY,
-    JSON.stringify(
-      menu
-    )
-  );
-
-}
-
-
-// =====================================================
-// تنسيق السعر
-// =====================================================
-
-function money(
-  value
-) {
-
-  return Number(
-    value || 0
-  ).toFixed(2);
-
-}
-
-
-// =====================================================
-// تنظيف رقم الهاتف
-// =====================================================
-
-function normalizePhone(
-  phone
-) {
-
-  return String(
-    phone || ""
-  )
-    .replace(
-      /[^\d+]/g,
-      ""
-    )
-    .trim();
-
-}
-
-
-// =====================================================
-// حماية HTML
-// =====================================================
-
-function escapeHtml(
-  value
-) {
-
-  return String(
-    value ?? ""
-  )
-    .replace(
-      /&/g,
-      "&amp;"
-    )
-    .replace(
-      /</g,
-      "&lt;"
-    )
-    .replace(
-      />/g,
-      "&gt;"
-    )
-    .replace(
-      /"/g,
-      "&quot;"
-    )
-    .replace(
-      /'/g,
-      "&#039;"
+  try {
+    localStorage.setItem(
+      MENU_STORAGE_KEY,
+      JSON.stringify(menu)
     );
-
+  } catch (error) {
+    console.error("Error saving menu:", error);
+  }
 }
 
 
-// =====================================================
-// تحميل المنيو عند بدء الملف
-// =====================================================
+// ============================================================
+// HELPERS
+// ============================================================
+
+function money(value) {
+  const number = Number(value) || 0;
+
+  return number.toFixed(2);
+}
+
+
+function normalizePhone(phone) {
+  if (phone === null || phone === undefined) {
+    return "";
+  }
+
+  let value = String(phone);
+
+  // Arabic numbers → English numbers
+  value = value
+    .replace(/[٠-٩]/g, function (digit) {
+      return String("٠١٢٣٤٥٦٧٨٩".indexOf(digit));
+    })
+    .replace(/[۰-۹]/g, function (digit) {
+      return String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit));
+    });
+
+  value = value.replace(/[^\d+]/g, "");
+
+  // Lebanon international normalization
+  if (value.startsWith("00961")) {
+    value = "+" + value.substring(2);
+  }
+
+  if (value.startsWith("961")) {
+    value = "+" + value;
+  }
+
+  if (
+    value.startsWith("0") &&
+    value.length >= 8 &&
+    value.length <= 9
+  ) {
+    value = "+961" + value.substring(1);
+  }
+
+  return value;
+}
+
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+
+function getItemById(id) {
+  return menu.find(function (item) {
+    return item.id === id;
+  });
+}
+
+
+function getCategoryItems(category) {
+  return menu.filter(function (item) {
+    return item.category === category;
+  });
+}
+
+
+function getTotal() {
+  return cart.reduce(function (sum, item) {
+    return sum + Number(item.total || 0);
+  }, 0);
+}
+
+
+function generateId(prefix = "id") {
+  return (
+    prefix +
+    "-" +
+    Date.now() +
+    "-" +
+    Math.random().toString(36).substring(2, 9)
+  );
+}
+
+
+// ============================================================
+// INITIAL MENU LOAD
+// ============================================================
 
 loadMenu();
-
 saveMenu();
-// =====================================================
-// Part 2 / 6
-// Login + Order Type + Categories
-// =====================================================
-
-
-// =====================================================
-// تسجيل الدخول
-// =====================================================
+// ============================================================
+// LOGIN
+// ============================================================
 
 function checkLogin() {
+  const loggedIn = localStorage.getItem("tabbaraLoggedIn");
 
-  const loggedIn =
-    localStorage.getItem(
-      "tabbaraLoggedIn"
-    );
-
-
-  if (
-    loggedIn === "true"
-  ) {
-
+  if (loggedIn === "true") {
     showPOS();
-
-  }
-
-  else {
-
+  } else {
     showLogin();
-
   }
-
 }
 
-
-// =====================================================
-// شاشة تسجيل الدخول
-// =====================================================
 
 function showLogin() {
-
-  const loginScreen =
-    document.getElementById(
-      "loginScreen"
-    );
-
-  const app =
-    document.getElementById(
-      "app"
-    );
-
+  const loginScreen = document.getElementById("loginScreen");
+  const app = document.querySelector(".app");
 
   if (loginScreen) {
-
-    loginScreen.style.display =
-      "flex";
-
+    loginScreen.style.display = "flex";
   }
-
 
   if (app) {
-
-    app.style.display =
-      "none";
-
+    app.style.display = "none";
   }
-
 }
 
-
-// =====================================================
-// الدخول
-// =====================================================
 
 function login() {
+  const input = document.getElementById("loginPassword");
+  const error = document.getElementById("loginError");
 
-  const input =
-    document.getElementById(
-      "password"
-    );
+  const password = input ? input.value : "";
 
+  if (password === LOGIN_PASSWORD) {
+    localStorage.setItem("tabbaraLoggedIn", "true");
 
-  if (!input) {
+    if (input) {
+      input.value = "";
+    }
 
-    return;
-
-  }
-
-
-  if (
-    input.value ===
-    LOGIN_PASSWORD
-  ) {
-
-    localStorage.setItem(
-      "tabbaraLoggedIn",
-      "true"
-    );
-
+    if (error) {
+      error.textContent = "";
+    }
 
     showPOS();
-
+    return;
   }
 
-  else {
-
-    alert(
-      "❌ كلمة السر غير صحيحة"
-    );
-
-
-    input.value =
-      "";
-
+  if (error) {
+    error.textContent = "كلمة السر غير صحيحة";
   }
-
 }
 
-
-// =====================================================
-// إظهار POS
-// =====================================================
 
 function showPOS() {
-
-  const loginScreen =
-    document.getElementById(
-      "loginScreen"
-    );
-
-  const app =
-    document.getElementById(
-      "app"
-    );
-
+  const loginScreen = document.getElementById("loginScreen");
+  const app = document.querySelector(".app");
 
   if (loginScreen) {
-
-    loginScreen.style.display =
-      "none";
-
+    loginScreen.style.display = "none";
   }
-
 
   if (app) {
-
-    app.style.display =
-      "block";
-
+    app.style.display = "flex";
   }
-
 
   renderCategories();
 
+  if (selectedOrderType) {
+    showCategory(currentCategory || CATEGORIES[0]);
+  } else {
+    const itemsContainer = document.getElementById("items");
 
-  if (
-    !currentCategory
-  ) {
-
-    currentCategory =
-      CATEGORIES[0];
-
+    if (itemsContainer) {
+      itemsContainer.innerHTML =
+        '<div class="empty-state">اختار نوع الطلب أولاً</div>';
+    }
   }
 
-
-  showCategory(
-    currentCategory
-  );
-
+  updateCart();
+  updateConnectionStatus();
 }
 
-
-// =====================================================
-// تسجيل الخروج
-// =====================================================
 
 function logout() {
+  localStorage.removeItem("tabbaraLoggedIn");
 
-  localStorage.removeItem(
-    "tabbaraLoggedIn"
-  );
+  cart = [];
+  selectedOrderType = "";
+  currentCategory = "";
 
-
-  location.reload();
-
+  updateCart();
+  showLogin();
 }
 
 
-// =====================================================
-// نوع الطلب
-// =====================================================
+// ============================================================
+// ORDER TYPE
+// ============================================================
 
-function setOrderType(
-  type
-) {
+function setOrderType(type) {
+  selectedOrderType = type;
 
-  selectedOrderType =
-    type;
+  const deliveryBtn = document.getElementById("deliveryBtn");
+  const pickupBtn = document.getElementById("pickupBtn");
 
-
-  const buttons =
-    document.querySelectorAll(
-      ".order-type-btn"
-    );
-
-
-  buttons.forEach(
-    function(button) {
-
-      button.classList.remove(
-        "active"
-      );
-
-    }
-  );
-
-
-  if (
-    type ===
-    "Delevery"
-  ) {
-
-    const delivery =
-      document.getElementById(
-        "deliveryBtn"
-      );
-
-
-    if (delivery) {
-
-      delivery.classList.add(
-        "active"
-      );
-
-    }
-
+  if (deliveryBtn) {
+    deliveryBtn.classList.remove("active");
   }
 
+  if (pickupBtn) {
+    pickupBtn.classList.remove("active");
+  }
 
-  if (
-    type ===
-    "استلام من المحل"
-  ) {
+  if (type === "delivery" && deliveryBtn) {
+    deliveryBtn.classList.add("active");
+  }
 
-    const pickup =
-      document.getElementById(
-        "pickupBtn"
-      );
+  if (type === "pickup" && pickupBtn) {
+    pickupBtn.classList.add("active");
+  }
 
+  const address = document.getElementById("address");
 
-    if (pickup) {
-
-      pickup.classList.add(
-        "active"
-      );
-
+  if (address) {
+    if (type === "delivery") {
+      address.disabled = false;
+      address.placeholder = "عنوان الزبون";
+    } else {
+      address.disabled = true;
+      address.value = "";
+      address.placeholder = "غير مطلوب للاستلام من المحل";
     }
-
   }
-
-}
-
-
-// =====================================================
-// عرض التصنيفات
-// =====================================================
-
-function renderCategories() {
-
-  const container =
-    document.getElementById(
-      "categories"
-    );
-
-
-  if (!container) {
-
-    return;
-
-  }
-
-
-  container.innerHTML =
-    CATEGORIES
-      .map(
-        function(category) {
-
-          const active =
-            category ===
-            currentCategory
-              ? "active"
-              : "";
-
-
-          return `
-            <button
-              class="category-btn ${active}"
-              onclick="showCategory('${escapeHtml(category)}')"
-            >
-              ${escapeHtml(category)}
-            </button>
-          `;
-
-        }
-      )
-      .join("");
-
-}
-
-
-// =====================================================
-// عرض أصناف التصنيف
-// =====================================================
-
-function showCategory(
-  category
-) {
-
-  currentCategory =
-    category;
-
 
   renderCategories();
 
+  if (currentCategory) {
+    showCategory(currentCategory);
+  } else {
+    showCategory(CATEGORIES[0]);
+  }
+}
 
-  const container =
-    document.getElementById(
-      "items"
-    );
 
+// ============================================================
+// CATEGORIES
+// ============================================================
+
+function renderCategories() {
+  const container = document.getElementById("categories");
 
   if (!container) {
-
     return;
-
   }
 
+  container.innerHTML = "";
 
-  const items =
-    menu.filter(
-      function(item) {
+  CATEGORIES.forEach(function (category) {
+    const button = document.createElement("button");
 
-        return (
-          item.category ===
-          category
-        );
+    button.type = "button";
+    button.className = "category-btn";
 
+    if (category === currentCategory) {
+      button.classList.add("active");
+    }
+
+    button.textContent = category;
+
+    button.addEventListener("click", function () {
+      showCategory(category);
+    });
+
+    container.appendChild(button);
+  });
+}
+
+
+// ============================================================
+// SHOW CATEGORY
+// ============================================================
+
+function showCategory(category) {
+  if (!selectedOrderType) {
+    return;
+  }
+
+  currentCategory = category;
+
+  renderCategories();
+
+  const container = document.getElementById("items");
+
+  if (!container) {
+    return;
+  }
+
+  const categoryItems = getCategoryItems(category);
+
+  if (categoryItems.length === 0) {
+    container.innerHTML =
+      '<div class="empty-state">ما في أصناف بهالقسم</div>';
+
+    return;
+  }
+
+  container.innerHTML = "";
+
+  categoryItems.forEach(function (item) {
+    const button = document.createElement("button");
+
+    button.type = "button";
+    button.className = "menu-item";
+
+    if (item.available === false) {
+      button.classList.add("finished");
+      button.disabled = true;
+    }
+
+    let priceText = "";
+
+    if (item.type === "weight") {
+      priceText = "ابتداءً من " + money(item.price) + " / كغ";
+    }
+
+    else if (item.type === "fixed") {
+      priceText = money(item.price);
+    }
+
+    else if (item.type === "sizes") {
+      priceText = item.sizes
+        .map(function (size) {
+          return size.name + ": " + money(size.price);
+        })
+        .join(" • ");
+    }
+
+    else if (item.type === "meal") {
+      priceText =
+        "وجبة: " +
+        money(item.mealPrice) +
+        " • ساندويش: " +
+        money(item.sandwichPrice);
+    }
+
+    else if (item.type === "offer") {
+      priceText = money(item.price);
+    }
+
+    button.innerHTML = `
+      <span class="item-name">${escapeHtml(item.name)}</span>
+      <span class="item-price">${escapeHtml(priceText)}</span>
+      ${
+        item.available === false
+          ? '<span class="sold-out">خلص</span>'
+          : ""
       }
-    );
-
-
-  if (!items.length) {
-
-    container.innerHTML = `
-      <div class="empty-state">
-        لا توجد أصناف في هذا التصنيف.
-      </div>
     `;
 
-    return;
+    button.addEventListener("click", function () {
+      chooseItem(item.id);
+    });
 
-  }
-
-
-  container.innerHTML =
-    items
-      .map(
-        function(item) {
-
-          const disabled =
-            item.available === false
-              ? "disabled"
-              : "";
-
-
-          const finished =
-            item.available === false
-              ? "🔴 خلص"
-              : "";
-
-
-          let priceText =
-            "";
-
-
-          if (
-            item.type ===
-            "weight"
-          ) {
-
-            priceText =
-              `
-                $${money(
-                  item.pricing?.base
-                )}
-                / كغ
-              `;
-
-          }
-
-          else if (
-            item.type ===
-            "sizes"
-          ) {
-
-            priceText =
-              "حسب الحجم";
-
-          }
-
-          else if (
-            item.type ===
-            "meal"
-          ) {
-
-            priceText =
-              "وجبة / ساندويش";
-
-          }
-
-          else {
-
-            priceText =
-              `$${money(
-                item.price
-              )}`;
-
-          }
-
-
-          return `
-            <button
-              class="menu-item ${disabled}"
-              ${item.available === false
-                ? "disabled"
-                : ""}
-              onclick="chooseItem('${escapeHtml(item.id)}')"
-            >
-
-              <strong>
-                ${escapeHtml(
-                  item.name
-                )}
-              </strong>
-
-              <span>
-                ${priceText}
-              </span>
-
-              ${
-                finished
-                  ? `
-                    <small>
-                      ${finished}
-                    </small>
-                  `
-                  : ""
-              }
-
-            </button>
-          `;
-
-        }
-      )
-      .join("");
-
+    container.appendChild(button);
+  });
 }
 
 
-// =====================================================
-// اختيار صنف
-// =====================================================
+// ============================================================
+// CHOOSE ITEM
+// ============================================================
 
-function chooseItem(
-  id
-) {
-
-  const item =
-    menu.find(
-      function(menuItem) {
-
-        return (
-          menuItem.id ===
-          id
-        );
-
-      }
-    );
-
+function chooseItem(itemId) {
+  const item = getItemById(itemId);
 
   if (!item) {
-
     return;
-
   }
 
-
-  if (
-    item.available === false
-  ) {
-
-    alert(
-      "🔴 هذا الصنف خلص حالياً."
-    );
-
+  if (item.available === false) {
     return;
-
   }
 
+  currentModalItem = item;
 
-  // ---------------------------------------------------
-  // العرض
-  // ---------------------------------------------------
-
-  if (
-    item.category ===
-    "العروض" ||
-    item.category ===
-    "🎁 العروض"
-  ) {
-
-    addCart(
-      item,
-      {
-        type: "offer",
-        price:
-          Number(
-            item.price || 0
-          )
-      }
-    );
-
+  if (item.type === "weight") {
+    openWeightModal(item);
     return;
-
   }
 
-
-  // ---------------------------------------------------
-  // حسب الوزن
-  // ---------------------------------------------------
-
-  if (
-    item.type ===
-    "weight"
-  ) {
-
-    openWeightModal(
-      item
-    );
-
+  if (item.type === "sizes") {
+    openSizeModal(item);
     return;
-
   }
 
-
-  // ---------------------------------------------------
-  // الأحجام
-  // ---------------------------------------------------
-
-  if (
-    item.type ===
-    "sizes"
-  ) {
-
-    openSizeModal(
-      item
-    );
-
+  if (item.type === "meal") {
+    openMealModal(item);
     return;
-
   }
 
-
-  // ---------------------------------------------------
-  // وجبة / ساندويش
-  // ---------------------------------------------------
-
-  if (
-    item.type ===
-    "meal"
-  ) {
-
-    openMealModal(
-      item
-    );
+  if (item.type === "offer") {
+    addCart({
+      id: generateId("cart"),
+      menuItemId: item.id,
+      name: item.name,
+      description: "عرض",
+      quantity: 1,
+      unitPrice: Number(item.price) || 0,
+      total: Number(item.price) || 0
+    });
 
     return;
-
   }
 
-
-  // ---------------------------------------------------
-  // سعر ثابت
-  // ---------------------------------------------------
-
-  addCart(
-    item,
-    {
-      type: "fixed",
-      price:
-        Number(
-          item.price || 0
-        )
-    }
-  );
-
+  if (item.type === "fixed") {
+    addCart({
+      id: generateId("cart"),
+      menuItemId: item.id,
+      name: item.name,
+      description: "",
+      quantity: 1,
+      unitPrice: Number(item.price) || 0,
+      total: Number(item.price) || 0
+    });
+  }
 }
 
 
-// =====================================================
-// Modal
-// =====================================================
+// ============================================================
+// MODAL
+// ============================================================
 
-function modal(
-  title,
-  content
-) {
-
-  const root =
-    document.getElementById(
-      "modalRoot"
-    );
-
+function modal(content) {
+  const root = document.getElementById("modalRoot");
 
   if (!root) {
-
     return;
-
   }
 
-
   root.innerHTML = `
-
-    <div
-      class="modal-overlay"
-      onclick="closeModal(event)"
-    >
-
-      <div
-        class="modal-box"
-        onclick="event.stopPropagation()"
-      >
-
-        <div class="modal-header">
-
-          <h3>
-            ${escapeHtml(
-              title
-            )}
-          </h3>
-
-          <button
-            class="modal-close"
-            onclick="closeModal()"
-          >
-            ✕
-          </button>
-
-        </div>
-
-        <div class="modal-body">
-
-          ${content}
-
-        </div>
-
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        ${content}
       </div>
+    </div>
+  `;
+
+  root.style.display = "block";
+}
+
+
+function closeModal(event) {
+  if (event && event.target) {
+    const overlay = event.target.closest(".modal-overlay");
+
+    if (overlay && event.target !== overlay) {
+      return;
+    }
+  }
+
+  const root = document.getElementById("modalRoot");
+
+  if (root) {
+    root.innerHTML = "";
+    root.style.display = "none";
+  }
+
+  currentModalItem = null;
+}
+// ============================================================
+// WEIGHT MODAL
+// ============================================================
+
+function openWeightModal(item) {
+  currentModalItem = item;
+
+  modal(`
+    <div class="modal-title">
+      ${escapeHtml(item.name)}
+    </div>
+
+    <div class="modal-subtitle">
+      السعر الأساسي: ${money(item.price)} / كغ
+    </div>
+
+    <div class="choice-grid">
+
+      <button
+        type="button"
+        class="choice-btn"
+        onclick="selectWeightMethod('ني')"
+      >
+        <strong>ني</strong>
+        <span>${money(item.price)} / كغ</span>
+      </button>
+
+      <button
+        type="button"
+        class="choice-btn"
+        onclick="selectWeightMethod('مشوي')"
+      >
+        <strong>مشوي</strong>
+        <span>${money(Number(item.price) + Number(item.grill || 0))} / كغ</span>
+      </button>
+
+      <button
+        type="button"
+        class="choice-btn"
+        onclick="selectWeightMethod('مقلي')"
+      >
+        <strong>مقلي</strong>
+        <span>${money(Number(item.price) + Number(item.fry || 0))} / كغ</span>
+      </button>
 
     </div>
 
-  `;
-
+    <button
+      type="button"
+      class="cancel-btn"
+      onclick="closeModal()"
+    >
+      إلغاء
+    </button>
+  `);
 }
 
 
-// =====================================================
-// إغلاق Modal
-// =====================================================
+function selectWeightMethod(method) {
+  const item = getCurrentModalItem();
 
-function closeModal(
-  event
-) {
-
-  if (
-    event &&
-    event.target &&
-    !event.target.classList.contains(
-      "modal-overlay"
-    )
-  ) {
-
+  if (!item) {
     return;
-
   }
 
+  let unitPrice = Number(item.price) || 0;
 
-  const root =
-    document.getElementById(
-      "modalRoot"
-    );
-
-
-  if (root) {
-
-    root.innerHTML =
-      "";
-
+  if (method === "مشوي") {
+    unitPrice += Number(item.grill || 0);
   }
 
-
-  currentModalItem =
-    null;
-
-}
-// =====================================================
-// Part 3 / 6
-// Weight + Sizes + Meals + Cart
-// =====================================================
-
-
-// =====================================================
-// نافذة الوزن
-// =====================================================
-
-function openWeightModal(item) {
-
-  currentModalItem =
-    item;
-
-
-  const pricing =
-    item.pricing || {};
-
-
-  modal(
-    `⚖️ ${item.name}`,
-    `
-
-      <div class="form-row">
-
-        <label>
-          طريقة التحضير
-        </label>
-
-        <select id="weightMethod">
-
-          <option value="ني">
-            ني — $${money(
-              pricing.base || 0
-            )} / كغ
-          </option>
-
-          <option value="مشوي">
-            مشوي — $${money(
-              Number(pricing.base || 0) +
-              Number(pricing.grill || 0)
-            )} / كغ
-          </option>
-
-          <option value="مقلي">
-            مقلي — $${money(
-              Number(pricing.base || 0) +
-              Number(pricing.fry || 0)
-            )} / كغ
-          </option>
-
-        </select>
-
-      </div>
-
-
-      <div class="form-row">
-
-        <label>
-          الوزن بالكيلو
-        </label>
-
-        <input
-          id="weightValue"
-          type="number"
-          min="0.01"
-          step="0.01"
-          placeholder="مثال: 1.25"
-        >
-
-      </div>
-
-
-      <button
-        class="primary"
-        onclick="addWeightedItem()"
-      >
-        ➕ إضافة للسلة
-      </button>
-
-    `
-  );
-
-}
-
-
-// =====================================================
-// تغيير طريقة التحضير
-// =====================================================
-
-function selectWeightMethod(
-  method
-) {
-
-  const select =
-    document.getElementById(
-      "weightMethod"
-    );
-
-
-  if (select) {
-
-    select.value =
-      method;
-
+  if (method === "مقلي") {
+    unitPrice += Number(item.fry || 0);
   }
 
+  modal(`
+    <div class="modal-title">
+      ${escapeHtml(item.name)}
+    </div>
+
+    <div class="modal-subtitle">
+      التحضير: ${escapeHtml(method)}
+      <br>
+      السعر: ${money(unitPrice)} / كغ
+    </div>
+
+    <label class="modal-label">
+      الوزن بالكيلو
+    </label>
+
+    <input
+      id="weightInput"
+      class="modal-input"
+      type="number"
+      inputmode="decimal"
+      min="0.01"
+      step="0.01"
+      placeholder="مثلاً 1.25"
+      autofocus
+    >
+
+    <button
+      type="button"
+      class="confirm"
+      onclick="addWeightedItem('${escapeHtml(method)}')"
+    >
+      إضافة للطلب
+    </button>
+
+    <button
+      type="button"
+      class="cancel-btn"
+      onclick="closeModal()"
+    >
+      إلغاء
+    </button>
+  `);
+
+  setTimeout(function () {
+    const input = document.getElementById("weightInput");
+
+    if (input) {
+      input.focus();
+    }
+  }, 50);
 }
 
-
-// =====================================================
-// الحصول على الصنف الحالي في Modal
-// =====================================================
 
 function getCurrentModalItem() {
-
   return currentModalItem;
-
 }
 
 
-// =====================================================
-// إضافة صنف بالوزن
-// =====================================================
+function addWeightedItem(method) {
+  const item = getCurrentModalItem();
+  const input = document.getElementById("weightInput");
 
-function addWeightedItem() {
-
-  const item =
-    getCurrentModalItem();
-
-
-  if (!item) {
-
+  if (!item || !input) {
     return;
-
   }
 
+  const weight = Number(input.value);
 
-  const weightInput =
-    document.getElementById(
-      "weightValue"
-    );
-
-
-  const methodInput =
-    document.getElementById(
-      "weightMethod"
-    );
-
-
-  const weight =
-    Number(
-      weightInput?.value || 0
-    );
-
-
-  const method =
-    methodInput?.value ||
-    "ني";
-
-
-  if (
-    weight <= 0
-  ) {
-
-    alert(
-      "أدخل الوزن"
-    );
-
+  if (!weight || weight <= 0) {
+    alert("دخل الوزن بشكل صحيح");
     return;
-
   }
 
+  let unitPrice = Number(item.price) || 0;
 
-  const pricing =
-    item.pricing || {};
-
-
-  let pricePerKg =
-    Number(
-      pricing.base || 0
-    );
-
-
-  if (
-    method ===
-    "مشوي"
-  ) {
-
-    pricePerKg +=
-      Number(
-        pricing.grill || 0
-      );
-
+  if (method === "مشوي") {
+    unitPrice += Number(item.grill || 0);
   }
 
-
-  if (
-    method ===
-    "مقلي"
-  ) {
-
-    pricePerKg +=
-      Number(
-        pricing.fry || 0
-      );
-
+  if (method === "مقلي") {
+    unitPrice += Number(item.fry || 0);
   }
 
+  const total = unitPrice * weight;
 
-  const total =
-    weight *
-    pricePerKg;
-
-
-  addCart(
-    item,
-    {
-
-      type:
-        "weight",
-
-      weight:
-        weight,
-
-      cooking:
-        method,
-
-      price:
-        pricePerKg,
-
-      total:
-        total
-
-    }
-  );
-
+  addCart({
+    id: generateId("cart"),
+    menuItemId: item.id,
+    name: item.name,
+    description: `${method} • ${weight} كغ`,
+    quantity: weight,
+    weight: weight,
+    preparation: method,
+    unitPrice: unitPrice,
+    total: total
+  });
 
   closeModal();
-
 }
 
 
-// =====================================================
-// نافذة الأحجام
-// =====================================================
+// ============================================================
+// SIZE MODAL
+// ============================================================
 
-function openSizeModal(
-  item
-) {
+function openSizeModal(item) {
+  currentModalItem = item;
 
-  currentModalItem =
-    item;
+  const sizes = Array.isArray(item.sizes)
+    ? item.sizes
+    : [];
 
+  modal(`
+    <div class="modal-title">
+      ${escapeHtml(item.name)}
+    </div>
 
-  const sizes =
-    item.sizes || {};
-
-
-  const sizeOptions =
-    Object.keys(
-      sizes
-    )
-      .map(
-        function(size) {
-
+    <div class="choice-grid">
+      ${sizes
+        .map(function (size, index) {
           return `
             <button
-              class="size-option"
-              onclick="addSizedItem(
-                '${escapeHtml(item.id)}',
-                '${escapeHtml(size)}'
-              )"
+              type="button"
+              class="choice-btn"
+              onclick="addSizedItem(${index})"
             >
-
-              <strong>
-                ${escapeHtml(size)}
-              </strong>
-
-              <span>
-                $${money(
-                  sizes[size]
-                )}
-              </span>
-
+              <strong>${escapeHtml(size.name)}</strong>
+              <span>${money(size.price)}</span>
             </button>
           `;
+        })
+        .join("")}
+    </div>
 
-        }
-      )
-      .join("");
-
-
-  modal(
-    `📏 ${item.name}`,
-    `
-
-      <div class="size-grid">
-
-        ${sizeOptions}
-
-      </div>
-
-    `
-  );
-
+    <button
+      type="button"
+      class="cancel-btn"
+      onclick="closeModal()"
+    >
+      إلغاء
+    </button>
+  `);
 }
 
 
-// =====================================================
-// إضافة حسب الحجم
-// =====================================================
+function addSizedItem(index) {
+  const item = getCurrentModalItem();
 
-function addSizedItem(
-  id,
-  size
-) {
+  if (!item || !Array.isArray(item.sizes)) {
+    return;
+  }
 
-  const item =
-    menu.find(
-      function(menuItem) {
+  const size = item.sizes[index];
 
-        return (
-          menuItem.id ===
-          id
-        );
+  if (!size) {
+    return;
+  }
 
-      }
-    );
+  const price = Number(size.price) || 0;
 
+  addCart({
+    id: generateId("cart"),
+    menuItemId: item.id,
+    name: item.name,
+    description: size.name,
+    quantity: 1,
+    size: size.name,
+    unitPrice: price,
+    total: price
+  });
+
+  closeModal();
+}
+
+
+// ============================================================
+// MEAL / SANDWICH MODAL
+// ============================================================
+
+function openMealModal(item) {
+  currentModalItem = item;
+
+  modal(`
+    <div class="modal-title">
+      ${escapeHtml(item.name)}
+    </div>
+
+    <div class="choice-grid">
+
+      <button
+        type="button"
+        class="choice-btn"
+        onclick="addMealItem('وجبة')"
+      >
+        <strong>وجبة</strong>
+        <span>${money(item.mealPrice)}</span>
+      </button>
+
+      <button
+        type="button"
+        class="choice-btn"
+        onclick="addMealItem('ساندويش')"
+      >
+        <strong>ساندويش</strong>
+        <span>${money(item.sandwichPrice)}</span>
+      </button>
+
+    </div>
+
+    <button
+      type="button"
+      class="cancel-btn"
+      onclick="closeModal()"
+    >
+      إلغاء
+    </button>
+  `);
+}
+
+
+function addMealItem(type) {
+  const item = getCurrentModalItem();
 
   if (!item) {
-
     return;
-
   }
-
-
-  if (
-    item.available === false
-  ) {
-
-    alert(
-      "🔴 هذا الصنف خلص حالياً."
-    );
-
-    return;
-
-  }
-
-
-  const sizes =
-    item.sizes || {};
-
 
   const price =
-    Number(
-      sizes[size] || 0
-    );
+    type === "وجبة"
+      ? Number(item.mealPrice) || 0
+      : Number(item.sandwichPrice) || 0;
 
-
-  addCart(
-    item,
-    {
-
-      type:
-        "size",
-
-      size:
-        size,
-
-      price:
-        price,
-
-      total:
-        price
-
-    }
-  );
-
+  addCart({
+    id: generateId("cart"),
+    menuItemId: item.id,
+    name: item.name,
+    description: type,
+    quantity: 1,
+    mealType: type,
+    unitPrice: price,
+    total: price
+  });
 
   closeModal();
-
 }
 
 
-// =====================================================
-// نافذة وجبة / ساندويش
-// =====================================================
-
-function openMealModal(
-  item
-) {
-
-  currentModalItem =
-    item;
-
-
-  const prices =
-    item.prices || {};
-
-
-  modal(
-    `🍽️ ${item.name}`,
-    `
-
-      <div class="size-grid">
-
-        <button
-          class="size-option"
-          onclick="addMealItem(
-            '${escapeHtml(item.id)}',
-            'وجبة',
-            ${Number(
-              prices.وجبة || 0
-            )}
-          )"
-        >
-
-          <strong>
-            وجبة
-          </strong>
-
-          <span>
-            $${money(
-              prices.وجبة || 0
-            )}
-          </span>
-
-        </button>
-
-
-        <button
-          class="size-option"
-          onclick="addMealItem(
-            '${escapeHtml(item.id)}',
-            'ساندويش',
-            ${Number(
-              prices.ساندويش || 0
-            )}
-          )"
-        >
-
-          <strong>
-            ساندويش
-          </strong>
-
-          <span>
-            $${money(
-              prices.ساندويش || 0
-            )}
-          </span>
-
-        </button>
-
-      </div>
-
-    `
-  );
-
-}
-
-
-// =====================================================
-// إضافة وجبة / ساندويش
-// =====================================================
-
-function addMealItem(
-  id,
-  label,
-  price
-) {
-
-  const item =
-    menu.find(
-      function(menuItem) {
-
-        return (
-          menuItem.id ===
-          id
-        );
-
-      }
-    );
-
-
-  if (!item) {
-
-    return;
-
-  }
-
-
-  if (
-    item.available === false
-  ) {
-
-    alert(
-      "🔴 هذا الصنف خلص حالياً."
-    );
-
-    return;
-
-  }
-
-
-  addCart(
-    item,
-    {
-
-      type:
-        "meal",
-
-      choice:
-        label,
-
-      price:
-        Number(price || 0),
-
-      total:
-        Number(price || 0)
-
-    }
-  );
-
-
-  closeModal();
-
-}
-
-
-// =====================================================
-// إضافة للسلة
-// =====================================================
-
-function addCart(
-  item,
-  data = {}
-) {
-
-  if (!item) {
-
-    return;
-
-  }
-
-
-  const type =
-    data.type ||
-    item.type ||
-    "fixed";
-
-
-  let cartItem = {
-
-    id:
-      item.id,
-
-    name:
-      item.name,
-
-    type:
-      type,
-
-    qty:
-      1,
-
-    price:
-      Number(
-        data.price ??
-        item.price ??
-        0
-      ),
-
-    total:
-      Number(
-        data.total ??
-        data.price ??
-        item.price ??
-        0
-      )
-
-  };
-
-
-  if (
-    type ===
-    "weight"
-  ) {
-
-    cartItem.weight =
-      Number(
-        data.weight || 0
-      );
-
-    cartItem.cooking =
-      data.cooking ||
-      "ني";
-
-  }
-
-
-  if (
-    type ===
-    "size"
-  ) {
-
-    cartItem.size =
-      data.size ||
-      "";
-
-  }
-
-
-  if (
-    type ===
-    "meal"
-  ) {
-
-    cartItem.choice =
-      data.choice ||
-      "";
-
-  }
-
-
-  if (
-    type ===
-    "offer"
-  ) {
-
-    cartItem.offerItems =
-      Array.isArray(
-        item.offerItems
-      )
-        ? [...item.offerItems]
-        : [];
-
-  }
-
-
-  // ---------------------------------------------------
-  // الأصناف الثابتة تندمج بالكمية
-  // ---------------------------------------------------
-
-  if (
-    type ===
-    "fixed" ||
-    type ===
-    "offer"
-  ) {
-
-    const existing =
-      cart.find(
-        function(existingItem) {
-
-          return (
-            existingItem.id ===
-            cartItem.id &&
-            existingItem.type ===
-            cartItem.type
-          );
-
-        }
-      );
-
-
-    if (existing) {
-
-      existing.qty +=
-        1;
-
-      existing.total =
-        Number(
-          existing.price
-        ) *
-        existing.qty;
-
-    }
-
-    else {
-
-      cart.push(
-        cartItem
-      );
-
-    }
-
-  }
-
-  else {
-
-    cart.push(
-      cartItem
-    );
-
-  }
-
+// ============================================================
+// CART
+// ============================================================
+
+function addCart(cartItem) {
+  cart.push(cartItem);
 
   updateCart();
-
 }
 
-
-// =====================================================
-// تحديث السلة
-// =====================================================
 
 function updateCart() {
-
-  const container =
-    document.getElementById(
-      "cart"
-    );
-
-
-  const totalElement =
-    document.getElementById(
-      "cartTotal"
-    );
-
+  const container = document.getElementById("cartItems");
+  const totalElement = document.getElementById("total");
 
   if (!container) {
-
     return;
-
   }
 
-
-  if (!cart.length) {
-
+  if (cart.length === 0) {
     container.innerHTML = `
-
-      <div class="empty-state">
-
-        السلة فارغة
-
+      <div class="empty-cart">
+        ما في أصناف بالطلب
       </div>
-
     `;
 
-
     if (totalElement) {
-
-      totalElement.textContent =
-        "$0.00";
-
+      totalElement.textContent = "0.00";
     }
 
-
     return;
-
   }
 
+  container.innerHTML = "";
 
-  container.innerHTML =
-    cart
-      .map(
-        function(item,index) {
+  cart.forEach(function (item, index) {
+    const row = document.createElement("div");
 
-          let details =
-            "";
+    row.className = "cart-item";
 
+    const description =
+      item.description
+        ? `<small>${escapeHtml(item.description)}</small>`
+        : "";
 
-          if (
-            item.type ===
-            "weight"
-          ) {
+    row.innerHTML = `
+      <div class="cart-item-info">
+        <strong>${escapeHtml(item.name)}</strong>
+        ${description}
+      </div>
 
-            details =
-              `
-                <small>
-                  ${escapeHtml(
-                    item.cooking
-                  )}
-                  ·
-                  ${Number(
-                    item.weight || 0
-                  ).toFixed(2)}
-                  كغ
-                  ·
-                  $${money(
-                    item.price
-                  )}/كغ
-                </small>
-              `;
+      <div class="cart-item-price">
+        ${money(item.total)}
+      </div>
 
-          }
+      <div class="cart-item-actions">
 
+        <button
+          type="button"
+          onclick="duplicateCart(${index})"
+          title="تكرار"
+        >
+          +
+        </button>
 
-          if (
-            item.type ===
-            "size"
-          ) {
+        <button
+          type="button"
+          onclick="removeCart(${index})"
+          title="حذف"
+        >
+          ×
+        </button>
 
-            details =
-              `
-                <small>
-                  ${escapeHtml(
-                    item.size
-                  )}
-                </small>
-              `;
+      </div>
+    `;
 
-          }
-
-
-          if (
-            item.type ===
-            "meal"
-          ) {
-
-            details =
-              `
-                <small>
-                  ${escapeHtml(
-                    item.choice
-                  )}
-                </small>
-              `;
-
-          }
-
-
-          return `
-
-            <div class="cart-item">
-
-              <div class="cart-item-info">
-
-                <strong>
-                  ${escapeHtml(
-                    item.name
-                  )}
-                </strong>
-
-                ${details}
-
-                <div>
-                  الكمية:
-                  ${item.qty}
-                </div>
-
-              </div>
-
-
-              <div class="cart-item-actions">
-
-                <b>
-                  $${money(
-                    item.total
-                  )}
-                </b>
-
-                <button
-                  onclick="duplicateCart(${index})"
-                >
-                  +
-                </button>
-
-                <button
-                  onclick="removeCart(${index})"
-                >
-                  ✕
-                </button>
-
-              </div>
-
-            </div>
-
-          `;
-
-        }
-      )
-      .join("");
-
-
-  const total =
-    cart.reduce(
-      function(
-        sum,
-        item
-      ) {
-
-        return (
-          sum +
-          Number(
-            item.total || 0
-          )
-        );
-
-      },
-      0
-    );
-
+    container.appendChild(row);
+  });
 
   if (totalElement) {
-
-    totalElement.textContent =
-      `$${money(total)}`;
-
+    totalElement.textContent = money(getTotal());
   }
-
 }
 
 
-// =====================================================
-// تكرار صنف
-// =====================================================
-
-function duplicateCart(
-  index
-) {
-
-  const item =
-    cart[index];
-
+function duplicateCart(index) {
+  const item = cart[index];
 
   if (!item) {
-
     return;
-
   }
 
+  const copy = JSON.parse(JSON.stringify(item));
 
-  if (
-    item.type ===
-    "weight"
-  ) {
+  copy.id = generateId("cart");
 
-    const menuItem =
-      menu.find(
-        function(menuItem) {
-
-          return (
-            menuItem.id ===
-            item.id
-          );
-
-        }
-      );
-
-
-    if (menuItem) {
-
-      openWeightModal(
-        menuItem
-      );
-
-    }
-
-    return;
-
-  }
-
-
-  if (
-    item.type ===
-    "size"
-  ) {
-
-    const menuItem =
-      menu.find(
-        function(menuItem) {
-
-          return (
-            menuItem.id ===
-            item.id
-          );
-
-        }
-      );
-
-
-    if (menuItem) {
-
-      addSizedItem(
-        menuItem.id,
-        item.size
-      );
-
-    }
-
-    return;
-
-  }
-
-
-  if (
-    item.type ===
-    "meal"
-  ) {
-
-    const menuItem =
-      menu.find(
-        function(menuItem) {
-
-          return (
-            menuItem.id ===
-            item.id
-          );
-
-        }
-      );
-
-
-    if (menuItem) {
-
-      addMealItem(
-        menuItem.id,
-        item.choice,
-        item.price
-      );
-
-    }
-
-    return;
-
-  }
-
-
-  item.qty +=
-    1;
-
-
-  item.total =
-    Number(
-      item.price || 0
-    ) *
-    item.qty;
-
+  cart.push(copy);
 
   updateCart();
-
 }
 
 
-// =====================================================
-// حذف من السلة
-// =====================================================
-
-function removeCart(
-  index
-) {
-
-  if (
-    index < 0 ||
-    index >= cart.length
-  ) {
-
+function removeCart(index) {
+  if (index < 0 || index >= cart.length) {
     return;
-
   }
 
-
-  cart.splice(
-    index,
-    1
-  );
-
+  cart.splice(index, 1);
 
   updateCart();
-
 }
 
-
-// =====================================================
-// تفريغ الطلب
-// =====================================================
 
 function clearOrder() {
+  cart = [];
 
-  cart =
-    [];
+  const name = document.getElementById("name");
+  const phone = document.getElementById("phone");
+  const address = document.getElementById("address");
+  const notes = document.getElementById("notes");
+  const customerMessage = document.getElementById("customerMessage");
 
-
-  selectedOrderType =
-    "";
-
-
-  const nameInput =
-    document.getElementById(
-      "name"
-    );
-
-  const phoneInput =
-    document.getElementById(
-      "phone"
-    );
-
-  const addressInput =
-    document.getElementById(
-      "address"
-    );
-
-  const notesInput =
-    document.getElementById(
-      "notes"
-    );
-
-
-  if (nameInput) {
-
-    nameInput.value =
-      "";
-
+  if (name) {
+    name.value = "";
   }
 
-
-  if (phoneInput) {
-
-    phoneInput.value =
-      "";
-
+  if (phone) {
+    phone.value = "";
   }
 
-
-  if (addressInput) {
-
-    addressInput.value =
-      "";
-
+  if (address) {
+    address.value = "";
   }
 
-
-  if (notesInput) {
-
-    notesInput.value =
-      "";
-
+  if (notes) {
+    notes.value = "";
   }
 
+  if (customerMessage) {
+    customerMessage.textContent = "";
+  }
 
-  const buttons =
-    document.querySelectorAll(
-      ".order-type-btn"
-    );
+  selectedOrderType = "";
+  currentCategory = "";
 
+  const deliveryBtn = document.getElementById("deliveryBtn");
+  const pickupBtn = document.getElementById("pickupBtn");
 
-  buttons.forEach(
-    function(button) {
+  if (deliveryBtn) {
+    deliveryBtn.classList.remove("active");
+  }
 
-      button.classList.remove(
-        "active"
-      );
+  if (pickupBtn) {
+    pickupBtn.classList.remove("active");
+  }
 
-    }
-  );
+  if (address) {
+    address.disabled = false;
+    address.placeholder = "عنوان الزبون";
+  }
 
+  const items = document.getElementById("items");
 
-  showCustomerMessage(
-    "أدخل رقم الهاتف للبحث عن الزبون"
-  );
+  if (items) {
+    items.innerHTML =
+      '<div class="empty-state">اختار نوع الطلب أولاً</div>';
+  }
 
-
+  renderCategories();
   updateCart();
-
 }
-// =====================================================
-// Part 4 / 6
-// Customers + Offline Orders + Sync
-// =====================================================
-
-
-// =====================================================
-// مفتاح رقم الهاتف
-// =====================================================
+// ============================================================
+// CUSTOMER STORAGE
+// ============================================================
 
 function customerPhoneKey(phone) {
-
   return normalizePhone(phone);
-
 }
 
-
-// =====================================================
-// تحميل الزبائن المحفوظين محلياً
-// =====================================================
 
 function getLocalCustomers() {
-
   try {
+    const saved = localStorage.getItem(CUSTOMER_STORAGE_KEY);
 
-    const data =
-      JSON.parse(
-        localStorage.getItem(
-          CUSTOMER_STORAGE_KEY
-        ) || "{}"
-      );
-
-
-    if (
-      data &&
-      typeof data === "object"
-    ) {
-
-      return data;
-
+    if (!saved) {
+      return [];
     }
 
+    const customers = JSON.parse(saved);
+
+    return Array.isArray(customers) ? customers : [];
+  } catch (error) {
+    console.error("Error loading local customers:", error);
+    return [];
   }
-
-  catch (error) {
-
-    console.error(
-      "Local customers error:",
-      error
-    );
-
-  }
-
-
-  return {};
-
 }
 
 
-// =====================================================
-// حفظ الزبائن محلياً
-// =====================================================
+function saveLocalCustomers(customers) {
+  try {
+    localStorage.setItem(
+      CUSTOMER_STORAGE_KEY,
+      JSON.stringify(customers)
+    );
+  } catch (error) {
+    console.error("Error saving local customers:", error);
+  }
+}
 
-function saveLocalCustomers(
-  customers
-) {
 
-  localStorage.setItem(
-    CUSTOMER_STORAGE_KEY,
-    JSON.stringify(
-      customers
-    )
+function findCustomerByPhone(phone) {
+  const normalized = customerPhoneKey(phone);
+
+  if (!normalized) {
+    return null;
+  }
+
+  const customers = getLocalCustomers();
+
+  return (
+    customers.find(function (customer) {
+      return customer.phone === normalized;
+    }) || null
   );
-
 }
 
 
-// =====================================================
-// البحث عن الزبون
-// =====================================================
+function fillCustomerFields(customer) {
+  if (!customer) {
+    return;
+  }
 
-async function findCustomerByPhone(
-  phone
-) {
+  const name = document.getElementById("name");
+  const phone = document.getElementById("phone");
+  const address = document.getElementById("address");
+  const notes = document.getElementById("notes");
 
-  const normalizedPhone =
-    customerPhoneKey(
-      phone
-    );
+  if (phone && customer.phone) {
+    phone.value = customer.phone;
+  }
+
+  if (name) {
+    name.value = customer.name || "";
+  }
+
+  if (address) {
+    address.value = customer.address || "";
+  }
+
+  if (notes) {
+    notes.value = customer.notes || "";
+  }
+}
 
 
-  if (
-    !normalizedPhone ||
-    normalizedPhone.length < 6
-  ) {
+function showCustomerMessage(message, type = "") {
+  const element = document.getElementById("customerMessage");
 
+  if (!element) {
+    return;
+  }
+
+  element.textContent = message;
+  element.className = "customer-message";
+
+  if (type) {
+    element.classList.add(type);
+  }
+}
+
+
+// ============================================================
+// REMOTE CUSTOMER LOOKUP
+// ============================================================
+
+async function findRemoteCustomer(phone) {
+  const normalized = customerPhoneKey(phone);
+
+  if (!normalized) {
     return null;
-
   }
-
-
-  // ---------------------------------------------------
-  // أولاً: البحث محلياً
-  // ---------------------------------------------------
-
-  const localCustomers =
-    getLocalCustomers();
-
-
-  if (
-    localCustomers[
-      normalizedPhone
-    ]
-  ) {
-
-    return localCustomers[
-      normalizedPhone
-    ];
-
-  }
-
-
-  // ---------------------------------------------------
-  // ثانياً: البحث على Supabase
-  // ---------------------------------------------------
-
-  if (
-    !navigator.onLine
-  ) {
-
-    return null;
-
-  }
-
 
   try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/customers?phone=eq.${encodeURIComponent(
+        normalized
+      )}&select=*`,
+      {
+        method: "GET",
 
-    const encodedPhone =
-      encodeURIComponent(
-        normalizedPhone
-      );
-
-
-    const response =
-      await fetch(
-        `${SUPABASE_URL}/rest/v1/customers` +
-        `?select=*` +
-        `&phone=eq.${encodedPhone}` +
-        `&limit=1`,
-        {
-
-          method: "GET",
-
-          headers: {
-
-            "apikey":
-              SUPABASE_KEY,
-
-            "Authorization":
-              `Bearer ${SUPABASE_KEY}`
-
-          }
-
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`
         }
-      );
-
+      }
+    );
 
     if (!response.ok) {
-
       throw new Error(
-        "Customer lookup failed"
+        `Customer lookup failed: ${response.status}`
       );
-
     }
 
+    const data = await response.json();
 
-    const rows =
-      await response.json();
-
-
-    if (
-      Array.isArray(rows) &&
-      rows.length > 0
-    ) {
-
-      const customer =
-        rows[0];
-
-
-      // حفظ نسخة محلية
-      localCustomers[
-        normalizedPhone
-      ] =
-        customer;
-
-
-      saveLocalCustomers(
-        localCustomers
-      );
-
-
-      return customer;
-
+    if (!Array.isArray(data) || data.length === 0) {
+      return null;
     }
 
-  }
-
-  catch (error) {
-
-    console.error(
-      "Customer lookup error:",
+    return data[0];
+  } catch (error) {
+    console.warn(
+      "Remote customer lookup unavailable:",
       error
     );
-
-  }
-
-
-  return null;
-
-}
-
-
-// =====================================================
-// تعبئة بيانات الزبون
-// =====================================================
-
-function fillCustomerFields(
-  customer
-) {
-
-  const nameInput =
-    document.getElementById(
-      "name"
-    );
-
-  const phoneInput =
-    document.getElementById(
-      "phone"
-    );
-
-  const addressInput =
-    document.getElementById(
-      "address"
-    );
-
-  const notesInput =
-    document.getElementById(
-      "notes"
-    );
-
-
-  if (
-    !customer
-  ) {
-
-    showCustomerMessage(
-      navigator.onLine
-        ? "🆕 زبون جديد"
-        : "🆕 زبون جديد — سيُحفظ عند تأكيد الطلب"
-    );
-
-    return;
-
-  }
-
-
-  if (nameInput) {
-
-    nameInput.value =
-      customer.name || "";
-
-  }
-
-
-  if (phoneInput) {
-
-    phoneInput.value =
-      customer.phone || "";
-
-  }
-
-
-  if (addressInput) {
-
-    addressInput.value =
-      customer.address || "";
-
-  }
-
-
-  if (notesInput) {
-
-    notesInput.value =
-      customer.notes || "";
-
-  }
-
-
-  showCustomerMessage(
-    "✅ زبون معروف — تم جلب بياناته تلقائياً"
-  );
-
-}
-
-
-// =====================================================
-// رسالة الزبون
-// =====================================================
-
-function showCustomerMessage(
-  message
-) {
-
-  const box =
-    document.getElementById(
-      "customerMessage"
-    );
-
-
-  if (!box) {
-
-    return;
-
-  }
-
-
-  box.textContent =
-    message;
-
-}
-
-
-// =====================================================
-// البحث التلقائي برقم الهاتف
-// =====================================================
-
-function setupCustomerSearch() {
-
-  const phoneInput =
-    document.getElementById(
-      "phone"
-    );
-
-
-  if (!phoneInput) {
-
-    return;
-
-  }
-
-
-  let timer =
-    null;
-
-
-  async function searchCustomer() {
-
-    const phone =
-      customerPhoneKey(
-        phoneInput.value
-      );
-
-
-    if (
-      phone.length < 6
-    ) {
-
-      return;
-
-    }
-
-
-    showCustomerMessage(
-      "🔎 البحث عن الزبون..."
-    );
-
-
-    const customer =
-      await findCustomerByPhone(
-        phone
-      );
-
-
-    if (customer) {
-
-      fillCustomerFields(
-        customer
-      );
-
-    }
-
-    else {
-
-      showCustomerMessage(
-        navigator.onLine
-          ? "🆕 زبون جديد"
-          : "🆕 زبون جديد — سيُحفظ عند تأكيد الطلب"
-      );
-
-    }
-
-  }
-
-
-  phoneInput.addEventListener(
-    "input",
-    function() {
-
-      clearTimeout(
-        timer
-      );
-
-
-      timer =
-        setTimeout(
-          searchCustomer,
-          500
-        );
-
-    }
-  );
-
-
-  phoneInput.addEventListener(
-    "blur",
-    function() {
-
-      searchCustomer();
-
-    }
-  );
-
-}
-
-
-// =====================================================
-// حفظ الزبون
-// =====================================================
-
-async function saveCustomer() {
-
-  const phone =
-    customerPhoneKey(
-      document.getElementById(
-        "phone"
-      )?.value
-    );
-
-
-  if (!phone) {
 
     return null;
-
   }
-
-
-  const customer = {
-
-    phone:
-      phone,
-
-    name:
-      document.getElementById(
-        "name"
-      )?.value.trim() || "",
-
-    address:
-      document.getElementById(
-        "address"
-      )?.value.trim() || "",
-
-    notes:
-      document.getElementById(
-        "notes"
-      )?.value.trim() || ""
-
-  };
-
-
-  // ---------------------------------------------------
-  // حفظ محلي فوراً
-  // ---------------------------------------------------
-
-  const localCustomers =
-    getLocalCustomers();
-
-
-  localCustomers[
-    phone
-  ] =
-    customer;
-
-
-  saveLocalCustomers(
-    localCustomers
-  );
-
-
-  // ---------------------------------------------------
-  // حفظ Cloud إذا يوجد إنترنت
-  // ---------------------------------------------------
-
-  if (
-    navigator.onLine
-  ) {
-
-    try {
-
-      const response =
-        await fetch(
-          `${SUPABASE_URL}/rest/v1/customers`,
-          {
-
-            method: "POST",
-
-            headers: {
-
-              "Content-Type":
-                "application/json",
-
-              "apikey":
-                SUPABASE_KEY,
-
-              "Authorization":
-                `Bearer ${SUPABASE_KEY}`,
-
-              "Prefer":
-                "resolution=merge-duplicates,return=minimal"
-
-            },
-
-            body:
-              JSON.stringify(
-                customer
-              )
-
-          }
-        );
-
-
-      if (!response.ok) {
-
-        console.error(
-          "Cloud customer save failed:",
-          await response.text()
-        );
-
-      }
-
-    }
-
-    catch (error) {
-
-      console.error(
-        "Cloud customer save error:",
-        error
-      );
-
-    }
-
-  }
-
-
-  return customer;
-
 }
 
 
-// =====================================================
-// الطلبات المحفوظة Offline
-// =====================================================
+// ============================================================
+// CUSTOMER SEARCH
+// ============================================================
 
-function getPendingOrders() {
-
-  try {
-
-    const orders =
-      JSON.parse(
-        localStorage.getItem(
-          PENDING_ORDERS_KEY
-        ) || "[]"
-      );
+let customerSearchTimer = null;
 
 
-    if (
-      Array.isArray(
-        orders
-      )
-    ) {
+async function searchCustomer() {
+  const phoneInput = document.getElementById("phone");
 
-      return orders;
-
-    }
-
+  if (!phoneInput) {
+    return;
   }
 
-  catch (error) {
+  const rawPhone = phoneInput.value;
+  const normalized = customerPhoneKey(rawPhone);
 
-    console.error(
-      "Pending orders error:",
-      error
+  if (!normalized) {
+    showCustomerMessage("");
+    return;
+  }
+
+  const localCustomer = findCustomerByPhone(normalized);
+
+  if (localCustomer) {
+    fillCustomerFields(localCustomer);
+
+    showCustomerMessage(
+      "تم العثور على بيانات الزبون",
+      "success"
     );
 
+    return;
   }
 
+  showCustomerMessage("جاري البحث...", "loading");
 
-  return [];
+  const remoteCustomer = await findRemoteCustomer(normalized);
 
+  if (remoteCustomer) {
+    const customers = getLocalCustomers();
+
+    const index = customers.findIndex(function (customer) {
+      return customer.phone === normalized;
+    });
+
+    const customerToSave = {
+      phone: normalized,
+      name: remoteCustomer.name || "",
+      address: remoteCustomer.address || "",
+      notes: remoteCustomer.notes || ""
+    };
+
+    if (index >= 0) {
+      customers[index] = customerToSave;
+    } else {
+      customers.push(customerToSave);
+    }
+
+    saveLocalCustomers(customers);
+
+    fillCustomerFields(customerToSave);
+
+    showCustomerMessage(
+      "تم العثور على بيانات الزبون",
+      "success"
+    );
+
+    return;
+  }
+
+  showCustomerMessage(
+    "زبون جديد",
+    "new"
+  );
 }
 
 
-// =====================================================
-// حفظ الطلبات Offline
-// =====================================================
+function setupCustomerSearch() {
+  const phoneInput = document.getElementById("phone");
 
-function savePendingOrders(
-  orders
-) {
+  if (!phoneInput) {
+    return;
+  }
 
-  localStorage.setItem(
-    PENDING_ORDERS_KEY,
-    JSON.stringify(
-      orders
-    )
-  );
+  phoneInput.addEventListener("input", function () {
+    clearTimeout(customerSearchTimer);
 
+    customerSearchTimer = setTimeout(function () {
+      searchCustomer();
+    }, 500);
+  });
+
+  phoneInput.addEventListener("blur", function () {
+    clearTimeout(customerSearchTimer);
+    searchCustomer();
+  });
 }
 
 
-// =====================================================
-// إضافة طلب إلى Queue
-// =====================================================
+// ============================================================
+// SAVE CUSTOMER
+// ============================================================
 
-function queueOrder(
-  order
-) {
+async function saveCustomer() {
+  const phoneInput = document.getElementById("phone");
+  const nameInput = document.getElementById("name");
+  const addressInput = document.getElementById("address");
+  const notesInput = document.getElementById("notes");
 
-  const orders =
-    getPendingOrders();
-
-
-  orders.push(
-    order
+  const phone = customerPhoneKey(
+    phoneInput ? phoneInput.value : ""
   );
 
+  const name = nameInput
+    ? nameInput.value.trim()
+    : "";
 
-  savePendingOrders(
-    orders
+  const address = addressInput
+    ? addressInput.value.trim()
+    : "";
+
+  const notes = notesInput
+    ? notesInput.value.trim()
+    : "";
+
+  if (!phone) {
+    return null;
+  }
+
+  const customer = {
+    phone,
+    name,
+    address,
+    notes
+  };
+
+  // ----------------------------------------------------------
+  // SAVE LOCALLY FIRST
+  // ----------------------------------------------------------
+
+  const customers = getLocalCustomers();
+
+  const existingIndex = customers.findIndex(
+    function (item) {
+      return item.phone === phone;
+    }
   );
 
-}
+  if (existingIndex >= 0) {
+    customers[existingIndex] = {
+      ...customers[existingIndex],
+      ...customer,
+      updated_at: new Date().toISOString()
+    };
+  } else {
+    customers.push({
+      ...customer,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+  }
+
+  saveLocalCustomers(customers);
 
 
-// =====================================================
-// إرسال الطلب إلى Supabase
-// =====================================================
+  // ----------------------------------------------------------
+  // SAVE TO SUPABASE
+  // ----------------------------------------------------------
 
-async function sendOrder(
-  order
-) {
-
-  const response =
-    await fetch(
-      `${SUPABASE_URL}/rest/v1/orders`,
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/customers`,
       {
-
         method: "POST",
 
         headers: {
-
-          "Content-Type":
-            "application/json",
-
-          "apikey":
-            SUPABASE_KEY,
-
-          "Authorization":
-            `Bearer ${SUPABASE_KEY}`,
-
-          "Prefer":
-            "return=minimal"
-
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates"
         },
 
-        body:
-          JSON.stringify(
-            order
-          )
-
+        body: JSON.stringify(customer)
       }
     );
 
-
-  if (!response.ok) {
-
-    throw new Error(
-      await response.text()
-    );
-
-  }
-
-}
-
-
-// =====================================================
-// مزامنة الطلبات
-// =====================================================
-
-async function syncNow() {
-
-  if (
-    !navigator.onLine
-  ) {
-
-    updateConnectionStatus();
-
-    return;
-
-  }
-
-
-  const pending =
-    getPendingOrders();
-
-
-  if (
-    !pending.length
-  ) {
-
-    updateConnectionStatus();
-
-    return;
-
-  }
-
-
-  const remaining =
-    [];
-
-
-  for (
-    const order of pending
-  ) {
-
-    try {
-
-      await sendOrder(
-        order
+    if (!response.ok) {
+      console.warn(
+        "Customer cloud save failed:",
+        response.status
       );
-
     }
-
-    catch (error) {
-
-      console.error(
-        "Order sync error:",
-        error
-      );
-
-
-      remaining.push(
-        order
-      );
-
-    }
-
+  } catch (error) {
+    console.warn(
+      "Customer saved locally; cloud unavailable:",
+      error
+    );
   }
 
-
-  savePendingOrders(
-    remaining
-  );
-
-
-  updateConnectionStatus();
-
+  return customer;
 }
 
 
-// =====================================================
-// حالة الاتصال
-// =====================================================
+// ============================================================
+// PENDING ORDERS
+// ============================================================
 
-function updateConnectionStatus() {
-
-  const badge =
-    document.getElementById(
-      "connectionStatus"
-    );
-
-
-  if (!badge) {
-
-    return;
-
-  }
-
-
-  if (
-    navigator.onLine
-  ) {
-
-    badge.textContent =
-      "🟢 متصل";
-
-    badge.className =
-      "status-badge status-online";
-
-  }
-
-  else {
-
-    badge.textContent =
-      "🔴 Offline";
-
-    badge.className =
-      "status-badge status-offline";
-
-  }
-
-}
-// =====================================================
-// Part 5 / 6
-// Confirm Order + Invoice + Previous Orders
-// =====================================================
-
-
-// =====================================================
-// تأكيد الطلب
-// =====================================================
-
-async function confirmOrder() {
-
-  if (!selectedOrderType) {
-
-    alert(
-      "اختر نوع الطلب"
-    );
-
-    return;
-
-  }
-
-
-  if (!cart.length) {
-
-    alert(
-      "أضف صنفاً للطلب"
-    );
-
-    return;
-
-  }
-
-
-  const customerPhone =
-    customerPhoneKey(
-      document.getElementById(
-        "phone"
-      )?.value
-    );
-
-
-  const total =
-    cart.reduce(
-      function(
-        sum,
-        item
-      ) {
-
-        return (
-          sum +
-          Number(
-            item.total || 0
-          )
-        );
-
-      },
-      0
-    );
-
-
-  const order = {
-
-    id:
-      crypto.randomUUID(),
-
-    order_type:
-      selectedOrderType,
-
-    customer_name:
-      document.getElementById(
-        "name"
-      )?.value.trim() ||
-      null,
-
-    customer_phone:
-      customerPhone ||
-      null,
-
-    customer_address:
-      document.getElementById(
-        "address"
-      )?.value.trim() ||
-      null,
-
-    notes:
-      document.getElementById(
-        "notes"
-      )?.value.trim() ||
-      null,
-
-    items:
-      cart,
-
-    total:
-      Number(
-        total.toFixed(2)
-      ),
-
-    device_id:
-      deviceId,
-
-    sync_status:
-      navigator.onLine
-        ? "synced"
-        : "pending",
-
-    created_at:
-      new Date().toISOString()
-
-  };
-
-
+function getPendingOrders() {
   try {
+    const saved = localStorage.getItem(
+      PENDING_ORDERS_KEY
+    );
 
-    // -------------------------------------------------
-    // حفظ الزبون
-    // -------------------------------------------------
-
-    if (customerPhone) {
-
-      await saveCustomer();
-
+    if (!saved) {
+      return [];
     }
 
+    const orders = JSON.parse(saved);
 
-    // -------------------------------------------------
-    // حفظ الطلب
-    // -------------------------------------------------
-
-    if (navigator.onLine) {
-
-      try {
-
-        await sendOrder(
-          order
-        );
-
-      }
-
-      catch (orderError) {
-
-        console.error(
-          "Online order failed:",
-          orderError
-        );
-
-
-        order.sync_status =
-          "pending";
-
-
-        queueOrder(
-          order
-        );
-
-
-        alert(
-          "⚠️ تعذر إرسال الطلب للسيرفر. تم حفظه وسيتم إرساله تلقائياً عند عودة الاتصال."
-        );
-
-
-        printInvoice(
-          order
-        );
-
-
-        clearOrder();
-
-        return;
-
-      }
-
-
-      alert(
-        "✅ تم حفظ الطلب بنجاح"
-      );
-
-
-      printInvoice(
-        order
-      );
-
-    }
-
-    else {
-
-      order.sync_status =
-        "pending";
-
-
-      queueOrder(
-        order
-      );
-
-
-      alert(
-        "📴 تم حفظ الطلب Offline وسيتم إرساله عند عودة الإنترنت."
-      );
-
-
-      printInvoice(
-        order
-      );
-
-    }
-
-
-    clearOrder();
-
-  }
-
-  catch (error) {
-
+    return Array.isArray(orders) ? orders : [];
+  } catch (error) {
     console.error(
-      "Confirm order error:",
+      "Error loading pending orders:",
       error
     );
 
-
-    // إذا صار خطأ غير متوقع
-    // نحفظ الطلب محلياً
-
-    order.sync_status =
-      "pending";
-
-
-    queueOrder(
-      order
-    );
-
-
-    alert(
-      "⚠️ حصل خطأ. تم حفظ الطلب محلياً."
-    );
-
-
-    printInvoice(
-      order
-    );
-
-
-    clearOrder();
-
+    return [];
   }
-
 }
 
 
-// =====================================================
-// طباعة الفاتورة
-// =====================================================
+function savePendingOrders(orders) {
+  try {
+    localStorage.setItem(
+      PENDING_ORDERS_KEY,
+      JSON.stringify(orders)
+    );
+  } catch (error) {
+    console.error(
+      "Error saving pending orders:",
+      error
+    );
+  }
+}
 
-function printInvoice(
-  order
-) {
 
-  if (!order) {
+function queueOrder(order) {
+  const pending = getPendingOrders();
 
-    return;
+  pending.push(order);
 
+  savePendingOrders(pending);
+}
+
+
+async function sendOrder(order) {
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/orders`,
+    {
+      method: "POST",
+
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal"
+      },
+
+      body: JSON.stringify(order)
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+
+    throw new Error(
+      `Order save failed: ${response.status} ${errorText}`
+    );
   }
 
-
-  const items =
-    Array.isArray(
-      order.items
-    )
-      ? order.items
-      : [];
+  return true;
+}
 
 
-  const itemsHtml =
-    items
-      .map(
-        function(item) {
+// ============================================================
+// SYNC PENDING ORDERS
+// ============================================================
 
-          let description =
-            item.name || "";
+async function syncNow() {
+  if (!navigator.onLine) {
+    updateConnectionStatus();
+    return;
+  }
 
+  const pending = getPendingOrders();
 
-          if (
-            item.type ===
-            "weight"
-          ) {
+  if (pending.length === 0) {
+    updateConnectionStatus();
+    return;
+  }
 
-            description +=
-              `
-                <br>
-                <small>
-                  ${escapeHtml(
-                    item.cooking || "ني"
-                  )}
-                  -
-                  ${Number(
-                    item.weight || 0
-                  ).toFixed(2)}
-                  كغ
-                </small>
-              `;
+  const remaining = [];
 
-          }
+  for (const order of pending) {
+    try {
+      await sendOrder(order);
+    } catch (error) {
+      console.warn(
+        "Could not sync order:",
+        error
+      );
 
+      remaining.push(order);
+    }
+  }
 
-          if (
-            item.type ===
-            "size"
-          ) {
+  savePendingOrders(remaining);
 
-            description +=
-              `
-                <br>
-                <small>
-                  ${escapeHtml(
-                    item.size || ""
-                  )}
-                </small>
-              `;
-
-          }
+  updateConnectionStatus();
+}
 
 
-          if (
-            item.type ===
-            "meal"
-          ) {
+// ============================================================
+// CONNECTION STATUS
+// ============================================================
 
-            description +=
-              `
-                <br>
-                <small>
-                  ${escapeHtml(
-                    item.choice || ""
-                  )}
-                </small>
-              `;
+function updateConnectionStatus() {
+  const element =
+    document.getElementById("connectionStatus");
 
-          }
+  if (!element) {
+    return;
+  }
 
+  if (navigator.onLine) {
+    element.textContent = "🟢 متصل";
 
-          return `
+    element.className = "connection-status online";
+  } else {
+    element.textContent = "🔴 بدون إنترنت";
 
-            <tr>
+    element.className =
+      "connection-status offline";
+  }
+}
+// ============================================================
+// CONFIRM ORDER
+// ============================================================
 
-              <td>
-                ${escapeHtml(
-                  description
-                )}
-              </td>
+async function confirmOrder() {
+  if (!selectedOrderType) {
+    alert("اختار نوع الطلب أولاً");
+    return;
+  }
 
-              <td>
-                ${Number(
-                  item.qty || 1
-                )}
-              </td>
+  if (cart.length === 0) {
+    alert("الطلب فاضي");
+    return;
+  }
 
-              <td>
-                $${money(
-                  item.total || 0
-                )}
-              </td>
+  const phoneInput = document.getElementById("phone");
+  const nameInput = document.getElementById("name");
+  const addressInput = document.getElementById("address");
+  const notesInput = document.getElementById("notes");
 
-            </tr>
+  const phone = phoneInput
+    ? phoneInput.value.trim()
+    : "";
 
-          `;
+  const name = nameInput
+    ? nameInput.value.trim()
+    : "";
 
-        }
-      )
-      .join("");
+  const address = addressInput
+    ? addressInput.value.trim()
+    : "";
 
+  const notes = notesInput
+    ? notesInput.value.trim()
+    : "";
 
-  const printWindow =
-    window.open(
-      "",
-      "_blank",
-      "width=420,height=700"
+  if (!phone) {
+    alert("دخل رقم تلفون الزبون");
+    return;
+  }
+
+  if (selectedOrderType === "delivery" && !address) {
+    alert("دخل عنوان الزبون");
+    return;
+  }
+
+  // ----------------------------------------------------------
+  // SAVE CUSTOMER
+  // ----------------------------------------------------------
+
+  const customer = await saveCustomer();
+
+  // ----------------------------------------------------------
+  // CREATE ORDER
+  // ----------------------------------------------------------
+
+  const order = {
+    order_type: selectedOrderType,
+
+    customer_name: name,
+
+    customer_phone: customer
+      ? customer.phone
+      : normalizePhone(phone),
+
+    customer_address: address,
+
+    notes: notes,
+
+    items: cart.map(function (item) {
+      return {
+        name: item.name,
+        description: item.description || "",
+        quantity: item.quantity || 1,
+        weight: item.weight || null,
+        preparation: item.preparation || null,
+        size: item.size || null,
+        meal_type: item.mealType || null,
+        unit_price: Number(item.unitPrice || 0),
+        total: Number(item.total || 0)
+      };
+    }),
+
+    total: Number(getTotal().toFixed(2)),
+
+    device_id: deviceId,
+
+    sync_status: "synced",
+
+    created_at: new Date().toISOString()
+  };
+
+  // ----------------------------------------------------------
+  // TRY CLOUD SAVE
+  // ----------------------------------------------------------
+
+  let savedOnline = false;
+
+  if (navigator.onLine) {
+    try {
+      await sendOrder(order);
+
+      savedOnline = true;
+    } catch (error) {
+      console.warn(
+        "Order could not be saved online:",
+        error
+      );
+    }
+  }
+
+  // ----------------------------------------------------------
+  // OFFLINE QUEUE
+  // ----------------------------------------------------------
+
+  if (!savedOnline) {
+    order.sync_status = "pending";
+
+    queueOrder(order);
+  }
+
+  // ----------------------------------------------------------
+  // PRINT
+  // ----------------------------------------------------------
+
+  try {
+    printInvoice(order);
+  } catch (error) {
+    console.warn(
+      "Printing failed:",
+      error
     );
+  }
 
+  // ----------------------------------------------------------
+  // SUCCESS MESSAGE
+  // ----------------------------------------------------------
+
+  if (savedOnline) {
+    alert("تم تأكيد الطلب وحفظه بنجاح ✅");
+  } else {
+    alert(
+      "تم تأكيد الطلب وحفظه على الجهاز.\nسيتم رفعه تلقائياً عند عودة الإنترنت. 📶"
+    );
+  }
+
+  clearOrder();
+}
+
+
+// ============================================================
+// PRINT INVOICE
+// ============================================================
+
+function printInvoice(order) {
+  if (!order) {
+    return;
+  }
+
+  const printWindow = window.open(
+    "",
+    "_blank",
+    "width=420,height=700"
+  );
 
   if (!printWindow) {
-
     alert(
-      "⚠️ المتصفح منع نافذة الطباعة. اسمح بالنوافذ المنبثقة."
+      "المتصفح منع نافذة الطباعة. اسمح بالنوافذ المنبثقة لهذا الموقع."
     );
 
     return;
-
   }
 
+  const itemsHtml = Array.isArray(order.items)
+    ? order.items
+        .map(function (item) {
+          const itemName = escapeHtml(item.name);
 
-  const date =
-    new Date(
-      order.created_at ||
-      Date.now()
-    ).toLocaleString(
-      "ar-LB"
-    );
+          const details = escapeHtml(
+            item.description || ""
+          );
 
+          const quantity =
+            item.weight !== null &&
+            item.weight !== undefined
+              ? `${item.weight} كغ`
+              : `× ${item.quantity || 1}`;
+
+          return `
+            <div class="item">
+              <div>
+                <strong>${itemName}</strong>
+
+                ${
+                  details
+                    ? `<div class="details">${details}</div>`
+                    : ""
+                }
+              </div>
+
+              <div class="item-right">
+                <div>${escapeHtml(quantity)}</div>
+                <strong>${money(item.total)}</strong>
+              </div>
+            </div>
+          `;
+        })
+        .join("")
+    : "";
+
+  const orderType =
+    order.order_type === "delivery"
+      ? "Delevery"
+      : "استلام من المحل";
 
   printWindow.document.open();
 
-
   printWindow.document.write(`
-
     <!DOCTYPE html>
 
-    <html
-      lang="ar"
-      dir="rtl"
-    >
+    <html lang="ar" dir="rtl">
 
     <head>
 
       <meta charset="UTF-8">
 
-      <title>
-        Tabbara Seafood
-      </title>
+      <title>فاتورة Tabbara Seafood</title>
 
       <style>
 
@@ -3870,1045 +2226,780 @@ function printInvoice(
         }
 
         body {
-
-          width: 80mm;
-
-          margin: 0 auto;
-
-          padding: 5mm;
-
-          font-family:
-            Arial,
-            Tahoma,
-            sans-serif;
-
-          font-size: 12px;
-
-          color: #000;
-
+          margin: 0;
+          padding: 15px;
+          font-family: Arial, sans-serif;
           direction: rtl;
+          font-size: 14px;
+        }
 
+        .invoice {
+          width: 100%;
+          max-width: 380px;
+          margin: auto;
         }
 
         .header {
-
           text-align: center;
-
-          margin-bottom: 8px;
-
+          border-bottom: 1px dashed #000;
+          padding-bottom: 12px;
+          margin-bottom: 12px;
         }
 
         .header h1 {
-
-          margin: 0;
-
-          font-size: 20px;
-
+          margin: 0 0 5px;
+          font-size: 22px;
         }
 
         .header div {
+          font-size: 13px;
+        }
 
+        .customer {
+          border-bottom: 1px dashed #000;
+          padding-bottom: 10px;
+          margin-bottom: 10px;
+        }
+
+        .customer div {
+          margin: 4px 0;
+        }
+
+        .item {
+          display: flex;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 7px 0;
+          border-bottom: 1px dotted #999;
+        }
+
+        .item-right {
+          text-align: left;
+          white-space: nowrap;
+        }
+
+        .details {
+          font-size: 12px;
           margin-top: 3px;
-
-          font-size: 11px;
-
-        }
-
-        .line {
-
-          border-top:
-            1px dashed #000;
-
-          margin:
-            7px 0;
-
-        }
-
-        .info {
-
-          font-size: 11px;
-
-          line-height: 1.7;
-
-        }
-
-        table {
-
-          width: 100%;
-
-          border-collapse:
-            collapse;
-
-          margin-top: 5px;
-
-        }
-
-        th,
-        td {
-
-          padding:
-            4px 1px;
-
-          vertical-align:
-            top;
-
-          text-align:
-            right;
-
-        }
-
-        th {
-
-          border-bottom:
-            1px solid #000;
-
-        }
-
-        td:nth-child(2) {
-
-          text-align:
-            center;
-
-          width:
-            15%;
-
-        }
-
-        td:nth-child(3) {
-
-          text-align:
-            left;
-
-          width:
-            25%;
-
         }
 
         .total {
-
+          display: flex;
+          justify-content: space-between;
           font-size: 18px;
-
           font-weight: bold;
-
-          text-align: center;
-
+          padding-top: 12px;
           margin-top: 8px;
-
+          border-top: 2px solid #000;
         }
 
         .footer {
-
           text-align: center;
-
-          margin-top: 12px;
-
-          font-size: 11px;
-
-        }
-
-        .print-button {
-
-          display: block;
-
-          margin: 15px auto;
-
-          padding: 10px 20px;
-
-          font-size: 15px;
-
-          cursor: pointer;
-
+          margin-top: 20px;
+          font-size: 12px;
         }
 
         @media print {
-
-          .print-button {
-
-            display: none;
-
-          }
-
           body {
-
-            width: 80mm;
-
-            margin: 0;
-
+            padding: 0;
           }
 
+          .invoice {
+            max-width: none;
+          }
         }
 
       </style>
 
     </head>
 
-
     <body>
 
-      <div class="header">
+      <div class="invoice">
 
-        <h1>
-          🐟 Tabbara Seafood
-        </h1>
-
-        <div>
-          Restaurant POS
+        <div class="header">
+          <h1>Tabbara Seafood</h1>
+          <div>فاتورة طلب</div>
         </div>
 
-      </div>
+        <div class="customer">
 
+          <div>
+            <strong>نوع الطلب:</strong>
+            ${escapeHtml(orderType)}
+          </div>
 
-      <div class="line"></div>
+          <div>
+            <strong>الزبون:</strong>
+            ${escapeHtml(order.customer_name || "-")}
+          </div>
 
+          <div>
+            <strong>الهاتف:</strong>
+            ${escapeHtml(order.customer_phone || "-")}
+          </div>
 
-      <div class="info">
+          ${
+            order.customer_address
+              ? `
+                <div>
+                  <strong>العنوان:</strong>
+                  ${escapeHtml(order.customer_address)}
+                </div>
+              `
+              : ""
+          }
 
-        <div>
-          <b>نوع الطلب:</b>
-          ${escapeHtml(
-            order.order_type || ""
-          )}
+          ${
+            order.notes
+              ? `
+                <div>
+                  <strong>ملاحظات:</strong>
+                  ${escapeHtml(order.notes)}
+                </div>
+              `
+              : ""
+          }
+
         </div>
 
         <div>
-          <b>التاريخ:</b>
-          ${escapeHtml(
-            date
-          )}
-        </div>
-
-        ${
-          order.customer_name
-            ? `
-              <div>
-                <b>الزبون:</b>
-                ${escapeHtml(
-                  order.customer_name
-                )}
-              </div>
-            `
-            : ""
-        }
-
-        ${
-          order.customer_phone
-            ? `
-              <div>
-                <b>الهاتف:</b>
-                ${escapeHtml(
-                  order.customer_phone
-                )}
-              </div>
-            `
-            : ""
-        }
-
-        ${
-          order.customer_address
-            ? `
-              <div>
-                <b>العنوان:</b>
-                ${escapeHtml(
-                  order.customer_address
-                )}
-              </div>
-            `
-            : ""
-        }
-
-      </div>
-
-
-      <div class="line"></div>
-
-
-      <table>
-
-        <thead>
-
-          <tr>
-
-            <th>
-              الصنف
-            </th>
-
-            <th>
-              ك
-            </th>
-
-            <th>
-              السعر
-            </th>
-
-          </tr>
-
-        </thead>
-
-
-        <tbody>
-
           ${itemsHtml}
+        </div>
 
-        </tbody>
+        <div class="total">
+          <span>المجموع</span>
+          <span>${money(order.total)}</span>
+        </div>
 
-      </table>
-
-
-      <div class="line"></div>
-
-
-      <div class="total">
-
-        المجموع:
-        $${money(
-          order.total || 0
-        )}
+        <div class="footer">
+          شكراً لزيارتكم ❤️
+        </div>
 
       </div>
-
-
-      ${
-        order.notes
-          ? `
-            <div class="line"></div>
-
-            <div class="info">
-
-              <b>
-                ملاحظات:
-              </b>
-
-              ${escapeHtml(
-                order.notes
-              )}
-
-            </div>
-          `
-          : ""
-      }
-
-
-      <div class="footer">
-
-        شكراً لزيارتكم ❤️
-
-      </div>
-
-
-      <button
-        class="print-button"
-        onclick="window.print()"
-      >
-
-        🖨️ طباعة الفاتورة
-
-      </button>
-
 
       <script>
-
-        window.onload =
-          function() {
-
-            setTimeout(
-              function() {
-
-                window.print();
-
-              },
-              300
-            );
-
-          };
-
+        window.onload = function () {
+          setTimeout(function () {
+            window.print();
+          }, 300);
+        };
       <\/script>
 
     </body>
 
     </html>
-
   `);
 
-
   printWindow.document.close();
-
 }
 
 
-// =====================================================
-// الطلبات السابقة
-// =====================================================
+// ============================================================
+// PREVIOUS ORDERS
+// ============================================================
 
 async function showPreviousOrders() {
+  const root = document.getElementById("modalRoot");
 
-  if (!navigator.onLine) {
-
-    alert(
-      "📴 الطلبات السابقة تحتاج إلى الإنترنت حالياً."
-    );
-
+  if (!root) {
     return;
-
   }
 
+  modal(`
+    <div class="modal-title">
+      📋 الطلبات السابقة
+    </div>
+
+    <div id="previousOrdersContent">
+      جاري تحميل الطلبات...
+    </div>
+
+    <button
+      type="button"
+      class="cancel-btn"
+      onclick="closeModal()"
+    >
+      إغلاق
+    </button>
+  `);
+
+  const content =
+    document.getElementById("previousOrdersContent");
+
+  if (!content) {
+    return;
+  }
 
   try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/orders?select=*&order=created_at.desc&limit=50`,
+      {
+        method: "GET",
 
-    const response =
-      await fetch(
-        `${SUPABASE_URL}/rest/v1/orders` +
-        `?select=*` +
-        `&order=created_at.desc` +
-        `&limit=50`,
-        {
-
-          method: "GET",
-
-          headers: {
-
-            "apikey":
-              SUPABASE_KEY,
-
-            "Authorization":
-              `Bearer ${SUPABASE_KEY}`
-
-          }
-
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`
         }
-      );
-
-
-    if (!response.ok) {
-
-      throw new Error(
-        await response.text()
-      );
-
-    }
-
-
-    const orders =
-      await response.json();
-
-
-    if (
-      !orders.length
-    ) {
-
-      modal(
-        "📋 الطلبات السابقة",
-        `
-          <div class="empty-state">
-            لا توجد طلبات بعد.
-          </div>
-        `
-      );
-
-      return;
-
-    }
-
-
-    const html =
-      orders
-        .map(
-          function(order) {
-
-            const date =
-              new Date(
-                order.created_at
-              ).toLocaleString(
-                "ar-LB"
-              );
-
-
-            const items =
-              Array.isArray(
-                order.items
-              )
-                ? order.items
-                : [];
-
-
-            const itemText =
-              items
-                .map(
-                  function(item) {
-
-                    let text =
-                      escapeHtml(
-                        item.name || ""
-                      );
-
-
-                    if (
-                      item.type ===
-                      "weight"
-                    ) {
-
-                      text +=
-                        `
-                          - ${escapeHtml(
-                            item.cooking || "ني"
-                          )}
-                          -
-                          ${Number(
-                            item.weight || 0
-                          ).toFixed(2)}
-                          كغ
-                        `;
-
-                    }
-
-
-                    if (
-                      item.type ===
-                      "size"
-                    ) {
-
-                      text +=
-                        `
-                          - ${escapeHtml(
-                            item.size || ""
-                          )}
-                        `;
-
-                    }
-
-
-                    if (
-                      item.type ===
-                      "meal"
-                    ) {
-
-                      text +=
-                        `
-                          - ${escapeHtml(
-                            item.choice || ""
-                          )}
-                        `;
-
-                    }
-
-
-                    return `
-                      <div>
-                        ${text}
-                        ×
-                        ${Number(
-                          item.qty || 1
-                        )}
-                      </div>
-                    `;
-
-                  }
-                )
-                .join("");
-
-
-            return `
-
-              <div
-                class="manager-card"
-              >
-
-                <h4>
-                  🧾 طلب
-                </h4>
-
-                <small>
-                  ${escapeHtml(
-                    date
-                  )}
-                </small>
-
-                <hr>
-
-                <div>
-
-                  <b>
-                    النوع:
-                  </b>
-
-                  ${escapeHtml(
-                    order.order_type || ""
-                  )}
-
-                </div>
-
-
-                ${
-                  order.customer_name
-                    ? `
-                      <div>
-                        <b>
-                          الزبون:
-                        </b>
-
-                        ${escapeHtml(
-                          order.customer_name
-                        )}
-                      </div>
-                    `
-                    : ""
-                }
-
-
-                ${
-                  order.customer_phone
-                    ? `
-                      <div>
-                        <b>
-                          الهاتف:
-                        </b>
-
-                        ${escapeHtml(
-                          order.customer_phone
-                        )}
-                      </div>
-                    `
-                    : ""
-                }
-
-
-                ${
-                  order.customer_address
-                    ? `
-                      <div>
-                        <b>
-                          العنوان:
-                        </b>
-
-                        ${escapeHtml(
-                          order.customer_address
-                        )}
-                      </div>
-                    `
-                    : ""
-                }
-
-
-                <hr>
-
-
-                ${itemText}
-
-
-                <hr>
-
-
-                <strong>
-
-                  المجموع:
-                  $${money(
-                    order.total || 0
-                  )}
-
-                </strong>
-
-
-                <br><br>
-
-
-                <button
-                  class="primary"
-                  onclick='printInvoice(${JSON.stringify(
-                    order
-                  ).replace(
-                    /'/g,
-                    "&#39;"
-                  )})'
-                >
-
-                  🖨️ طباعة
-
-                </button>
-
-              </div>
-
-            `;
-
-          }
-        )
-        .join("");
-
-
-    modal(
-      "📋 الطلبات السابقة",
-      `
-        <div class="manager-grid">
-          ${html}
-        </div>
-      `
+      }
     );
 
-  }
+    if (!response.ok) {
+      throw new Error(
+        `Orders request failed: ${response.status}`
+      );
+    }
 
-  catch (error) {
+    const orders = await response.json();
 
+    if (!Array.isArray(orders) || orders.length === 0) {
+      content.innerHTML = `
+        <div class="empty-state">
+          ما في طلبات سابقة
+        </div>
+      `;
+
+      return;
+    }
+
+    content.innerHTML = orders
+      .map(function (order, index) {
+        const date = order.created_at
+          ? new Date(order.created_at).toLocaleString(
+              "ar-LB"
+            )
+          : "";
+
+        const type =
+          order.order_type === "delivery"
+            ? "Delevery"
+            : "استلام من المحل";
+
+        return `
+          <div class="previous-order">
+
+            <div>
+              <strong>
+                ${escapeHtml(order.customer_name || "بدون اسم")}
+              </strong>
+
+              <div>
+                ${escapeHtml(order.customer_phone || "")}
+              </div>
+
+              <small>
+                ${escapeHtml(date)}
+              </small>
+
+              <div>
+                ${escapeHtml(type)}
+              </div>
+            </div>
+
+            <div class="previous-order-right">
+
+              <strong>
+                ${money(order.total)}
+              </strong>
+
+              <button
+                type="button"
+                onclick="printPreviousOrder(${index})"
+              >
+                🖨️
+              </button>
+
+            </div>
+
+          </div>
+        `;
+      })
+      .join("");
+
+    window.tabbaraPreviousOrders = orders;
+
+  } catch (error) {
     console.error(
-      "Previous orders error:",
+      "Could not load previous orders:",
       error
     );
 
+    content.innerHTML = `
+      <div class="empty-state">
+        تعذر تحميل الطلبات.
+        <br>
+        تأكد من الإنترنت.
+      </div>
+    `;
+  }
+}
 
-    alert(
-      "⚠️ تعذر تحميل الطلبات السابقة."
-    );
 
+// ============================================================
+// PRINT PREVIOUS ORDER
+// ============================================================
+
+function printPreviousOrder(index) {
+  const orders =
+    window.tabbaraPreviousOrders || [];
+
+  const order = orders[index];
+
+  if (!order) {
+    return;
   }
 
+  printInvoice(order);
 }
 
 
-// =====================================================
-// توافق اسم زر الطلبات السابقة
-// =====================================================
+// ============================================================
+// HTML BUTTON COMPATIBILITY
+// ============================================================
 
 function showOrders() {
-
   showPreviousOrders();
-
 }
-// =====================================================
-// Part 6 / 6
-// Menu Manager + Offers + Connection + Start
-// =====================================================
-
-
-// =====================================================
-// إدارة المنيو
-// =====================================================
+// ============================================================
+// MENU MANAGER
+// ============================================================
 
 function showMenuManager() {
+  const root = document.getElementById("modalRoot");
 
-  const normalItems =
-    menu.filter(
-      function(item) {
-        return item.category !== "العروض";
-      }
-    );
+  if (!root) {
+    return;
+  }
 
-
-  const offers =
-    menu.filter(
-      function(item) {
-        return item.category === "العروض";
-      }
-    );
+  renderMenuManager();
+}
 
 
-  const cards =
-    normalItems.map(
-      function(item) {
+function renderMenuManager() {
+  const root = document.getElementById("modalRoot");
 
-        const index =
-          menu.indexOf(item);
+  if (!root) {
+    return;
+  }
 
+  const categories = CATEGORIES.filter(function (category) {
+    return category !== "🎁 العروض";
+  });
 
-        return `
-          <div class="manager-card">
+  modal(`
+    <div class="modal-title">
+      ⚙️ إدارة المنيو
+    </div>
 
-            <h4>
-              ${escapeHtml(item.name)}
-              ${item.available ? "🟢" : "🔴"}
-            </h4>
-
-            <small>
-              ${escapeHtml(item.category)}
-            </small>
-
-            <br><br>
-
-            <button
-              class="primary"
-              onclick="editMenuItem(${index},false)"
-            >
-              ✏️ تعديل
-            </button>
-
-            <button
-              onclick="toggleAvailable(${index})"
-            >
-              ${
-                item.available
-                  ? "🔴 خلص"
-                  : "🟢 متوفر"
-              }
-            </button>
-
-          </div>
-        `;
-
-      }
-    ).join("");
-
-
-  const offerCards =
-    offers.length
-
-      ? offers.map(
-          function(offer) {
-
-            const index =
-              menu.indexOf(offer);
-
-
-            const included =
-              Array.isArray(
-                offer.offerItems
-              )
-
-                ? offer.offerItems
-                    .map(
-                      function(id) {
-
-                        const includedItem =
-                          menu.find(
-                            function(m) {
-                              return m.id === id;
-                            }
-                          );
-
-
-                        return includedItem
-                          ? escapeHtml(
-                              includedItem.name
-                            )
-                          : "";
-
-                      }
-                    )
-                    .filter(Boolean)
-                    .join("، ")
-
-                : "";
-
-
-            return `
-              <div class="manager-card">
-
-                <h4>
-                  🎁 ${escapeHtml(offer.name)}
-                  ${offer.available ? "🟢" : "🔴"}
-                </h4>
-
-                <div>
-                  السعر:
-                  <b>
-                    $${money(offer.price || 0)}
-                  </b>
-                </div>
-
-                <br>
-
-                <div>
-                  <small>
-                    الأصناف:
-                    ${
-                      included ||
-                      "لم يتم تحديد أصناف"
-                    }
-                  </small>
-                </div>
-
-                <br>
-
-                <button
-                  class="primary"
-                  onclick="editMenuItem(${index},true)"
-                >
-                  ✏️ تعديل العرض
-                </button>
-
-                <button
-                  onclick="toggleAvailable(${index})"
-                >
-                  ${
-                    offer.available
-                      ? "🔴 إيقاف"
-                      : "🟢 تفعيل"
-                  }
-                </button>
-
-              </div>
-            `;
-
-          }
-        ).join("")
-
-      : `
-          <p>
-            لا توجد عروض حالياً.
-          </p>
-        `;
-
-
-  modal(
-    "⚙️ إدارة المنيو",
-    `
+    <div class="menu-manager">
 
       <button
-        class="primary"
+        type="button"
+        class="confirm"
         onclick="newMenuItem()"
       >
         ➕ إضافة صنف
       </button>
 
       <button
+        type="button"
+        class="confirm"
         onclick="newOffer()"
       >
         🎁 إضافة عرض
       </button>
 
-      <hr>
+      <div class="manager-list">
 
-      <h3>
-        🎁 العروض
-      </h3>
+        ${menu
+          .map(function (item, index) {
+            const status =
+              item.available === false
+                ? "خلص"
+                : "متوفر";
 
-      <div class="manager-grid">
-        ${offerCards}
+            const statusClass =
+              item.available === false
+                ? "finished"
+                : "available";
+
+            return `
+              <div class="manager-item">
+
+                <div class="manager-item-info">
+
+                  <strong>
+                    ${escapeHtml(item.name)}
+                  </strong>
+
+                  <small>
+                    ${escapeHtml(item.category)}
+                  </small>
+
+                  <span class="${statusClass}">
+                    ${status}
+                  </span>
+
+                </div>
+
+                <div class="manager-actions">
+
+                  <button
+                    type="button"
+                    onclick="toggleAvailable(${index})"
+                  >
+                    ${
+                      item.available === false
+                        ? "✅"
+                        : "🚫"
+                    }
+                  </button>
+
+                  <button
+                    type="button"
+                    onclick="editMenuItem(${index})"
+                  >
+                    ✏️
+                  </button>
+
+                  <button
+                    type="button"
+                    onclick="deleteMenuItem(${index})"
+                  >
+                    🗑️
+                  </button>
+
+                </div>
+
+              </div>
+            `;
+          })
+          .join("")}
+
       </div>
 
-      <hr>
+    </div>
 
-      <h3>
-        🍽️ الأصناف
-      </h3>
-
-      <div class="manager-grid">
-        ${cards}
-      </div>
-
-    `
-  );
-
+    <button
+      type="button"
+      class="cancel-btn"
+      onclick="closeModal()"
+    >
+      إغلاق
+    </button>
+  `);
 }
 
 
-// =====================================================
-// تغيير توفر الصنف
-// =====================================================
+// ============================================================
+// TOGGLE AVAILABLE
+// ============================================================
 
 function toggleAvailable(index) {
+  const item = menu[index];
 
-  if (!menu[index]) {
+  if (!item) {
     return;
   }
 
-
-  menu[index].available =
-    !menu[index].available;
-
+  item.available = item.available === false;
 
   saveMenu();
 
+  if (currentCategory) {
+    showCategory(currentCategory);
+  }
 
-  renderCategories();
-
-
-  showCategory(
-    currentCategory ||
-    CATEGORIES[0]
-  );
-
-
-  showMenuManager();
-
+  renderMenuManager();
 }
 
 
-// =====================================================
-// صنف جديد
-// =====================================================
+// ============================================================
+// NEW MENU ITEM
+// ============================================================
 
 function newMenuItem() {
+  const categories = CATEGORIES.filter(function (category) {
+    return category !== "🎁 العروض";
+  });
 
-  editMenuItem(
-    -1,
-    false
-  );
+  currentModalItem = null;
 
+  modal(`
+    <div class="modal-title">
+      ➕ إضافة صنف جديد
+    </div>
+
+    <label class="modal-label">
+      اسم الصنف
+    </label>
+
+    <input
+      id="menuName"
+      class="modal-input"
+      type="text"
+      placeholder="اسم الصنف"
+    >
+
+    <label class="modal-label">
+      القسم
+    </label>
+
+    <select
+      id="menuCategory"
+      class="modal-input"
+      onchange="renderPricingFields()"
+    >
+      ${categories
+        .map(function (category) {
+          return `
+            <option value="${escapeHtml(category)}">
+              ${escapeHtml(category)}
+            </option>
+          `;
+        })
+        .join("")}
+    </select>
+
+    <label class="modal-label">
+      نوع الصنف
+    </label>
+
+    <select
+      id="menuType"
+      class="modal-input"
+      onchange="renderPricingFields()"
+    >
+      <option value="fixed">سعر ثابت</option>
+      <option value="weight">بالوزن</option>
+      <option value="sizes">أحجام</option>
+      <option value="meal">وجبة / ساندويش</option>
+    </select>
+
+    <div id="pricingFields"></div>
+
+    <button
+      type="button"
+      class="confirm"
+      onclick="saveMenuForm()"
+    >
+      💾 حفظ
+    </button>
+
+    <button
+      type="button"
+      class="cancel-btn"
+      onclick="closeModal()"
+    >
+      إلغاء
+    </button>
+  `);
+
+  renderPricingFields();
 }
 
 
-// =====================================================
-// عرض جديد
-// =====================================================
+// ============================================================
+// NEW OFFER
+// ============================================================
 
 function newOffer() {
+  const selectableItems = menu.filter(function (item) {
+    return item.category !== "🎁 العروض";
+  });
 
-  editMenuItem(
-    -1,
-    true
-  );
+  modal(`
+    <div class="modal-title">
+      🎁 إضافة عرض جديد
+    </div>
 
+    <label class="modal-label">
+      اسم العرض
+    </label>
+
+    <input
+      id="offerName"
+      class="modal-input"
+      type="text"
+      placeholder="مثلاً عرض العيلة"
+    >
+
+    <label class="modal-label">
+      الأصناف داخل العرض
+    </label>
+
+    <div class="offer-items">
+
+      ${selectableItems
+        .map(function (item, index) {
+          return `
+            <label class="offer-check">
+
+              <input
+                type="checkbox"
+                class="offer-item-checkbox"
+                value="${escapeHtml(item.id)}"
+              >
+
+              <span>
+                ${escapeHtml(item.name)}
+              </span>
+
+            </label>
+          `;
+        })
+        .join("")}
+
+    </div>
+
+    <label class="modal-label">
+      سعر العرض
+    </label>
+
+    <input
+      id="offerPrice"
+      class="modal-input"
+      type="number"
+      inputmode="decimal"
+      min="0"
+      step="0.01"
+      placeholder="السعر النهائي"
+    >
+
+    <button
+      type="button"
+      class="confirm"
+      onclick="saveOffer()"
+    >
+      💾 حفظ العرض
+    </button>
+
+    <button
+      type="button"
+      class="cancel-btn"
+      onclick="closeModal()"
+    >
+      إلغاء
+    </button>
+  `);
 }
 
 
-// =====================================================
-// تعديل صنف / عرض
-// =====================================================
+// ============================================================
+// SAVE OFFER
+// ============================================================
 
-function editMenuItem(
-  index,
-  isOffer = false
-) {
+function saveOffer() {
+  const nameInput = document.getElementById("offerName");
+  const priceInput = document.getElementById("offerPrice");
 
-  const existing =
-    index >= 0
-      ? menu[index]
-      : null;
+  const name = nameInput
+    ? nameInput.value.trim()
+    : "";
+
+  const price = priceInput
+    ? Number(priceInput.value)
+    : 0;
+
+  if (!name) {
+    alert("دخل اسم العرض");
+    return;
+  }
+
+  if (!price || price < 0) {
+    alert("دخل سعر العرض");
+    return;
+  }
+
+  const checkboxes = document.querySelectorAll(
+    ".offer-item-checkbox:checked"
+  );
+
+  const includedItems = Array.from(checkboxes)
+    .map(function (checkbox) {
+      return getItemById(checkbox.value);
+    })
+    .filter(Boolean)
+    .map(function (item) {
+      return {
+        id: item.id,
+        name: item.name
+      };
+    });
+
+  if (includedItems.length === 0) {
+    alert("اختار صنف واحد على الأقل داخل العرض");
+    return;
+  }
+
+  menu.push({
+    id: generateId("offer"),
+    category: "🎁 العروض",
+    name: name,
+    type: "offer",
+    price: price,
+    available: true,
+    includedItems: includedItems
+  });
+
+  saveMenu();
+
+  closeModal();
+
+  if (currentCategory === "🎁 العروض") {
+    showCategory(currentCategory);
+  }
+}
 
 
-  const item =
-    existing
-      ? JSON.parse(
-          JSON.stringify(existing)
-        )
-      : {
+// ============================================================
+// EDIT MENU ITEM
+// ============================================================
 
-          id:
-            "item_" +
-            Date.now(),
+function editMenuItem(index) {
+  const item = menu[index];
 
-          name:
-            "",
+  if (!item) {
+    return;
+  }
 
-          category:
-            isOffer
-              ? "العروض"
-              : "🐟 الأسماك",
+  currentModalItem = item;
 
-          type:
-            "fixed",
+  if (item.type === "offer") {
+    editOffer(index);
+    return;
+  }
 
-          price:
-            0,
+  const categories = CATEGORIES.filter(function (category) {
+    return category !== "🎁 العروض";
+  });
 
-          available:
-            true
+  modal(`
+    <div class="modal-title">
+      ✏️ تعديل الصنف
+    </div>
 
-        };
+    <label class="modal-label">
+      اسم الصنف
+    </label>
 
+    <input
+      id="menuName"
+      class="modal-input"
+      type="text"
+      value="${escapeHtml(item.name)}"
+    >
 
-  const categories =
-    CATEGORIES.filter(
-      function(category) {
+    <label class="modal-label">
+      القسم
+    </label>
 
-        return category !==
-          "🎁 العروض";
-
-      }
-    );
-
-
-  const categoryOptions =
-    categories
-      .map(
-        function(category) {
-
+    <select
+      id="menuCategory"
+      class="modal-input"
+    >
+      ${categories
+        .map(function (category) {
           return `
             <option
               value="${escapeHtml(category)}"
@@ -4921,1078 +3012,918 @@ function editMenuItem(
               ${escapeHtml(category)}
             </option>
           `;
+        })
+        .join("")}
+    </select>
 
-        }
-      )
-      .join("");
+    <label class="modal-label">
+      نوع الصنف
+    </label>
+
+    <select
+      id="menuType"
+      class="modal-input"
+      onchange="renderPricingFields()"
+    >
+      <option
+        value="fixed"
+        ${item.type === "fixed" ? "selected" : ""}
+      >
+        سعر ثابت
+      </option>
+
+      <option
+        value="weight"
+        ${item.type === "weight" ? "selected" : ""}
+      >
+        بالوزن
+      </option>
+
+      <option
+        value="sizes"
+        ${item.type === "sizes" ? "selected" : ""}
+      >
+        أحجام
+      </option>
+
+      <option
+        value="meal"
+        ${item.type === "meal" ? "selected" : ""}
+      >
+        وجبة / ساندويش
+      </option>
+    </select>
+
+    <div id="pricingFields"></div>
+
+    <button
+      type="button"
+      class="confirm"
+      onclick="saveMenuForm(${index})"
+    >
+      💾 حفظ التعديل
+    </button>
+
+    <button
+      type="button"
+      class="cancel-btn"
+      onclick="closeModal()"
+    >
+      إلغاء
+    </button>
+  `);
+
+  renderPricingFields(item);
+}
 
 
-  let offerSection =
-    "";
+// ============================================================
+// EDIT OFFER
+// ============================================================
 
+function editOffer(index) {
+  const item = menu[index];
 
-  if (isOffer) {
+  if (!item) {
+    return;
+  }
 
-    const selectableItems =
-      menu.filter(
-        function(menuItem) {
+  const selectableItems = menu.filter(function (menuItem) {
+    return menuItem.category !== "🎁 العروض";
+  });
 
-          return (
-            menuItem.category !==
-            "🎁 العروض"
+  const selectedIds = Array.isArray(item.includedItems)
+    ? item.includedItems.map(function (included) {
+        return included.id;
+      })
+    : [];
+
+  modal(`
+    <div class="modal-title">
+      ✏️ تعديل العرض
+    </div>
+
+    <label class="modal-label">
+      اسم العرض
+    </label>
+
+    <input
+      id="offerName"
+      class="modal-input"
+      type="text"
+      value="${escapeHtml(item.name)}"
+    >
+
+    <label class="modal-label">
+      الأصناف داخل العرض
+    </label>
+
+    <div class="offer-items">
+
+      ${selectableItems
+        .map(function (menuItem) {
+          const checked = selectedIds.includes(
+            menuItem.id
           );
 
-        }
-      );
-
-
-    offerSection = `
-
-      <hr>
-
-      <h3>
-        🧾 أصناف العرض
-      </h3>
-
-      <div class="offer-checklist">
-
-        ${
-          selectableItems.length
-
-            ? selectableItems
-                .map(
-                  function(menuItem) {
-
-                    const checked =
-                      Array.isArray(
-                        item.offerItems
-                      ) &&
-                      item.offerItems.includes(
-                        menuItem.id
-                      );
-
-
-                    return `
-                      <label
-                        class="offer-check"
-                      >
-
-                        <input
-                          type="checkbox"
-                          class="offer-item-check"
-                          value="${escapeHtml(
-                            menuItem.id
-                          )}"
-                          ${
-                            checked
-                              ? "checked"
-                              : ""
-                          }
-                        >
-
-                        <span>
-                          ${escapeHtml(
-                            menuItem.name
-                          )}
-                        </span>
-
-                      </label>
-                    `;
-
-                  }
-                )
-                .join("")
-
-            : `
-                <p>
-                  لا توجد أصناف.
-                </p>
-              `
-        }
-
-      </div>
-
-    `;
-
-  }
-
-
-  modal(
-    isOffer
-      ? "🎁 تعديل العرض"
-      : "✏️ تعديل الصنف",
-
-    `
-
-      <div class="form-row">
-
-        <label>
-          الاسم
-        </label>
-
-        <input
-          id="mName"
-          value="${escapeHtml(
-            item.name || ""
-          )}"
-          placeholder="اسم الصنف"
-        >
-
-      </div>
-
-
-      ${
-        isOffer
-          ? `
-              <div class="form-row">
-
-                <label>
-                  سعر العرض
-                </label>
-
-                <input
-                  id="mPrice"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value="${Number(
-                    item.price || 0
-                  )}"
-                >
-
-              </div>
-            `
-          : `
-
-              <div class="form-row">
-
-                <label>
-                  التصنيف
-                </label>
-
-                <select id="mCategory">
-
-                  ${categoryOptions}
-
-                </select>
-
-              </div>
-
-
-              <div class="form-row">
-
-                <label>
-                  نوع التسعير
-                </label>
-
-                <select
-                  id="mPricing"
-                  onchange="renderPricingFields()"
-                >
-
-                  <option
-                    value="fixed"
-                    ${
-                      item.type === "fixed"
-                        ? "selected"
-                        : ""
-                    }
-                  >
-                    سعر ثابت
-                  </option>
-
-                  <option
-                    value="weight"
-                    ${
-                      item.type === "weight"
-                        ? "selected"
-                        : ""
-                    }
-                  >
-                    حسب الوزن
-                  </option>
-
-                  <option
-                    value="sizes"
-                    ${
-                      item.type === "sizes"
-                        ? "selected"
-                        : ""
-                    }
-                  >
-                    أحجام
-                  </option>
-
-                  <option
-                    value="meal"
-                    ${
-                      item.type === "meal"
-                        ? "selected"
-                        : ""
-                    }
-                  >
-                    وجبة / ساندويش
-                  </option>
-
-                </select>
-
-              </div>
-
-
-              <div id="pricingFields"></div>
-
-            `
-      }
-
-
-      ${offerSection}
-
-
-      <div class="form-row">
-
-        <label>
-          الحالة
-        </label>
-
-        <select id="mAvailable">
-
-          <option
-            value="true"
-            ${
-              item.available !== false
-                ? "selected"
-                : ""
-            }
-          >
-            🟢 متوفر
-          </option>
-
-          <option
-            value="false"
-            ${
-              item.available === false
-                ? "selected"
-                : ""
-            }
-          >
-            🔴 خلص
-          </option>
-
-        </select>
-
-      </div>
-
-
-      <br>
-
-
-      <button
-        class="primary"
-        onclick="saveMenuForm(${index},${isOffer})"
-      >
-        💾 حفظ
-      </button>
-
-
-      ${
-        index >= 0
-          ? `
-              <button
-                onclick="deleteMenuItem(${index})"
+          return `
+            <label class="offer-check">
+
+              <input
+                type="checkbox"
+                class="offer-item-checkbox"
+                value="${escapeHtml(menuItem.id)}"
+                ${checked ? "checked" : ""}
               >
-                🗑️ حذف
-              </button>
-            `
-          : ""
-      }
 
-    `
-  );
+              <span>
+                ${escapeHtml(menuItem.name)}
+              </span>
 
+            </label>
+          `;
+        })
+        .join("")}
 
-  if (!isOffer) {
+    </div>
 
-    setTimeout(
-      function() {
+    <label class="modal-label">
+      سعر العرض
+    </label>
 
-        renderPricingFields(
-          item
-        );
+    <input
+      id="offerPrice"
+      class="modal-input"
+      type="number"
+      inputmode="decimal"
+      min="0"
+      step="0.01"
+      value="${escapeHtml(item.price)}"
+    >
 
-      },
-      0
-    );
+    <button
+      type="button"
+      class="confirm"
+      onclick="saveOfferEdit(${index})"
+    >
+      💾 حفظ
+    </button>
 
-  }
-
+    <button
+      type="button"
+      class="cancel-btn"
+      onclick="closeModal()"
+    >
+      إلغاء
+    </button>
+  `);
 }
 
 
-// =====================================================
-// حقول الأسعار
-// =====================================================
+function saveOfferEdit(index) {
+  const item = menu[index];
 
-function renderPricingFields(
-  sourceItem = null
-) {
-
-  const box =
-    document.getElementById(
-      "pricingFields"
-    );
-
-
-  const type =
-    document.getElementById(
-      "mPricing"
-    )?.value;
-
-
-  if (
-    !box ||
-    !type
-  ) {
-
+  if (!item) {
     return;
-
   }
 
-
-  const name =
-    document.getElementById(
-      "mName"
-    )?.value.trim();
-
-
-  const current =
-    sourceItem ||
-    menu.find(
-      function(item) {
-
-        return (
-          item.name === name
-        );
-
-      }
-    ) ||
-    {};
-
-
-  if (
-    type === "fixed"
-  ) {
-
-    box.innerHTML = `
-
-      <div class="form-row">
-
-        <label>
-          السعر
-        </label>
-
-        <input
-          id="mFixedPrice"
-          type="number"
-          min="0"
-          step="0.01"
-          value="${Number(
-            current.price || 0
-          )}"
-        >
-
-      </div>
-
-    `;
-
-    return;
-
-  }
-
-
-  if (
-    type === "weight"
-  ) {
-
-    const pricing =
-      current.pricing ||
-      {};
-
-
-    box.innerHTML = `
-
-      <div class="form-row">
-
-        <label>
-          سعر الكيلو
-        </label>
-
-        <input
-          id="mBasePrice"
-          type="number"
-          min="0"
-          step="0.01"
-          value="${Number(
-            pricing.base || 0
-          )}"
-        >
-
-      </div>
-
-
-      <div class="form-row">
-
-        <label>
-          زيادة المشوي
-        </label>
-
-        <input
-          id="mGrill"
-          type="number"
-          min="0"
-          step="0.01"
-          value="${Number(
-            pricing.grill || 0
-          )}"
-        >
-
-      </div>
-
-
-      <div class="form-row">
-
-        <label>
-          زيادة المقلي
-        </label>
-
-        <input
-          id="mFry"
-          type="number"
-          min="0"
-          step="0.01"
-          value="${Number(
-            pricing.fry || 0
-          )}"
-        >
-
-      </div>
-
-    `;
-
-    return;
-
-  }
-
-
-  if (
-    type === "sizes"
-  ) {
-
-    const sizes =
-      current.sizes ||
-      {};
-
-
-    const thirdKey =
-      name ===
-      "ثمار البحر"
-        ? "سطل"
-        : "كبير";
-
-
-    const thirdLabel =
-      thirdKey;
-
-
-    box.innerHTML = `
-
-      <div class="form-row">
-
-        <label>
-          صغير
-        </label>
-
-        <input
-          id="mSmall"
-          type="number"
-          min="0"
-          step="0.01"
-          value="${Number(
-            sizes.صغير || 0
-          )}"
-        >
-
-      </div>
-
-
-      <div class="form-row">
-
-        <label>
-          وسط
-        </label>
-
-        <input
-          id="mMedium"
-          type="number"
-          min="0"
-          step="0.01"
-          value="${Number(
-            sizes.وسط || 0
-          )}"
-        >
-
-      </div>
-
-
-      <div class="form-row">
-
-        <label>
-          ${escapeHtml(
-            thirdLabel
-          )}
-        </label>
-
-        <input
-          id="mLarge"
-          type="number"
-          min="0"
-          step="0.01"
-          value="${Number(
-            sizes[thirdKey] || 0
-          )}"
-        >
-
-      </div>
-
-    `;
-
-    return;
-
-  }
-
-
-  if (
-    type === "meal"
-  ) {
-
-    const prices =
-      current.prices ||
-      {};
-
-
-    box.innerHTML = `
-
-      <div class="form-row">
-
-        <label>
-          سعر الوجبة
-        </label>
-
-        <input
-          id="mMeal"
-          type="number"
-          min="0"
-          step="0.01"
-          value="${Number(
-            prices.وجبة || 0
-          )}"
-        >
-
-      </div>
-
-
-      <div class="form-row">
-
-        <label>
-          سعر الساندويش
-        </label>
-
-        <input
-          id="mSandwich"
-          type="number"
-          min="0"
-          step="0.01"
-          value="${Number(
-            prices.ساندويش || 0
-          )}"
-        >
-
-      </div>
-
-    `;
-
-  }
-
-}
-
-
-// =====================================================
-// حفظ تعديل المنيو
-// =====================================================
-
-function saveMenuForm(
-  index,
-  isOffer = false
-) {
-
-  const name =
-    document.getElementById(
-      "mName"
-    )?.value.trim();
-
+  const nameInput = document.getElementById("offerName");
+  const priceInput = document.getElementById("offerPrice");
+
+  const name = nameInput
+    ? nameInput.value.trim()
+    : "";
+
+  const price = priceInput
+    ? Number(priceInput.value)
+    : 0;
 
   if (!name) {
-
-    alert(
-      "اكتب اسم الصنف"
-    );
-
+    alert("دخل اسم العرض");
     return;
-
   }
 
-
-  const available =
-    document.getElementById(
-      "mAvailable"
-    )?.value === "true";
-
-
-  let item;
-
-
-  if (
-    index >= 0 &&
-    menu[index]
-  ) {
-
-    item =
-      menu[index];
-
+  if (!price || price < 0) {
+    alert("دخل سعر العرض");
+    return;
   }
 
-  else {
+  const checkboxes = document.querySelectorAll(
+    ".offer-item-checkbox:checked"
+  );
 
-    item = {
-
-      id:
-        "item_" +
-        Date.now(),
-
-      name:
-        name,
-
-      category:
-        isOffer
-          ? "🎁 العروض"
-          : "🐟 الأسماك",
-
-      type:
-        "fixed",
-
-      price:
-        0,
-
-      available:
-        available
-
-    };
-
-  }
-
-
-  item.name =
-    name;
-
-
-  item.available =
-    available;
-
-
-  if (isOffer) {
-
-    item.category =
-      "🎁 العروض";
-
-    item.type =
-      "fixed";
-
-
-    item.price =
-      Number(
-        document.getElementById(
-          "mPrice"
-        )?.value || 0
-      );
-
-
-    item.offerItems =
-      Array.from(
-        document.querySelectorAll(
-          ".offer-item-check:checked"
-        )
-      ).map(
-        function(input) {
-
-          return input.value;
-
-        }
-      );
-
-  }
-
-  else {
-
-    item.category =
-      document.getElementById(
-        "mCategory"
-      ).value;
-
-
-    const pricingType =
-      document.getElementById(
-        "mPricing"
-      ).value;
-
-
-    item.type =
-      pricingType;
-
-
-    if (
-      pricingType ===
-      "fixed"
-    ) {
-
-      item.price =
-        Number(
-          document.getElementById(
-            "mFixedPrice"
-          )?.value || 0
-        );
-
-
-      delete item.pricing;
-      delete item.sizes;
-      delete item.prices;
-
-    }
-
-
-    if (
-      pricingType ===
-      "weight"
-    ) {
-
-      item.pricing = {
-
-        base:
-          Number(
-            document.getElementById(
-              "mBasePrice"
-            )?.value || 0
-          ),
-
-        grill:
-          Number(
-            document.getElementById(
-              "mGrill"
-            )?.value || 0
-          ),
-
-        fry:
-          Number(
-            document.getElementById(
-              "mFry"
-            )?.value || 0
-          )
-
+  const includedItems = Array.from(checkboxes)
+    .map(function (checkbox) {
+      return getItemById(checkbox.value);
+    })
+    .filter(Boolean)
+    .map(function (menuItem) {
+      return {
+        id: menuItem.id,
+        name: menuItem.name
       };
+    });
 
-
-      delete item.price;
-      delete item.sizes;
-      delete item.prices;
-
-    }
-
-
-    if (
-      pricingType ===
-      "sizes"
-    ) {
-
-      const thirdKey =
-        name ===
-        "ثمار البحر"
-          ? "سطل"
-          : "كبير";
-
-
-      item.sizes = {
-
-        صغير:
-          Number(
-            document.getElementById(
-              "mSmall"
-            )?.value || 0
-          ),
-
-        وسط:
-          Number(
-            document.getElementById(
-              "mMedium"
-            )?.value || 0
-          )
-
-      };
-
-
-      item.sizes[
-        thirdKey
-      ] =
-        Number(
-          document.getElementById(
-            "mLarge"
-          )?.value || 0
-        );
-
-
-      delete item.price;
-      delete item.pricing;
-      delete item.prices;
-
-    }
-
-
-    if (
-      pricingType ===
-      "meal"
-    ) {
-
-      item.prices = {
-
-        وجبة:
-          Number(
-            document.getElementById(
-              "mMeal"
-            )?.value || 0
-          ),
-
-        ساندويش:
-          Number(
-            document.getElementById(
-              "mSandwich"
-            )?.value || 0
-          )
-
-      };
-
-
-      delete item.price;
-      delete item.pricing;
-      delete item.sizes;
-
-    }
-
+  if (includedItems.length === 0) {
+    alert("اختار صنف واحد على الأقل داخل العرض");
+    return;
   }
 
-
-  if (
-    index < 0
-  ) {
-
-    menu.push(
-      item
-    );
-
-  }
-
+  item.name = name;
+  item.price = price;
+  item.includedItems = includedItems;
 
   saveMenu();
 
-
   closeModal();
 
-
-  renderCategories();
-
-
-  showCategory(
-    currentCategory ||
-    CATEGORIES[0]
-  );
-
-
-  alert(
-    "✅ تم حفظ التعديل"
-  );
-
+  if (currentCategory === "🎁 العروض") {
+    showCategory(currentCategory);
+  }
 }
 
 
-// =====================================================
-// حذف صنف
-// =====================================================
+// ============================================================
+// PRICING FIELDS
+// ============================================================
 
-function deleteMenuItem(
-  index
-) {
+function renderPricingFields(existingItem = null) {
+  const container =
+    document.getElementById("pricingFields");
 
-  if (
-    !menu[index]
-  ) {
+  const typeElement =
+    document.getElementById("menuType");
+
+  if (!container || !typeElement) {
+    return;
+  }
+
+  const type = typeElement.value;
+
+  // ----------------------------------------------------------
+  // FIXED
+  // ----------------------------------------------------------
+
+  if (type === "fixed") {
+    const price =
+      existingItem && existingItem.type === "fixed"
+        ? existingItem.price
+        : "";
+
+    container.innerHTML = `
+      <label class="modal-label">
+        السعر
+      </label>
+
+      <input
+        id="price"
+        class="modal-input"
+        type="number"
+        inputmode="decimal"
+        min="0"
+        step="0.01"
+        value="${escapeHtml(price)}"
+        placeholder="السعر"
+      >
+    `;
 
     return;
-
   }
 
 
-  const item =
-    menu[index];
+  // ----------------------------------------------------------
+  // WEIGHT
+  // ----------------------------------------------------------
 
+  if (type === "weight") {
+    const price =
+      existingItem && existingItem.type === "weight"
+        ? existingItem.price
+        : "";
 
-  if (
-    !confirm(
-      `هل تريد حذف "${item.name}"؟`
-    )
-  ) {
+    const grill =
+      existingItem && existingItem.type === "weight"
+        ? existingItem.grill
+        : "";
+
+    const fry =
+      existingItem && existingItem.type === "weight"
+        ? existingItem.fry
+        : "";
+
+    container.innerHTML = `
+      <label class="modal-label">
+        السعر الأساسي / كغ
+      </label>
+
+      <input
+        id="price"
+        class="modal-input"
+        type="number"
+        inputmode="decimal"
+        min="0"
+        step="0.01"
+        value="${escapeHtml(price)}"
+      >
+
+      <label class="modal-label">
+        زيادة المشوي / كغ
+      </label>
+
+      <input
+        id="grill"
+        class="modal-input"
+        type="number"
+        inputmode="decimal"
+        min="0"
+        step="0.01"
+        value="${escapeHtml(grill)}"
+      >
+
+      <label class="modal-label">
+        زيادة المقلي / كغ
+      </label>
+
+      <input
+        id="fry"
+        class="modal-input"
+        type="number"
+        inputmode="decimal"
+        min="0"
+        step="0.01"
+        value="${escapeHtml(fry)}"
+      >
+    `;
 
     return;
-
   }
 
 
-  const deletedId =
-    item.id;
+  // ----------------------------------------------------------
+  // SIZES
+  // ----------------------------------------------------------
 
-
-  menu.splice(
-    index,
-    1
-  );
-
-
-  // إزالة الصنف المحذوف من العروض
-  menu.forEach(
-    function(menuItem) {
-
-      if (
-        Array.isArray(
-          menuItem.offerItems
-        )
-      ) {
-
-        menuItem.offerItems =
-          menuItem.offerItems.filter(
-            function(id) {
-
-              return (
-                id !==
-                deletedId
-              );
-
+  if (type === "sizes") {
+    const sizes =
+      existingItem &&
+      existingItem.type === "sizes" &&
+      Array.isArray(existingItem.sizes)
+        ? existingItem.sizes
+        : [
+            {
+              name: "صغير",
+              price: ""
+            },
+            {
+              name: "وسط",
+              price: ""
+            },
+            {
+              name: "كبير",
+              price: ""
             }
-          );
+          ];
 
+    container.innerHTML = `
+      <label class="modal-label">
+        الأحجام والأسعار
+      </label>
+
+      <div id="sizesFields">
+
+        ${sizes
+          .map(function (size, index) {
+            return `
+              <div class="size-row">
+
+                <input
+                  class="modal-input size-name"
+                  type="text"
+                  value="${escapeHtml(size.name)}"
+                  placeholder="اسم الحجم"
+                  data-index="${index}"
+                >
+
+                <input
+                  class="modal-input size-price"
+                  type="number"
+                  inputmode="decimal"
+                  min="0"
+                  step="0.01"
+                  value="${escapeHtml(size.price)}"
+                  placeholder="السعر"
+                  data-index="${index}"
+                >
+
+              </div>
+            `;
+          })
+          .join("")}
+
+      </div>
+
+      <button
+        type="button"
+        class="secondary-btn"
+        onclick="addSizeField()"
+      >
+        ➕ إضافة حجم
+      </button>
+    `;
+
+    return;
+  }
+
+
+  // ----------------------------------------------------------
+  // MEAL / SANDWICH
+  // ----------------------------------------------------------
+
+  if (type === "meal") {
+    const mealPrice =
+      existingItem && existingItem.type === "meal"
+        ? existingItem.mealPrice
+        : "";
+
+    const sandwichPrice =
+      existingItem && existingItem.type === "meal"
+        ? existingItem.sandwichPrice
+        : "";
+
+    container.innerHTML = `
+      <label class="modal-label">
+        سعر الوجبة
+      </label>
+
+      <input
+        id="mealPrice"
+        class="modal-input"
+        type="number"
+        inputmode="decimal"
+        min="0"
+        step="0.01"
+        value="${escapeHtml(mealPrice)}"
+      >
+
+      <label class="modal-label">
+        سعر الساندويش
+      </label>
+
+      <input
+        id="sandwichPrice"
+        class="modal-input"
+        type="number"
+        inputmode="decimal"
+        min="0"
+        step="0.01"
+        value="${escapeHtml(sandwichPrice)}"
+      >
+    `;
+
+    return;
+  }
+}
+
+
+// ============================================================
+// ADD SIZE FIELD
+// ============================================================
+
+function addSizeField() {
+  const container =
+    document.getElementById("sizesFields");
+
+  if (!container) {
+    return;
+  }
+
+  const index =
+    container.querySelectorAll(".size-row").length;
+
+  const row = document.createElement("div");
+
+  row.className = "size-row";
+
+  row.innerHTML = `
+    <input
+      class="modal-input size-name"
+      type="text"
+      placeholder="اسم الحجم"
+      data-index="${index}"
+    >
+
+    <input
+      class="modal-input size-price"
+      type="number"
+      inputmode="decimal"
+      min="0"
+      step="0.01"
+      placeholder="السعر"
+      data-index="${index}"
+    >
+  `;
+
+  container.appendChild(row);
+}
+
+
+// ============================================================
+// SAVE MENU FORM
+// ============================================================
+
+function saveMenuForm(index = null) {
+  const nameInput =
+    document.getElementById("menuName");
+
+  const categoryInput =
+    document.getElementById("menuCategory");
+
+  const typeInput =
+    document.getElementById("menuType");
+
+  const name = nameInput
+    ? nameInput.value.trim()
+    : "";
+
+  const category = categoryInput
+    ? categoryInput.value
+    : "";
+
+  const type = typeInput
+    ? typeInput.value
+    : "";
+
+  if (!name) {
+    alert("دخل اسم الصنف");
+    return;
+  }
+
+  if (!category) {
+    alert("اختار القسم");
+    return;
+  }
+
+  let itemData = {
+    name,
+    category,
+    type
+  };
+
+
+  // ----------------------------------------------------------
+  // FIXED
+  // ----------------------------------------------------------
+
+  if (type === "fixed") {
+    const priceInput =
+      document.getElementById("price");
+
+    const price = priceInput
+      ? Number(priceInput.value)
+      : 0;
+
+    if (!price || price < 0) {
+      alert("دخل السعر");
+      return;
+    }
+
+    itemData.price = price;
+  }
+
+
+  // ----------------------------------------------------------
+  // WEIGHT
+  // ----------------------------------------------------------
+
+  if (type === "weight") {
+    const priceInput =
+      document.getElementById("price");
+
+    const grillInput =
+      document.getElementById("grill");
+
+    const fryInput =
+      document.getElementById("fry");
+
+    const price = priceInput
+      ? Number(priceInput.value)
+      : 0;
+
+    const grill = grillInput
+      ? Number(grillInput.value) || 0
+      : 0;
+
+    const fry = fryInput
+      ? Number(fryInput.value) || 0
+      : 0;
+
+    if (!price || price < 0) {
+      alert("دخل السعر الأساسي");
+      return;
+    }
+
+    itemData.price = price;
+    itemData.grill = grill;
+    itemData.fry = fry;
+  }
+
+
+  // ----------------------------------------------------------
+  // SIZES
+  // ----------------------------------------------------------
+
+  if (type === "sizes") {
+    const names =
+      document.querySelectorAll(".size-name");
+
+    const prices =
+      document.querySelectorAll(".size-price");
+
+    const sizes = [];
+
+    for (let i = 0; i < names.length; i++) {
+      const sizeName =
+        names[i].value.trim();
+
+      const sizePrice =
+        Number(prices[i].value);
+
+      if (!sizeName) {
+        continue;
       }
 
-    }
-  );
+      if (
+        Number.isNaN(sizePrice) ||
+        sizePrice < 0
+      ) {
+        alert("تأكد من أسعار الأحجام");
+        return;
+      }
 
+      sizes.push({
+        name: sizeName,
+        price: sizePrice
+      });
+    }
+
+    if (sizes.length === 0) {
+      alert("أضف حجم واحد على الأقل");
+      return;
+    }
+
+    itemData.sizes = sizes;
+  }
+
+
+  // ----------------------------------------------------------
+  // MEAL
+  // ----------------------------------------------------------
+
+  if (type === "meal") {
+    const mealInput =
+      document.getElementById("mealPrice");
+
+    const sandwichInput =
+      document.getElementById("sandwichPrice");
+
+    const mealPrice = mealInput
+      ? Number(mealInput.value)
+      : 0;
+
+    const sandwichPrice = sandwichInput
+      ? Number(sandwichInput.value)
+      : 0;
+
+    if (
+      !mealPrice ||
+      mealPrice < 0 ||
+      !sandwichPrice ||
+      sandwichPrice < 0
+    ) {
+      alert(
+        "دخل سعر الوجبة وسعر الساندويش"
+      );
+
+      return;
+    }
+
+    itemData.mealPrice = mealPrice;
+    itemData.sandwichPrice = sandwichPrice;
+  }
+
+
+  // ----------------------------------------------------------
+  // SAVE
+  // ----------------------------------------------------------
+
+  if (
+    index !== null &&
+    index !== undefined &&
+    menu[index]
+  ) {
+    itemData.id = menu[index].id;
+
+    itemData.available =
+      menu[index].available !== false;
+
+    menu[index] = {
+      ...menu[index],
+      ...itemData
+    };
+
+  } else {
+    itemData.id = generateId("menu");
+    itemData.available = true;
+
+    menu.push(itemData);
+  }
 
   saveMenu();
 
-
   closeModal();
 
+  if (currentCategory) {
+    showCategory(currentCategory);
+  }
+}
 
-  renderCategories();
 
+// ============================================================
+// DELETE MENU ITEM
+// ============================================================
 
-  showCategory(
-    currentCategory ||
-    CATEGORIES[0]
+function deleteMenuItem(index) {
+  const item = menu[index];
+
+  if (!item) {
+    return;
+  }
+
+  const confirmed = confirm(
+    `متأكد بدك تحذف "${item.name}"؟`
   );
 
+  if (!confirmed) {
+    return;
+  }
+
+  menu.splice(index, 1);
+
+  saveMenu();
+
+  if (
+    currentCategory === item.category
+  ) {
+    showCategory(currentCategory);
+  }
+
+  renderMenuManager();
 }
 
 
-// =====================================================
-// زر الطلبات السابقة
-// =====================================================
-
-function openPreviousOrders() {
-
-  showPreviousOrders();
-
-}
-
-
-// =====================================================
-// الاتصال
-// =====================================================
+// ============================================================
+// ONLINE / OFFLINE
+// ============================================================
 
 window.addEventListener(
   "online",
-  function() {
-
+  function () {
     updateConnectionStatus();
-
     syncNow();
-
   }
 );
 
 
 window.addEventListener(
   "offline",
-  function() {
-
+  function () {
     updateConnectionStatus();
-
   }
 );
 
 
-// =====================================================
-// بدء التطبيق
-// =====================================================
+// ============================================================
+// DOM READY
+// ============================================================
 
 document.addEventListener(
   "DOMContentLoaded",
-  function() {
+  function () {
 
     loadMenu();
 
-
-    saveMenu();
-
-
-    checkLogin();
-
+    setupCustomerSearch();
 
     updateConnectionStatus();
 
+    checkLogin();
 
-    renderCategories();
-
-
-    currentCategory =
-      CATEGORIES[0];
-
-
-    showCategory(
-      currentCategory
-    );
-
-
-    setupCustomerSearch();
-
-
-    updateCart();
-
-
-    syncNow();
+    // Try syncing any orders saved while offline
+    if (navigator.onLine) {
+      syncNow();
+    }
 
   }
 );
+
+
+// ============================================================
+// GLOBAL FUNCTIONS
+// ============================================================
+
+window.login = login;
+window.logout = logout;
+
+window.setOrderType = setOrderType;
+
+window.showCategory = showCategory;
+window.chooseItem = chooseItem;
+
+window.closeModal = closeModal;
+
+window.selectWeightMethod =
+  selectWeightMethod;
+
+window.addWeightedItem =
+  addWeightedItem;
+
+window.addSizedItem =
+  addSizedItem;
+
+window.addMealItem =
+  addMealItem;
+
+window.duplicateCart =
+  duplicateCart;
+
+window.removeCart =
+  removeCart;
+
+window.clearOrder =
+  clearOrder;
+
+window.confirmOrder =
+  confirmOrder;
+
+window.showOrders =
+  showOrders;
+
+window.showPreviousOrders =
+  showPreviousOrders;
+
+window.printPreviousOrder =
+  printPreviousOrder;
+
+window.showMenuManager =
+  showMenuManager;
+
+window.toggleAvailable =
+  toggleAvailable;
+
+window.newMenuItem =
+  newMenuItem;
+
+window.newOffer =
+  newOffer;
+
+window.saveOffer =
+  saveOffer;
+
+window.editMenuItem =
+  editMenuItem;
+
+window.editOffer =
+  editOffer;
+
+window.saveOfferEdit =
+  saveOfferEdit;
+
+window.renderPricingFields =
+  renderPricingFields;
+
+window.addSizeField =
+  addSizeField;
+
+window.saveMenuForm =
+  saveMenuForm;
+
+window.deleteMenuItem =
+  deleteMenuItem;
+
+window.syncNow =
+  syncNow;
+
+
+// ============================================================
+// END OF SCRIPT
+// ============================================================
+
+
+// ============================================================
+// END OF PART 5
+// ============================================================
+
+
+// ============================================================
+// END OF PART 4
+// ============================================================
