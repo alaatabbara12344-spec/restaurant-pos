@@ -764,54 +764,43 @@ function buildInvoiceHtml(order){
 }
 
 function printInvoice(order){
-  if(!order)return alert("لا يوجد طلب للطباعة.");
+  if(!order){ alert("لا يوجد طلب للطباعة."); return; }
 
-  // iPhone/iPad Safari and many POS browsers do not reliably print from a
-  // hidden iframe. Print from the current page instead, then restore the POS.
-  const oldArea=document.getElementById("posPrintArea");
-  if(oldArea)oldArea.remove();
-  const oldStyle=document.getElementById("posPrintStyle");
-  if(oldStyle)oldStyle.remove();
+  // Open a real browser print page. This works more reliably on iPhone/iPad
+  // Safari than printing a hidden iframe or the POS page itself.
+  const printWindow = window.open("", "_blank");
+  if(!printWindow){
+    alert("الطباعة ما فتحت. إذا كنت على الآيفون، افتح الموقع من Safari وليس من نسخة الشاشة الرئيسية، ثم جرّب مرة ثانية.");
+    return;
+  }
 
-  const parser=new DOMParser();
-  const parsed=parser.parseFromString(buildInvoiceHtml(order),"text/html");
-  const area=document.createElement("div");
-  area.id="posPrintArea";
-  area.innerHTML=parsed.body?parsed.body.innerHTML:"";
-  document.body.appendChild(area);
-
-  const style=document.createElement("style");
-  style.id="posPrintStyle";
-  style.textContent=`
-    @media screen{
-      #posPrintArea{display:none!important}
-    }
-    @media print{
-      @page{size:80mm auto;margin:0}
-      html,body{width:80mm!important;margin:0!important;padding:0!important;background:#fff!important}
-      body>*:not(#posPrintArea){display:none!important}
-      #posPrintArea{display:block!important;width:80mm!important;margin:0 auto!important;padding:0!important}
-      #posPrintArea *{box-sizing:border-box}
-    }
-  `;
-  document.head.appendChild(style);
-
-  const cleanup=()=>{
-    area.remove();
-    style.remove();
-    window.removeEventListener("afterprint",cleanup);
-  };
-  window.addEventListener("afterprint",cleanup,{once:true});
-
-  // Must be called directly from the user's Print button click.
+  const html = buildInvoiceHtml(order);
   try{
-    window.focus();
-    window.print();
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+
+    const doPrint = () => {
+      try{
+        printWindow.focus();
+        printWindow.print();
+      }catch(e){
+        alert("تعذّرت الطباعة على هذا الجهاز.");
+      }
+    };
+
+    // Wait until the new document is ready before calling print.
+    if(printWindow.document.readyState === "complete"){
+      setTimeout(doPrint, 150);
+    }else{
+      printWindow.onload = () => setTimeout(doPrint, 150);
+    }
   }catch(e){
-    cleanup();
-    alert("تعذّرت الطباعة على هذا الجهاز. جرّب الطباعة من Safari/Chrome.");
+    try{ printWindow.close(); }catch(_){ }
+    alert("تعذّرت الطباعة على هذا الجهاز.");
   }
 }
+
 document.addEventListener("keydown",e=>{if(e.key!=="Enter")return;const l=document.getElementById("loginScreen");if(l&&getComputedStyle(l).display!=="none")login()});
 document.addEventListener("DOMContentLoaded",()=>{
   const p=document.getElementById("phone");if(p){p.addEventListener("change",handlePhoneChange);p.addEventListener("blur",handlePhoneChange)}
