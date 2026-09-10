@@ -11,6 +11,8 @@ const CUSTOMER_STORAGE_KEY = "tabbaraCustomers";
 const PENDING_ORDERS_KEY = "tabbara_pending_orders";
 const MENU_STORAGE_KEY = "tabbaraMenu";
 const DEVICE_ID_KEY = "tabbaraDeviceId";
+const DELIVERY_CHARGE_KEY = "tabbaraDeliveryCharge";
+const DEFAULT_DELIVERY_CHARGE = 2;
 const CLOUD_MENU_ID = "1";
 
 let deviceId = localStorage.getItem(DEVICE_ID_KEY);
@@ -70,6 +72,46 @@ let cart = [];
 let selectedOrderType = "";
 let currentCategory = "";
 let currentModalItem = null;
+let deliveryCharge = DEFAULT_DELIVERY_CHARGE;
+
+function loadDeliveryCharge(){
+  const saved=Number(localStorage.getItem(DELIVERY_CHARGE_KEY));
+  deliveryCharge=Number.isFinite(saved)&&saved>=0?saved:DEFAULT_DELIVERY_CHARGE;
+}
+async function syncDeliveryChargeFromCloud(){
+  if(!navigator.onLine)return false;
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/pos_settings?id=eq.delivery_charge&select=id,value,updated_at`,{headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY}});
+    if(!r.ok)throw new Error("Settings download failed: "+r.status);
+    const rows=await r.json();
+    if(rows.length){
+      const v=Number(rows[0].value);
+      if(Number.isFinite(v)&&v>=0){deliveryCharge=v;localStorage.setItem(DELIVERY_CHARGE_KEY,String(v));renderCart();}
+    }
+    return true;
+  }catch(e){console.warn("Cloud delivery charge sync unavailable:",e);return false;}
+}
+async function saveDeliveryCharge(){
+  const input=document.getElementById("deliveryChargeInput");
+  const v=Number(input?.value);
+  if(!Number.isFinite(v)||v<0)return alert("أدخل رسم توصيل صحيح (0 أو أكثر).");
+  deliveryCharge=Number(v.toFixed(2));
+  localStorage.setItem(DELIVERY_CHARGE_KEY,String(deliveryCharge));
+  try{
+    if(navigator.onLine){
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/pos_settings?on_conflict=id`,{method:"POST",headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify({id:"delivery_charge",value:deliveryCharge,updated_at:new Date().toISOString()})});
+      if(!r.ok)throw new Error("Settings save failed: "+r.status);
+    }
+    renderCart();
+    showMenuManager();
+    alert("تم حفظ رسم التوصيل: $"+money(deliveryCharge));
+  }catch(e){
+    console.warn(e);
+    renderCart();
+    showMenuManager();
+    alert("تم حفظه على الجهاز، وسيتم مزامنته عند توفر الاتصال.");
+  }
+}
 
 function cloudRowToLocal(row) {
   const data = row.data && typeof row.data === "object" ? row.data : {};
@@ -212,7 +254,10 @@ let menuSyncInterval = null;
 function startMenuAutoSync() {
   if (menuSyncInterval) clearInterval(menuSyncInterval);
   menuSyncInterval = setInterval(() => {
-    if (navigator.onLine) syncMenuFromCloud();
+    if (navigator.onLine) {
+      syncMenuFromCloud();
+      syncDeliveryChargeFromCloud();
+    }
   }, 10000);
 }
 
@@ -231,7 +276,9 @@ function generateId(prefix="id") {
   return prefix+"-"+Date.now()+"-"+Math.random().toString(36).substring(2,9);
 }
 function getItemById(id) { return menu.find(i => i.id === id); }
-function getTotal() { return cart.reduce((s,i)=>s+Number(i.total||0),0); }
+function getSubtotal() { return cart.reduce((s,i)=>s+Number(i.total||0),0); }
+function getDeliveryCharge() { return selectedOrderType === "Delevery" ? Number(deliveryCharge||0) : 0; }
+function getTotal() { return getSubtotal() + getDeliveryCharge(); }
 function getDeviceId() { return deviceId; }
 
 function normalizePhone(phone) {
@@ -406,7 +453,12 @@ function renderCart(){
     <div class="cart-item-controls"><button onclick="changeCartQuantity('${i.id}',-1)">−</button><span>${i.quantity||1}</span><button onclick="changeCartQuantity('${i.id}',1)">+</button><button class="remove-btn" onclick="removeFromCart('${i.id}')">🗑</button></div>
     <div class="cart-item-total">${money(i.total)}</div></div>`;
   }).join("");
-  if(t)t.textContent=money(getTotal());
+  if(t){
+    const subtotal=getSubtotal(),charge=getDeliveryCharge(),total=subtotal+charge;
+    t.innerHTML=selectedOrderType==="Delevery"
+      ? `<div style="font-size:15px;font-weight:normal;margin-bottom:5px">المجموع الفرعي: $${money(subtotal)}</div><div style="font-size:15px;font-weight:normal;margin-bottom:5px">رسوم التوصيل: $${money(charge)}</div><div>المجموع: $${money(total)}</div>`
+      : `المجموع: $${money(total)}`;
+  }
 }
 
 function loadCustomers(){try{return JSON.parse(localStorage.getItem(CUSTOMER_STORAGE_KEY)||"[]")}catch(e){return[]}}
@@ -486,6 +538,7 @@ async function confirmOrder(){
     order_type:selectedOrderType,
     customer_name:name||null,customer_phone:phone||null,customer_address:address||null,notes:notes||null,
     items:cart.map(i=>({id:i.id,menu_item_id:i.menuItemId||null,name:i.name,category:getItemById(i.menuItemId)?.category||null,quantity:Number(i.quantity||1),unit_price:Number(i.unitPrice||0),total:Number(i.total||0),weight:i.weight||null,preparation:i.preparation||null,size:i.size||null,option:i.option||null,offerDetails:i.offerDetails||null})),
+    delivery_charge:Number(getDeliveryCharge().toFixed(2)),
     total:Number(getTotal().toFixed(2)),device_id:getDeviceId(),sync_status:navigator.onLine?"synced":"pending",created_at:new Date().toISOString()
   };
   if(phone){try{await saveCustomer({phone,name,address,notes})}catch(e){console.warn(e)}}
@@ -556,6 +609,7 @@ function showOrderDetails(order){
     ${order.customer_phone?`<div><strong>الهاتف:</strong> ${escapeHtml(order.customer_phone)}</div>`:""}
     ${order.customer_address?`<div><strong>العنوان:</strong> ${escapeHtml(order.customer_address)}</div>`:""}
     <div style="margin-top:12px">${items||"لا يوجد أصناف"}</div>
+    ${Number(order.delivery_charge||0)>0?`<div style="padding:8px 0;border-bottom:1px dashed #ddd">رسوم التوصيل: <strong>${money(order.delivery_charge)}</strong></div>`:""}
     <div style="font-size:20px;font-weight:bold;text-align:center;margin:15px 0">المجموع: ${money(order.total)}</div>
     ${order.notes?`<div style="padding:8px;background:#f7f7f7;border-radius:8px">ملاحظات: ${escapeHtml(order.notes)}</div>`:""}
     <button class="primary" onclick='printInvoice(${JSON.stringify(order).replace(/'/g,"&#39;")})' style="width:100%;margin-top:12px;padding:12px;border:0;border-radius:10px">🖨️ إعادة طباعة</button>
@@ -588,6 +642,15 @@ function showMenuManager(){
       </div>
     </div></div>`).join("");
   modal("إدارة المنيو",`<div>
+    <div style="border:1px solid #ddd;border-radius:12px;padding:12px;margin-bottom:15px;background:#f8fafb">
+      <div style="font-weight:bold;margin-bottom:8px">🛵 رسوم التوصيل</div>
+      <div style="font-size:12px;color:#666;margin-bottom:7px">تُضاف تلقائياً فقط على طلبات Delevery ويمكن تعديلها بأي وقت.</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="deliveryChargeInput" type="number" min="0" step="0.01" value="${money(deliveryCharge)}" style="flex:1;padding:12px;border:1px solid #cfd5da;border-radius:9px;font-size:16px">
+        <span style="font-weight:bold">$</span>
+        <button class="primary" onclick="saveDeliveryCharge()" style="padding:11px 14px;border:0;border-radius:9px">حفظ</button>
+      </div>
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:15px">
       <button class="primary" onclick="openAddMenuItem()" style="padding:12px;border:0;border-radius:10px">➕ إضافة صنف</button>
       <button onclick="openAddOffer()" style="padding:12px;border:0;border-radius:10px">🎁 إضافة عرض</button>
@@ -759,6 +822,7 @@ function buildInvoiceHtml(order){
   <h2>Tabbara Seafood</h2><div style="text-align:center">${escapeHtml(order.order_type||"")}</div>
   ${order.customer_name?`<div>الزبون: ${escapeHtml(order.customer_name)}</div>`:""}${order.customer_phone?`<div>الهاتف: ${escapeHtml(order.customer_phone)}</div>`:""}${order.customer_address?`<div>العنوان: ${escapeHtml(order.customer_address)}</div>`:""}
   <table><thead><tr><th>الصنف</th><th>العدد</th><th>السعر</th></tr></thead><tbody>${rows}</tbody></table>
+  ${Number(order.delivery_charge||0)>0?`<div style="margin-top:10px;text-align:right">رسوم التوصيل: ${money(order.delivery_charge)}</div>`:""}
   <div class="total">المجموع: ${money(order.total)}</div>${order.notes?`<div style="margin-top:15px">ملاحظات: ${escapeHtml(order.notes)}</div>`:""}<div style="text-align:center;margin-top:20px">شكراً لزيارتكم ❤️</div>
   </body></html>`;
 }
@@ -814,12 +878,13 @@ document.addEventListener("DOMContentLoaded",()=>{
 
 async function initPOS(){
   try{
-    loadMenu();loadCustomers();loadPendingOrders();getDeviceId();updateConnectionStatus();renderCategories();renderCart();
+    loadMenu();loadDeliveryCharge();loadCustomers();loadPendingOrders();getDeviceId();updateConnectionStatus();renderCategories();renderCart();
     if(localStorage.getItem("tabbaraLoggedIn")==="true")showApp();
     else {const l=document.getElementById("loginScreen");if(l)l.style.display="flex";}
     if(navigator.onLine){
       setTimeout(async()=>{
         await syncMenuFromCloud();
+        await syncDeliveryChargeFromCloud();
         await syncPendingOrders();
         startMenuAutoSync();
       },300);
@@ -831,7 +896,7 @@ async function initPOS(){
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",initPOS);else initPOS();
 
 window.TABBARA_POS={
-  getMenu:()=>menu,getStructuredMenu:()=>getStructuredMenu(),saveMenu:()=>saveMenu(),
+  getMenu:()=>menu,getStructuredMenu:()=>getStructuredMenu(),saveMenu:()=>saveMenu(),getDeliveryCharge:()=>deliveryCharge,
   findCustomer:phone=>findCustomer(phone),saveCustomer:c=>saveCustomer(c),
   confirmOrder:()=>confirmOrder(),syncPendingOrders:()=>syncPendingOrders(),getPendingOrders:()=>loadPendingOrders(),
   getDeviceId:()=>getDeviceId()
