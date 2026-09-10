@@ -71,3 +71,15 @@ textarea{height:75px;resize:vertical}.customer-message{min-height:22px;font-size
 #modalRoot{position:relative;z-index:100000}
 .modal-backdrop{position:fixed!important;inset:0!important;width:100vw;height:100vh;overflow:hidden!important;background:rgba(0,0,0,.55)!important;display:flex!important;align-items:center!important;justify-content:center!important;z-index:2147483646!important}
 .modal-box{position:relative!important;z-index:2147483647!important;margin:auto!important}
+
+
+/* iOS-safe invoice printing */
+#posPrintArea{display:none}
+@media print{
+  @page{size:80mm auto;margin:0}
+  html,body{margin:0!important;padding:0!important;background:#fff!important}
+  body.printing-invoice > *:not(#posPrintArea){display:none!important}
+  body.printing-invoice #posPrintArea{display:block!important;width:80mm!important;margin:0 auto!important;padding:0!important;background:#fff!important}
+  body.printing-invoice #posPrintArea body{display:block!important;width:80mm!important;margin:0!important;padding:0!important}
+  body.printing-invoice #posPrintArea *{box-sizing:border-box}
+}

@@ -766,40 +766,46 @@ function buildInvoiceHtml(order){
 function printInvoice(order){
   if(!order){ alert("لا يوجد طلب للطباعة."); return; }
 
-  // Open a real browser print page. This works more reliably on iPhone/iPad
-  // Safari than printing a hidden iframe or the POS page itself.
-  const printWindow = window.open("", "_blank");
-  if(!printWindow){
-    alert("الطباعة ما فتحت. إذا كنت على الآيفون، افتح الموقع من Safari وليس من نسخة الشاشة الرئيسية، ثم جرّب مرة ثانية.");
-    return;
+  // iPhone/iPad-safe printing: print from the current POS page instead of
+  // opening a popup/new window (which can be blocked in Safari/PWA mode).
+  let area=document.getElementById("posPrintArea");
+  if(!area){
+    area=document.createElement("div");
+    area.id="posPrintArea";
+    document.body.appendChild(area);
   }
 
-  const html = buildInvoiceHtml(order);
+  const invoiceDoc=document.createElement("div");
+  invoiceDoc.innerHTML=buildInvoiceHtml(order);
+  const invoiceBody=invoiceDoc.querySelector("body");
+  area.innerHTML=invoiceBody ? invoiceBody.innerHTML : invoiceDoc.innerHTML;
+  document.body.classList.add("printing-invoice");
+
+  const cleanup=()=>{
+    document.body.classList.remove("printing-invoice");
+    if(area) area.innerHTML="";
+    window.removeEventListener("afterprint",cleanup);
+  };
+
+  window.addEventListener("afterprint",cleanup);
+
+  // Call print directly from the button click. This is important on iOS.
   try{
-    printWindow.document.open();
-    printWindow.document.write(html);
-    printWindow.document.close();
-
-    const doPrint = () => {
-      try{
-        printWindow.focus();
-        printWindow.print();
-      }catch(e){
-        alert("تعذّرت الطباعة على هذا الجهاز.");
+    window.print();
+    // Fallback cleanup for browsers that don't fire afterprint.
+    setTimeout(()=>{
+      if(document.body.classList.contains("printing-invoice")){
+        document.body.classList.remove("printing-invoice");
+        if(area) area.innerHTML="";
+        window.removeEventListener("afterprint",cleanup);
       }
-    };
-
-    // Wait until the new document is ready before calling print.
-    if(printWindow.document.readyState === "complete"){
-      setTimeout(doPrint, 150);
-    }else{
-      printWindow.onload = () => setTimeout(doPrint, 150);
-    }
+    },15000);
   }catch(e){
-    try{ printWindow.close(); }catch(_){ }
-    alert("تعذّرت الطباعة على هذا الجهاز.");
+    cleanup();
+    alert("تعذّرت الطباعة على هذا الجهاز. جرّب فتح الموقع مباشرة من Safari.");
   }
 }
+
 
 document.addEventListener("keydown",e=>{if(e.key!=="Enter")return;const l=document.getElementById("loginScreen");if(l&&getComputedStyle(l).display!=="none")login()});
 document.addEventListener("DOMContentLoaded",()=>{
