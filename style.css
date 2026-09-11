@@ -73,13 +73,28 @@ textarea{height:75px;resize:vertical}.customer-message{min-height:22px;font-size
 .modal-box{position:relative!important;z-index:2147483647!important;margin:auto!important}
 
 
-/* iOS-safe invoice printing */
+/* 80mm thermal receipt printing */
 #posPrintArea{display:none}
+
 @media print{
-  @page{size:80mm auto;margin:0}
+  @page{size:80mm 200mm;margin:0}
   html,body{margin:0!important;padding:0!important;background:#fff!important}
   body.printing-invoice > *:not(#posPrintArea){display:none!important}
-  body.printing-invoice #posPrintArea{display:block!important;width:80mm!important;margin:0 auto!important;padding:0!important;background:#fff!important}
-  body.printing-invoice #posPrintArea body{display:block!important;width:80mm!important;margin:0!important;padding:0!important}
-  body.printing-invoice #posPrintArea *{box-sizing:border-box}
+  body.printing-invoice #posPrintArea{
+    display:block!important;
+    width:72mm!important;
+    margin:0 auto!important;
+    padding:3mm 2mm!important;
+    background:#fff!important;
+    font-family:Arial,sans-serif!important;
+    color:#000!important;
+  }
+  body.printing-invoice #posPrintArea *{box-sizing:border-box!important}
+  body.printing-invoice #posPrintArea table{width:100%!important;border-collapse:collapse!important}
+  body.printing-invoice #posPrintArea td,
+  body.printing-invoice #posPrintArea th{
+    border-bottom:1px dashed #777!important;
+    padding:2mm 1mm!important;
+    font-size:11px!important;
+  }
 }

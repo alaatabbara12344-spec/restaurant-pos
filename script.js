@@ -856,24 +856,92 @@ function exportStructuredMenu(){
 function buildInvoiceHtml(order){
   const rows=(order.items||[]).map(i=>{
     const title=[i.name,i.weight?`${Number(i.weight).toFixed(2)} كغ`:"",i.preparation||"",i.size||"",i.option||""].filter(Boolean).join(" - ");
-    const offerDetails=i.offerDetails&&i.offerDetails.length?`<div style="font-size:10px;margin-top:3px">${i.offerDetails.map(x=>escapeHtml([x.name,x.weight?`${Number(x.weight).toFixed(2)} كغ`:"",x.size||"",x.quantity>1?`× ${x.quantity}`:""].filter(Boolean).join(" - "))).join("<br>")}</div>`:"";
-    return `<tr><td>${escapeHtml(title)}${offerDetails}</td><td style="text-align:center">${i.quantity}</td><td>${money(i.total)}</td></tr>`;
+    const offerDetails=i.offerDetails&&i.offerDetails.length
+      ?`<div class="offer-details">${i.offerDetails.map(x=>escapeHtml([x.name,x.weight?`${Number(x.weight).toFixed(2)} كغ`:"",x.size||"",x.quantity>1?`× ${x.quantity}`:""].filter(Boolean).join(" - "))).join("<br>")}</div>`
+      :"";
+    return `<tr><td>${escapeHtml(title)}${offerDetails}</td><td class="qty">${i.quantity}</td><td class="price">${money(i.total)}</td></tr>`;
   }).join("");
-  return `<!doctype html><html dir="rtl"><head><meta charset="UTF-8"><title>Tabbara Fish</title><style>body{font-family:Arial;width:80mm;margin:auto;padding:10px}h2{text-align:center}table{width:100%;border-collapse:collapse}td,th{border-bottom:1px dashed #999;padding:5px;font-size:12px}.total{text-align:center;font-size:18px;font-weight:bold;margin-top:15px}</style></head><body>
-  <h2>Tabbara Fish</h2><div style="text-align:center">${escapeHtml(order.order_type||"")}</div>
-  <div style="text-align:center;font-size:11px;margin:4px 0 8px">${escapeHtml(formatOrderDateTime(order.created_at))}</div>
-  ${order.customer_name?`<div>الزبون: ${escapeHtml(order.customer_name)}</div>`:""}${order.customer_phone?`<div>الهاتف: ${escapeHtml(order.customer_phone)}</div>`:""}${order.customer_address?`<div>العنوان: ${escapeHtml(order.customer_address)}</div>`:""}
-  <table><thead><tr><th>الصنف</th><th>العدد</th><th>السعر</th></tr></thead><tbody>${rows}</tbody></table>
-  ${Number(order.delivery_charge||0)>0?`<div style="margin-top:10px;text-align:right">رسوم التوصيل: ${money(order.delivery_charge)}</div>`:""}
-  <div class="total">المجموع: ${money(order.total)}</div>${order.notes?`<div style="margin-top:15px">ملاحظات: ${escapeHtml(order.notes)}</div>`:""}<div style="text-align:center;margin-top:20px">شكراً لزيارتكم ❤️</div>
-  </body></html>`;
-}
 
+  return `<!doctype html>
+<html dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Tabbara Fish</title>
+<style>
+  @page { size: 80mm 200mm; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; background:#fff; }
+  body {
+    width:72mm;
+    margin:0 auto;
+    padding:3mm 2mm;
+    font-family:Arial,sans-serif;
+    font-size:12px;
+    line-height:1.35;
+    color:#000;
+  }
+  h2 { margin:0 0 4mm; text-align:center; font-size:18px; }
+  .center { text-align:center; }
+  .meta { text-align:center; font-size:10px; margin:2mm 0 3mm; }
+  .customer { margin:0 0 3mm; font-size:11px; line-height:1.5; }
+  table { width:100%; border-collapse:collapse; table-layout:fixed; }
+  th,td { border-bottom:1px dashed #777; padding:2mm 1mm; font-size:11px; vertical-align:top; word-wrap:break-word; }
+  th { font-weight:bold; }
+  th:first-child,td:first-child { width:58%; text-align:right; }
+  th:nth-child(2),td:nth-child(2) { width:15%; text-align:center; }
+  th:last-child,td:last-child { width:27%; text-align:left; }
+  .offer-details { font-size:9px; margin-top:1mm; line-height:1.35; }
+  .total { text-align:center; font-size:17px; font-weight:bold; margin-top:4mm; }
+  .notes { margin-top:4mm; font-size:10px; }
+  .thanks { text-align:center; margin-top:6mm; font-size:10px; }
+</style>
+</head>
+<body>
+  <h2>Tabbara Fish</h2>
+  <div class="center">${escapeHtml(order.order_type||"")}</div>
+  <div class="meta">${escapeHtml(formatOrderDateTime(order.created_at))}</div>
+  <div class="customer">
+    ${order.customer_name?`<div>الزبون: ${escapeHtml(order.customer_name)}</div>`:""}
+    ${order.customer_phone?`<div>الهاتف: ${escapeHtml(order.customer_phone)}</div>`:""}
+    ${order.customer_address?`<div>العنوان: ${escapeHtml(order.customer_address)}</div>`:""}
+  </div>
+  <table>
+    <thead><tr><th>الصنف</th><th>العدد</th><th>السعر</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  ${Number(order.delivery_charge||0)>0?`<div style="margin-top:3mm;text-align:right">رسوم التوصيل: ${money(order.delivery_charge)}</div>`:""}
+  <div class="total">المجموع: ${money(order.total)}</div>
+  ${order.notes?`<div class="notes">ملاحظات: ${escapeHtml(order.notes)}</div>`:""}
+  <div class="thanks">شكراً لزيارتكم ❤️</div>
+</body>
+</html>`;
+}
 function printInvoice(order){
   if(!order){ alert("لا يوجد طلب للطباعة."); return; }
 
-  // iPhone/iPad-safe printing: print from the current POS page instead of
-  // opening a popup/new window (which can be blocked in Safari/PWA mode).
+  const invoiceHtml = buildInvoiceHtml(order);
+
+  // Desktop Chrome/Edge: print a dedicated 80mm document.
+  // This avoids the POS page/layout influencing the print preview.
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  if(!isIOS){
+    const w = window.open("", "_blank", "width=420,height=700");
+    if(w){
+      w.document.open();
+      w.document.write(invoiceHtml);
+      w.document.close();
+      w.focus();
+      setTimeout(()=>{
+        w.print();
+        setTimeout(()=>w.close(), 500);
+      }, 250);
+      return;
+    }
+  }
+
+  // iPhone/iPad-safe fallback.
   let area=document.getElementById("posPrintArea");
   if(!area){
     area=document.createElement("div");
@@ -882,7 +950,7 @@ function printInvoice(order){
   }
 
   const invoiceDoc=document.createElement("div");
-  invoiceDoc.innerHTML=buildInvoiceHtml(order);
+  invoiceDoc.innerHTML=invoiceHtml;
   const invoiceBody=invoiceDoc.querySelector("body");
   area.innerHTML=invoiceBody ? invoiceBody.innerHTML : invoiceDoc.innerHTML;
   document.body.classList.add("printing-invoice");
@@ -894,16 +962,11 @@ function printInvoice(order){
   };
 
   window.addEventListener("afterprint",cleanup);
-
-  // Call print directly from the button click. This is important on iOS.
   try{
     window.print();
-    // Fallback cleanup for browsers that don't fire afterprint.
     setTimeout(()=>{
       if(document.body.classList.contains("printing-invoice")){
-        document.body.classList.remove("printing-invoice");
-        if(area) area.innerHTML="";
-        window.removeEventListener("afterprint",cleanup);
+        cleanup();
       }
     },15000);
   }catch(e){
