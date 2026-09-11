@@ -341,3 +341,102 @@ textarea{height:75px;resize:vertical}.customer-message{min-height:22px;font-size
     font-size:24px!important;
   }
 }
+
+
+/* ============================================================
+   CONFIRMATION SCREEN + 80mm PRINT PREVIEW FOR TOUCH
+   ============================================================ */
+.confirm-order-screen{font-size:18px}
+.confirm-success{text-align:center;padding:8px 0 18px}
+.confirm-check{
+  width:70px;height:70px;margin:0 auto 10px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:#16803c;color:#fff;font-size:44px;font-weight:bold
+}
+.confirm-success-title{font-size:22px;font-weight:bold;line-height:1.45}
+
+.invoice-preview-wrap{
+  display:flex;flex-direction:column;align-items:center;
+  margin:0 auto 20px
+}
+.invoice-preview-title{
+  width:100%;text-align:center;font-size:19px;font-weight:bold;
+  margin-bottom:10px
+}
+.invoice-preview{
+  width:80mm;max-width:100%;
+  background:#fff;color:#111;border:2px dashed #bbb;
+  box-shadow:0 3px 15px rgba(0,0,0,.10);
+  padding:5mm 4mm;
+  font-family:Arial,sans-serif;font-size:12px;line-height:1.45;
+  text-align:right
+}
+.invoice-preview h4{
+  margin:0 0 3mm;text-align:center;font-size:19px
+}
+.invoice-preview-center{text-align:center}
+.invoice-preview-date{
+  text-align:center;font-size:10px;color:#666;margin:2mm 0 3mm
+}
+.confirm-invoice-head,
+.confirm-invoice-row{
+  display:grid;grid-template-columns:minmax(0,1fr) 15% 27%;
+  gap:2px;align-items:start
+}
+.confirm-invoice-head{
+  margin-top:3mm;font-weight:bold;
+  border-bottom:2px solid #111;padding:2mm 1mm
+}
+.confirm-invoice-row{
+  border-bottom:1px dashed #888;padding:2mm 1mm
+}
+.confirm-invoice-item{min-width:0}
+.confirm-invoice-item small{
+  display:block;font-size:9px;color:#555;margin-top:1mm
+}
+.confirm-invoice-qty{text-align:center}
+.confirm-invoice-price{text-align:left}
+.confirm-invoice-subtotal{
+  display:flex;justify-content:space-between;
+  padding:2mm 1mm;border-bottom:1px dashed #888
+}
+.confirm-invoice-total{
+  display:flex;justify-content:space-between;
+  padding:3mm 1mm 1mm;font-size:17px;font-weight:bold
+}
+.confirm-invoice-notes{
+  margin-top:3mm;padding:2mm;background:#f4f4f4;font-size:10px
+}
+.invoice-preview-thanks{text-align:center;margin-top:4mm;font-size:10px}
+.invoice-preview-empty{text-align:center;padding:8mm 0;color:#777}
+
+.confirm-action-buttons{display:flex;flex-direction:column;gap:10px}
+.confirm-action-buttons button{
+  width:100%!important;min-height:66px!important;
+  border-radius:13px!important;font-size:20px!important;
+  font-weight:bold!important;padding:15px!important;
+  touch-action:manipulation
+}
+
+@media (min-width:1000px){
+  .confirm-order-screen{font-size:20px}
+  .confirm-success{padding:8px 0 22px}
+  .confirm-check{width:82px;height:82px;font-size:52px}
+  .confirm-success-title{font-size:25px}
+  .invoice-preview-title{font-size:22px;margin-bottom:14px}
+  .invoice-preview{
+    width:80mm;
+    padding:5mm 4mm;
+    font-size:13px
+  }
+  .invoice-preview h4{font-size:21px}
+  .confirm-invoice-head,.confirm-invoice-row{padding:2.5mm 1mm}
+  .confirm-invoice-item small{font-size:10px}
+  .confirm-invoice-total{font-size:19px}
+  .confirm-action-buttons button{min-height:76px!important;font-size:23px!important}
+}
+
+@media (min-width:1400px){
+  .confirm-action-buttons{gap:14px}
+  .confirm-action-buttons button{min-height:82px!important;font-size:24px!important}
+}

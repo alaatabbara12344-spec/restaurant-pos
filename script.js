@@ -585,13 +585,43 @@ async function confirmOrder(){
   if(navigator.onLine){try{await sendOrder(order);sent=true}catch(e){console.warn(e)}}
   if(!sent)addPendingOrder({...order,sync_status:"pending"});
   window.lastCompletedOrder=order;
-  modal("تم تأكيد الطلب",`<div style="text-align:center;padding:12px">
-    <div style="font-size:48px;margin-bottom:8px">✓</div>
-    <h3 style="margin:8px 0 14px">${sent?"تم حفظ الطلب بنجاح.":"تم حفظ الطلب على الجهاز وسيتم مزامنته عند عودة الإنترنت."}</h3>
-    <div style="font-size:14px;color:#666;margin-top:8px">${formatOrderDateTime(order.created_at)}</div>
-    <div style="font-size:22px;font-weight:bold;margin:15px 0">المجموع: $${money(order.total)}</div>
-    <button class="primary" onclick="printInvoice(window.lastCompletedOrder)" style="width:100%;margin-bottom:8px">🖨️ طباعة الفاتورة</button>
-    <button class="secondary" onclick="closeModal();clearOrder()" style="width:100%">طلب جديد</button>
+  const invoiceItems=(order.items||[]).map(i=>{
+    const details=[i.weight?`${Number(i.weight).toFixed(2)} كغ`:"",i.preparation||"",i.size||"",i.option||"",i.quantity>1?`× ${i.quantity}`:""].filter(Boolean).join(" • ");
+    return `<div class="confirm-invoice-row">
+      <div class="confirm-invoice-item"><strong>${escapeHtml(i.name||"")}</strong>${details?`<small>${escapeHtml(details)}</small>`:""}</div>
+      <div class="confirm-invoice-qty">${Number(i.quantity||1)}</div>
+      <div class="confirm-invoice-price">${money(i.total)}</div>
+    </div>`;
+  }).join("");
+
+  modal("تم تأكيد الطلب",`<div class="confirm-order-screen">
+    <div class="confirm-success">
+      <div class="confirm-check">✓</div>
+      <div class="confirm-success-title">${sent?"تم حفظ الطلب بنجاح.":"تم حفظ الطلب على الجهاز وسيتم مزامنته عند عودة الإنترنت."}</div>
+    </div>
+
+    <div class="invoice-preview-wrap">
+      <div class="invoice-preview-title">معاينة الفاتورة — كما ستُطبع 80mm</div>
+      <div class="invoice-preview">
+        <h4>Tabbara Fish</h4>
+        <div class="invoice-preview-center">${escapeHtml(order.order_type||"")}</div>
+        <div class="invoice-preview-date">${escapeHtml(formatOrderDateTime(order.created_at))}</div>
+        ${order.customer_name?`<div>الزبون: ${escapeHtml(order.customer_name)}</div>`:""}
+        ${order.customer_phone?`<div>الهاتف: ${escapeHtml(order.customer_phone)}</div>`:""}
+        ${order.customer_address?`<div>العنوان: ${escapeHtml(order.customer_address)}</div>`:""}
+        <div class="confirm-invoice-head"><span>الصنف</span><span>العدد</span><span>السعر</span></div>
+        ${invoiceItems||'<div class="invoice-preview-empty">لا يوجد أصناف</div>'}
+        ${Number(order.delivery_charge||0)>0?`<div class="confirm-invoice-subtotal"><span>رسوم التوصيل</span><strong>${money(order.delivery_charge)}</strong></div>`:""}
+        <div class="confirm-invoice-total"><span>المجموع</span><strong>${money(order.total)}</strong></div>
+        ${order.notes?`<div class="confirm-invoice-notes">ملاحظات: ${escapeHtml(order.notes)}</div>`:""}
+        <div class="invoice-preview-thanks">شكراً لزيارتكم ❤️</div>
+      </div>
+    </div>
+
+    <div class="confirm-action-buttons">
+      <button class="primary confirm-print-btn" onclick="printInvoice(window.lastCompletedOrder)">🖨️ طباعة الفاتورة</button>
+      <button class="secondary confirm-new-btn" onclick="closeModal();clearOrder()">طلب جديد</button>
+    </div>
   </div>`);
 }
 
