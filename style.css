@@ -73,28 +73,143 @@ textarea{height:75px;resize:vertical}.customer-message{min-height:22px;font-size
 .modal-box{position:relative!important;z-index:2147483647!important;margin:auto!important}
 
 
-/* 80mm thermal receipt printing */
+/* iOS-safe invoice printing */
 #posPrintArea{display:none}
-
 @media print{
-  @page{size:80mm 200mm;margin:0}
+  @page{size:80mm auto;margin:0}
   html,body{margin:0!important;padding:0!important;background:#fff!important}
   body.printing-invoice > *:not(#posPrintArea){display:none!important}
-  body.printing-invoice #posPrintArea{
-    display:block!important;
-    width:72mm!important;
-    margin:0 auto!important;
-    padding:3mm 2mm!important;
-    background:#fff!important;
-    font-family:Arial,sans-serif!important;
-    color:#000!important;
+  body.printing-invoice #posPrintArea{display:block!important;width:80mm!important;margin:0 auto!important;padding:0!important;background:#fff!important}
+  body.printing-invoice #posPrintArea body{display:block!important;width:80mm!important;margin:0!important;padding:0!important}
+  body.printing-invoice #posPrintArea *{box-sizing:border-box}
+}
+
+
+/* ============================================================
+   LARGE TOUCHSCREEN POS - desktop/touch monitor optimization
+   Functional code unchanged; UI controls are larger and easier to touch.
+   ============================================================ */
+@media (min-width: 1000px){
+  body{font-size:16px}
+  header{padding:20px 24px}
+  header h1{font-size:32px}
+  header p{font-size:17px}
+  .header-buttons{gap:12px;margin-top:14px}
+  .orders-button,.status-badge{
+    min-height:52px;
+    padding:13px 18px;
+    font-size:16px;
+    border-radius:11px
   }
-  body.printing-invoice #posPrintArea *{box-sizing:border-box!important}
-  body.printing-invoice #posPrintArea table{width:100%!important;border-collapse:collapse!important}
-  body.printing-invoice #posPrintArea td,
-  body.printing-invoice #posPrintArea th{
-    border-bottom:1px dashed #777!important;
-    padding:2mm 1mm!important;
-    font-size:11px!important;
+
+  main{
+    width:100%;
+    max-width:1700px;
+    gap:18px;
+    padding:18px;
+    align-items:stretch
   }
+
+  .menu,.cart{
+    padding:22px;
+    border-radius:16px
+  }
+
+  .menu{flex:2.35;min-width:0}
+  .cart{flex:1;min-width:390px}
+
+  .menu h2,.cart h2{font-size:25px;margin-bottom:18px}
+
+  .order-type{
+    gap:14px;
+    margin-bottom:18px
+  }
+  .order-type button{
+    min-height:66px;
+    padding:16px 12px;
+    font-size:19px;
+    border-radius:12px
+  }
+
+  .categories{
+    grid-template-columns:repeat(4,1fr);
+    gap:12px
+  }
+  .categories button{
+    min-height:60px;
+    padding:14px 10px;
+    font-size:17px;
+    border-radius:11px
+  }
+
+  .items{
+    grid-template-columns:repeat(3,1fr);
+    gap:14px;
+    margin-top:20px
+  }
+  .menu-item{
+    min-height:145px;
+    padding:20px 12px;
+    border-radius:14px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:7px
+  }
+  .menu-item-name{font-size:19px}
+  .menu-item-price{font-size:18px;margin-top:4px}
+
+  .order-info{
+    padding:15px;
+    margin-bottom:15px;
+    font-size:17px
+  }
+
+  .cart-item{
+    min-height:68px;
+    padding:13px;
+    font-size:16px
+  }
+  .quantity button{
+    width:42px;
+    height:42px;
+    font-size:22px
+  }
+
+  input,textarea{
+    min-height:52px;
+    padding:14px;
+    font-size:17px;
+    margin:7px 0;
+    border-radius:10px
+  }
+  textarea{min-height:92px}
+
+  .confirm,.clear{
+    min-height:58px;
+    padding:15px;
+    font-size:18px;
+    border-radius:11px
+  }
+
+  .total{
+    font-size:25px;
+    padding:16px;
+    margin:18px 0
+  }
+}
+
+/* Extra-large touch monitors */
+@media (min-width: 1400px){
+  main{padding:22px;gap:22px}
+  .menu,.cart{padding:24px}
+  .cart{min-width:430px}
+  .order-type button{min-height:72px;font-size:20px}
+  .categories button{min-height:66px;font-size:18px}
+  .menu-item{min-height:155px}
+  .menu-item-name{font-size:20px}
+  .menu-item-price{font-size:19px}
+  input,textarea{min-height:56px;font-size:18px}
+  .confirm,.clear{min-height:62px;font-size:19px}
 }
