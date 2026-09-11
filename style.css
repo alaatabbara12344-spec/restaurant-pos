@@ -213,3 +213,131 @@ textarea{height:75px;resize:vertical}.customer-message{min-height:22px;font-size
   input,textarea{min-height:56px;font-size:18px}
   .confirm,.clear{min-height:62px;font-size:19px}
 }
+
+
+/* ============================================================
+   EXTRA-LARGE TOUCH MODALS / ITEM OPTIONS
+   ============================================================ */
+@media (min-width:1000px){
+  #modalRoot .modal-backdrop{
+    padding:30px!important;
+  }
+
+  #modalRoot .modal-box{
+    width:min(1100px,92vw)!important;
+    max-width:1100px!important;
+    max-height:92vh!important;
+    border-radius:22px!important;
+  }
+
+  #modalRoot .modal-box .modal-header{
+    padding:24px 30px!important;
+    gap:20px!important;
+  }
+
+  #modalRoot .modal-box .modal-header h3{
+    font-size:30px!important;
+  }
+
+  #modalRoot .modal-box .modal-header button{
+    width:54px!important;
+    height:54px!important;
+    border-radius:13px!important;
+    font-size:25px!important;
+  }
+
+  #modalRoot .modal-body{
+    padding:30px!important;
+    font-size:20px!important;
+  }
+
+  #modalRoot .modal-body label{
+    font-size:20px!important;
+    margin-bottom:10px!important;
+  }
+
+  #modalRoot .modal-input,
+  #modalRoot .modal-body select,
+  #modalRoot .modal-body input,
+  #modalRoot .modal-body textarea{
+    min-height:64px!important;
+    padding:16px 18px!important;
+    font-size:21px!important;
+    border-radius:13px!important;
+  }
+
+  #modalRoot .option-group{
+    margin-bottom:24px!important;
+  }
+
+  #modalRoot .option-buttons{
+    gap:14px!important;
+  }
+
+  #modalRoot .option-btn,
+  #modalRoot .size-option{
+    min-height:72px!important;
+    padding:17px 24px!important;
+    border-radius:14px!important;
+    font-size:20px!important;
+    touch-action:manipulation;
+  }
+
+  #modalRoot .size-options{
+    gap:14px!important;
+  }
+
+  #modalRoot .modal-confirm-btn{
+    min-height:72px!important;
+    margin-top:22px!important;
+    padding:18px!important;
+    border-radius:14px!important;
+    font-size:22px!important;
+  }
+
+  /* Older manager modal system, if opened on the touch screen */
+  #modalRoot .modal{
+    width:min(1100px,92vw)!important;
+    max-width:1100px!important;
+    max-height:92vh!important;
+    padding:30px!important;
+    border-radius:22px!important;
+    font-size:20px!important;
+  }
+
+  #modalRoot .modal .close-btn{
+    min-width:54px!important;
+    min-height:54px!important;
+    padding:12px 18px!important;
+    font-size:22px!important;
+  }
+
+  #modalRoot .manager-card button{
+    min-height:52px!important;
+    padding:12px 18px!important;
+    font-size:18px!important;
+  }
+}
+
+/* 1400px+ monitors get an even more comfortable touch target */
+@media (min-width:1400px){
+  #modalRoot .modal-box{
+    width:min(1200px,88vw)!important;
+    max-width:1200px!important;
+  }
+
+  #modalRoot .modal-body{
+    padding:34px!important;
+  }
+
+  #modalRoot .option-btn,
+  #modalRoot .size-option{
+    min-height:82px!important;
+    font-size:22px!important;
+  }
+
+  #modalRoot .modal-confirm-btn{
+    min-height:78px!important;
+    font-size:24px!important;
+  }
+}
