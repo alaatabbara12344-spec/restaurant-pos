@@ -522,3 +522,76 @@ textarea{height:75px;resize:vertical}.customer-message{min-height:22px;font-size
     font-size:24px!important;
   }
 }
+
+
+/* ============================================================
+   MENU MANAGER - LARGE TEXT / DETAILS FOR TOUCHSCREEN
+   ============================================================ */
+@media (min-width:1000px){
+  /* Main item name */
+  #modalRoot .manager-card h4,
+  #modalRoot .manager-card > div:first-child h4{
+    font-size:28px!important;
+    line-height:1.35!important;
+  }
+
+  /* Item name generated directly inside manager rows */
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-size:18px"]{
+    font-size:27px!important;
+    line-height:1.4!important;
+  }
+
+  /* Category text */
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-size:13px"]{
+    font-size:19px!important;
+    line-height:1.4!important;
+  }
+
+  /* Price / weight / size / preparation details */
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="margin-top:7px"],
+  #modalRoot .manager-card{
+    font-size:19px!important;
+    line-height:1.55!important;
+  }
+
+  /* Availability status */
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-weight:bold;color"]{
+    font-size:20px!important;
+    margin-top:12px!important;
+  }
+
+  /* Delivery charge heading and explanatory text */
+  #modalRoot .modal-body div[style*="font-weight:bold"][style*="margin-bottom:8px"]{
+    font-size:23px!important;
+  }
+
+  #modalRoot .modal-body div[style*="font-size:12px"][style*="color:#666"]{
+    font-size:17px!important;
+    line-height:1.5!important;
+  }
+
+  /* Make menu cards roomier so the larger text does not feel cramped */
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"]{
+    padding:22px!important;
+    margin-bottom:15px!important;
+  }
+}
+
+@media (min-width:1400px){
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-size:18px"]{
+    font-size:30px!important;
+  }
+
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-size:13px"]{
+    font-size:21px!important;
+  }
+
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="margin-top:7px"],
+  #modalRoot .manager-card{
+    font-size:21px!important;
+  }
+
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-weight:bold;color"]{
+    font-size:22px!important;
+  }
+}
