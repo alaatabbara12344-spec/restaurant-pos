@@ -287,7 +287,7 @@ function generateId(prefix="id") {
 }
 function getItemById(id) { return menu.find(i => i.id === id); }
 function getSubtotal() { return cart.reduce((s,i)=>s+Number(i.total||0),0); }
-function getDeliveryCharge() { return selectedOrderType === "Delevery" ? Number(deliveryCharge||0) : 0; }
+function getDeliveryCharge() { return selectedOrderType === "Delivery" || selectedOrderType === "Delevery" ? Number(deliveryCharge||0) : 0; }
 function getTotal() { return getSubtotal() + getDeliveryCharge(); }
 function getDeviceId() { return deviceId; }
 
@@ -358,7 +358,7 @@ function closeModal(){const r=document.getElementById("modalRoot");if(r)r.innerH
 function setOrderType(type){
   selectedOrderType=type;
   const e=document.getElementById("orderType");if(e)e.textContent=type;
-  document.getElementById("deliveryBtn")?.classList.toggle("active",type==="Delevery");
+  document.getElementById("deliveryBtn")?.classList.toggle("active",type==="Delivery" || type==="Delevery");
   document.getElementById("pickupBtn")?.classList.toggle("active",type==="استلام من المحل");
   showPOS();
 }
@@ -486,8 +486,8 @@ function renderCart(){
   }).join("");
   if(t){
     const subtotal=getSubtotal(),charge=getDeliveryCharge(),total=subtotal+charge;
-    t.innerHTML=selectedOrderType==="Delevery"
-      ? `<div style="font-size:15px;font-weight:normal;margin-bottom:5px">المجموع الفرعي: $${money(subtotal)}</div><div style="font-size:15px;font-weight:normal;margin-bottom:5px">رسوم التوصيل: $${money(charge)}</div><div>المجموع: $${money(total)}</div>`
+    t.innerHTML=selectedOrderType==="Delivery" || selectedOrderType==="Delevery"
+      ? `<div style="font-size:15px;font-weight:normal;margin-bottom:5px">المجموع الفرعي: $${money(subtotal)}</div><div style="font-size:15px;font-weight:normal;margin-bottom:5px">delivery charge: $${money(charge)}</div><div>المجموع: $${money(total)}</div>`
       : `المجموع: $${money(total)}`;
   }
 }
@@ -567,7 +567,7 @@ async function confirmOrder(){
   const phone=normalizePhone(phoneInput);
   const address=document.getElementById("address")?.value.trim()||"";
   const notes=document.getElementById("notes")?.value.trim()||"";
-  if(selectedOrderType==="Delevery"){
+  if(selectedOrderType==="Delivery" || selectedOrderType==="Delevery"){
     if(!name)return alert("اكتب اسم الزبون.");
     if(!phone)return alert("اكتب رقم الهاتف.");
     if(!address)return alert("اكتب عنوان التوصيل.");
@@ -604,14 +604,14 @@ async function confirmOrder(){
       <div class="invoice-preview-title">معاينة الفاتورة — كما ستُطبع 80mm</div>
       <div class="invoice-preview">
         <h4>Tabbara Fish</h4>
-        <div class="invoice-preview-center">${escapeHtml(order.order_type||"")}</div>
+        <div class="invoice-preview-center">${escapeHtml((order.order_type||"")==="Delevery"?"Delivery":(order.order_type||""))}</div>
         <div class="invoice-preview-date">${escapeHtml(formatOrderDateTime(order.created_at))}</div>
         ${order.customer_name?`<div>الزبون: ${escapeHtml(order.customer_name)}</div>`:""}
         ${order.customer_phone?`<div>الهاتف: ${escapeHtml(order.customer_phone)}</div>`:""}
         ${order.customer_address?`<div>العنوان: ${escapeHtml(order.customer_address)}</div>`:""}
         <div class="confirm-invoice-head"><span>الصنف</span><span>العدد</span><span>السعر</span></div>
         ${invoiceItems||'<div class="invoice-preview-empty">لا يوجد أصناف</div>'}
-        ${Number(order.delivery_charge||0)>0?`<div class="confirm-invoice-subtotal"><span>رسوم التوصيل</span><strong>${money(order.delivery_charge)}</strong></div>`:""}
+        ${Number(order.delivery_charge||0)>0?`<div class="confirm-invoice-subtotal"><span>delivery charge</span><strong>${money(order.delivery_charge)}</strong></div>`:""}
         <div class="confirm-invoice-total"><span>المجموع</span><strong>${money(order.total)}</strong></div>
         ${order.notes?`<div class="confirm-invoice-notes">ملاحظات: ${escapeHtml(order.notes)}</div>`:""}
         <div class="invoice-preview-thanks">شكراً لزيارتكم ❤️</div>
@@ -656,7 +656,7 @@ async function showOrders(){
     const html=orders.map((o,i)=>`<div style="border:1px solid #ddd;border-radius:12px;padding:12px;margin-bottom:10px;background:#fff">
       <div style="font-weight:bold;font-size:17px">طلب #${orders.length-i}</div>
       <div style="font-size:13px;color:#666;margin-top:4px">${escapeHtml(o.created_at?formatOrderDateTime(o.created_at):"")}</div>
-      <div style="margin-top:8px">النوع: <strong>${escapeHtml(o.order_type||"")}</strong></div>
+      <div style="margin-top:8px">النوع: <strong>${escapeHtml((o.order_type||"")==="Delevery"?"Delivery":(o.order_type||""))}</strong></div>
       ${o.customer_name?`<div>الزبون: ${escapeHtml(o.customer_name)}</div>`:""}
       ${o.customer_phone?`<div>الهاتف: ${escapeHtml(o.customer_phone)}</div>`:""}
       <div style="margin-top:8px;font-weight:bold">المجموع: ${money(o.total)}</div>
@@ -674,13 +674,13 @@ function showOrderDetails(order){
   if(!order)return;
   const items=getOrderItemsHtml(order);
   modal("تفاصيل الطلب",`<div>
-    <div style="margin-bottom:8px"><strong>نوع الطلب:</strong> ${escapeHtml(order.order_type||"")}</div>
+    <div style="margin-bottom:8px"><strong>نوع الطلب:</strong> ${escapeHtml((order.order_type||"")==="Delevery"?"Delivery":(order.order_type||""))}</div>
     <div style="margin-bottom:8px"><strong>التاريخ والساعة:</strong> ${escapeHtml(formatOrderDateTime(order.created_at))}</div>
     ${order.customer_name?`<div><strong>الزبون:</strong> ${escapeHtml(order.customer_name)}</div>`:""}
     ${order.customer_phone?`<div><strong>الهاتف:</strong> ${escapeHtml(order.customer_phone)}</div>`:""}
     ${order.customer_address?`<div><strong>العنوان:</strong> ${escapeHtml(order.customer_address)}</div>`:""}
     <div style="margin-top:12px">${items||"لا يوجد أصناف"}</div>
-    ${Number(order.delivery_charge||0)>0?`<div style="padding:8px 0;border-bottom:1px dashed #ddd">رسوم التوصيل: <strong>${money(order.delivery_charge)}</strong></div>`:""}
+    ${Number(order.delivery_charge||0)>0?`<div style="padding:8px 0;border-bottom:1px dashed #ddd">delivery charge: <strong>${money(order.delivery_charge)}</strong></div>`:""}
     <div style="font-size:20px;font-weight:bold;text-align:center;margin:15px 0">المجموع: ${money(order.total)}</div>
     ${order.notes?`<div style="padding:8px;background:#f7f7f7;border-radius:8px">ملاحظات: ${escapeHtml(order.notes)}</div>`:""}
     <button class="primary" onclick='printInvoice(${JSON.stringify(order).replace(/'/g,"&#39;")})' style="width:100%;margin-top:12px;padding:12px;border:0;border-radius:10px">🖨️ إعادة طباعة</button>
@@ -714,7 +714,7 @@ function showMenuManager(){
     </div></div>`).join("");
   modal("إدارة المنيو",`<div>
     <div style="border:1px solid #ddd;border-radius:12px;padding:12px;margin-bottom:15px;background:#f8fafb">
-      <div style="font-weight:bold;margin-bottom:8px">🛵 رسوم التوصيل</div>
+      <div style="font-weight:bold;margin-bottom:8px">🛵 delivery charge</div>
       <div style="font-size:12px;color:#666;margin-bottom:7px">تُضاف تلقائياً فقط على طلبات Delevery ويمكن تعديلها بأي وقت.</div>
       <div style="display:flex;gap:8px;align-items:center">
         <input id="deliveryChargeInput" type="number" min="0" step="0.01" value="${money(deliveryCharge)}" style="flex:1;padding:12px;border:1px solid #cfd5da;border-radius:9px;font-size:16px">
@@ -890,11 +890,11 @@ function buildInvoiceHtml(order){
     return `<tr><td>${escapeHtml(title)}${offerDetails}</td><td style="text-align:center">${i.quantity}</td><td>${money(i.total)}</td></tr>`;
   }).join("");
   return `<!doctype html><html dir="rtl"><head><meta charset="UTF-8"><title>Tabbara Seafood</title><style>body{font-family:Arial;width:80mm;margin:auto;padding:10px}h2{text-align:center}table{width:100%;border-collapse:collapse}td,th{border-bottom:1px dashed #999;padding:5px;font-size:12px}.total{text-align:center;font-size:18px;font-weight:bold;margin-top:15px}</style></head><body>
-  <h2>Tabbara Seafood</h2><div style="text-align:center">${escapeHtml(order.order_type||"")}</div>
+  <h2>Tabbara Seafood</h2><div style="text-align:center">${escapeHtml((order.order_type||"")==="Delevery"?"Delivery":(order.order_type||""))}</div>
   <div style="text-align:center;font-size:11px;margin:4px 0 8px">${escapeHtml(formatOrderDateTime(order.created_at))}</div>
   ${order.customer_name?`<div>الزبون: ${escapeHtml(order.customer_name)}</div>`:""}${order.customer_phone?`<div>الهاتف: ${escapeHtml(order.customer_phone)}</div>`:""}${order.customer_address?`<div>العنوان: ${escapeHtml(order.customer_address)}</div>`:""}
   <table><thead><tr><th>الصنف</th><th>العدد</th><th>السعر</th></tr></thead><tbody>${rows}</tbody></table>
-  ${Number(order.delivery_charge||0)>0?`<div style="margin-top:10px;text-align:right">رسوم التوصيل: ${money(order.delivery_charge)}</div>`:""}
+  ${Number(order.delivery_charge||0)>0?`<div style="margin-top:10px;text-align:right">delivery charge: ${money(order.delivery_charge)}</div>`:""}
   <div class="total">المجموع: ${money(order.total)}</div>${order.notes?`<div style="margin-top:15px">ملاحظات: ${escapeHtml(order.notes)}</div>`:""}<div style="text-align:center;margin-top:20px">شكراً لزيارتكم ❤️</div>
   </body></html>`;
 }

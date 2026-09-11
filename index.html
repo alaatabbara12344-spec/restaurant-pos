@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#123b4a">
   <title>Tabbara Fish - POS</title>
-  <link rel="stylesheet" href="style.css?v=20260912-touch3">
+  <link rel="stylesheet" href="style.css?v=20260912-delivery">
 </head>
 <body>
   <div id="loginScreen" class="login-screen">
@@ -36,7 +36,7 @@
         <h2>🍽️ قائمة الطعام</h2>
 
         <div class="order-type">
-          <button onclick="setOrderType('Delevery')" id="deliveryBtn">🛵 Delevery</button>
+          <button onclick="setOrderType('Delivery')" id="deliveryBtn">🛵 Delivery</button>
           <button onclick="setOrderType('استلام من المحل')" id="pickupBtn">🏪 استلام من المحل</button>
         </div>
 
@@ -66,7 +66,7 @@
 
   <div id="modalRoot"></div>
 
-  <script src="script.js?v=20260912-touch3"></script>
+  <script src="script.js?v=20260912-delivery"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"));
