@@ -662,3 +662,162 @@ textarea{height:75px;resize:vertical}.customer-message{min-height:22px;font-size
     padding:34px!important;
   }
 }
+
+
+/* ============================================================
+   MENU MANAGER - HUGE / EASY-TO-READ TOUCH MODE
+   ============================================================ */
+@media (min-width:1000px){
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"]{
+    padding:38px!important;
+    margin-bottom:26px!important;
+    border-radius:22px!important;
+  }
+
+  /* Item name */
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-size:18px"]{
+    font-size:52px!important;
+    line-height:1.25!important;
+    font-weight:900!important;
+  }
+
+  /* Category */
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-size:13px"]{
+    font-size:34px!important;
+    line-height:1.4!important;
+    font-weight:700!important;
+    margin-top:8px!important;
+  }
+
+  /* Price / KG / sizes / preparations */
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="margin-top:7px"]{
+    font-size:35px!important;
+    line-height:1.65!important;
+    font-weight:800!important;
+    margin-top:16px!important;
+  }
+
+  /* Available / finished */
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-weight:bold;color"]{
+    font-size:36px!important;
+    line-height:1.4!important;
+    font-weight:900!important;
+    margin-top:18px!important;
+  }
+
+  /* Action buttons remain very large too */
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] button{
+    min-height:82px!important;
+    min-width:165px!important;
+    padding:18px 28px!important;
+    font-size:25px!important;
+    font-weight:900!important;
+    border-radius:15px!important;
+    margin:7px!important;
+  }
+}
+
+@media (min-width:1400px){
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"]{
+    padding:44px!important;
+    margin-bottom:30px!important;
+  }
+
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-size:18px"]{
+    font-size:60px!important;
+  }
+
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-size:13px"]{
+    font-size:40px!important;
+  }
+
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="margin-top:7px"]{
+    font-size:40px!important;
+  }
+
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-weight:bold;color"]{
+    font-size:42px!important;
+  }
+
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] button{
+    min-height:92px!important;
+    min-width:190px!important;
+    font-size:28px!important;
+  }
+}
+
+
+/* Tabbara Fish POS - XL TEXT ONLY
+   Enlarges interface text throughout the POS.
+   Existing button dimensions/sizing are intentionally left unchanged. */
+@media (min-width: 700px){
+  body{font-size:22px!important;}
+  input, select, textarea{font-size:25px!important; line-height:1.35!important;}
+  label{font-size:24px!important;}
+  .header-title{font-size:32px!important;}
+  .order-type-btn{font-size:28px!important;}
+  .category-btn{font-size:27px!important;}
+  .item-card{font-size:25px!important;}
+  .item-card .item-name{font-size:31px!important; line-height:1.25!important;}
+  .item-card .item-price{font-size:27px!important;}
+  .cart-title{font-size:30px!important;}
+  .cart-item{font-size:25px!important;}
+  .cart-item-name{font-size:28px!important;}
+  .cart-item-price{font-size:26px!important;}
+  .total,.grand-total{font-size:32px!important;}
+  .customer-section,.delivery-section,.notes-section{font-size:25px!important;}
+  .modal-body{font-size:25px!important;}
+  .modal-body h1,.modal-body h2,.modal-body h3{font-size:36px!important; line-height:1.25!important;}
+  .modal-body p{font-size:25px!important; line-height:1.5!important;}
+  .modal-body label{font-size:25px!important;}
+  .modal-body input,.modal-body select,.modal-body textarea{font-size:27px!important;}
+  .invoice-preview{font-size:24px!important;}
+  .invoice-preview .invoice-title{font-size:34px!important;}
+  .invoice-preview .confirm-invoice-row{font-size:25px!important;}
+}
+
+@media (min-width: 1200px){
+  body{font-size:25px!important;}
+  input, select, textarea{font-size:28px!important;}
+  label{font-size:27px!important;}
+  .header-title{font-size:38px!important;}
+  .order-type-btn{font-size:32px!important;}
+  .category-btn{font-size:31px!important;}
+  .item-card{font-size:28px!important;}
+  .item-card .item-name{font-size:36px!important;}
+  .item-card .item-price{font-size:31px!important;}
+  .cart-title{font-size:35px!important;}
+  .cart-item{font-size:28px!important;}
+  .cart-item-name{font-size:31px!important;}
+  .cart-item-price{font-size:29px!important;}
+  .total,.grand-total{font-size:38px!important;}
+  .customer-section,.delivery-section,.notes-section{font-size:28px!important;}
+  .modal-body{font-size:29px!important;}
+  .modal-body h1,.modal-body h2,.modal-body h3{font-size:42px!important;}
+  .modal-body p{font-size:29px!important;}
+  .modal-body label{font-size:29px!important;}
+  .modal-body input,.modal-body select,.modal-body textarea{font-size:31px!important;}
+  .invoice-preview{font-size:28px!important;}
+  .invoice-preview .invoice-title{font-size:40px!important;}
+  .invoice-preview .confirm-invoice-row{font-size:29px!important;}
+}
+
+/* Menu Manager text only — buttons are not targeted here */
+@media (min-width: 1000px){
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-size:18px"]{
+    font-size:68px!important;
+    line-height:1.2!important;
+  }
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-size:13px"]{
+    font-size:44px!important;
+    line-height:1.35!important;
+  }
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="margin-top:7px"]{
+    font-size:44px!important;
+    line-height:1.5!important;
+  }
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-weight:bold;color"]{
+    font-size:44px!important;
+    line-height:1.35!important;
+  }
+}
