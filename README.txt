@@ -1,7 +1,13 @@
-Tabbara Seafood POS - Multi-device menu sync
+Tabbara Seafood POS
 
-Updated script.js reads/writes the central Supabase public.pos_menu table.
-Menu changes are stored per item and auto-downloaded every 10 seconds.
-The existing orders/customers tables are not modified by this package.
+This package includes the POS, multi-device menu sync, modal/print fixes, and editable delivery charge.
 
-Before deployment: replace the repository script.js with this file and test the POS.
+Delivery charge:
+- Default is $2.00.
+- Open ⚙️ إدارة المنيو.
+- Edit 🛵 رسوم التوصيل and press حفظ.
+- It is added only to Delevery orders, not pickup orders.
+- The charge is saved with each order so old orders keep their original fee.
+
+Supabase setup:
+Run delivery_charge.sql once in Supabase SQL Editor.

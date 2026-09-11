@@ -132,14 +132,24 @@ function cloudRowToLocal(row) {
     available: row.available !== false
   };
 
+  const defaultItem = DEFAULT_MENU.find(x => String(x.id) === String(row.id));
+  // Keep size options safe if an older cloud row lost its type/data.
+  if (item.type === "fixed" && defaultItem?.type === "sizes" && !data.sizes) {
+    item.type = "sizes";
+    item.sizes = { ...(defaultItem.sizes || {}) };
+  } else if (item.type === "sizes") {
+    const cloudSizes = data.sizes || data.prices?.sizes || data.options || {};
+    item.sizes = Object.keys(cloudSizes).length ? { ...cloudSizes } : { ...(defaultItem?.sizes || {}) };
+  }
+
   if (item.type === "weight") {
     item.pricing = {
-      base: Number(data.base ?? data.basePrice ?? 0),
-      grill: Number(data.grill ?? data.grillSurcharge ?? 0),
-      fry: Number(data.fry ?? data.frySurcharge ?? 0)
+      base: Number(data.base ?? data.basePrice ?? defaultItem?.pricing?.base ?? 0),
+      grill: Number(data.grill ?? data.grillSurcharge ?? defaultItem?.pricing?.grill ?? 0),
+      fry: Number(data.fry ?? data.frySurcharge ?? defaultItem?.pricing?.fry ?? 0)
     };
   } else if (item.type === "sizes") {
-    item.sizes = { ...(data.sizes || {}) };
+    item.sizes = { ...(item.sizes || {}) };
   } else if (item.type === "meal") {
     item.prices = {
       وجبة: Number(data.meal ?? data.وجبة ?? data.prices?.وجبة ?? 0),
@@ -284,11 +294,32 @@ function getDeviceId() { return deviceId; }
 function normalizePhone(phone) {
   if (phone == null) return "";
   let value = String(phone).trim().replace(/[\s\-().]/g,"");
+  if (!value) return "";
   if (value.startsWith("00")) value = "+" + value.substring(2);
-  if (value.startsWith("+961")) return "+961" + value.substring(4).replace(/^0/,"");
-  if (value.startsWith("961")) return "+961" + value.substring(3).replace(/^0/,"");
-  if (/^(03|70|71|76|78|79|81)/.test(value)) value = "+961" + value.substring(1);
-  return value;
+  if (value.startsWith("+961")) value = value.substring(4);
+  else if (value.startsWith("961")) value = value.substring(3);
+  // Lebanese mobile numbers: 03, 70, 71, 76, 78, 79, 81...
+  if (value.startsWith("0")) value = value.substring(1);
+  if (/^(3|70|71|76|78|79|81)\d{6}$/.test(value)) return "+961" + value;
+  return value.startsWith("+") ? value : "+" + value;
+}
+
+function phoneVariants(phone) {
+  const n = normalizePhone(phone);
+  if (!n) return [];
+  const local = n.startsWith("+961") ? n.substring(4) : n.replace(/^\+/,"");
+  const compact = local.startsWith("0") ? local : "0" + local;
+  return [...new Set([n, "961" + local, local, compact, "+961" + local])];
+}
+
+function formatOrderDateTime(value) {
+  if (!value) return "";
+  try {
+    return new Date(value).toLocaleString("ar-LB", {
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hour12: true
+    });
+  } catch(e) { return String(value); }
 }
 
 function login() {
@@ -478,13 +509,20 @@ async function findCustomer(phone){
   if(local){fillCustomerFields(local);return local;}
   if(!navigator.onLine)return null;
   try{
-    const r=await fetch(`${SUPABASE_URL}/rest/v1/customers?phone=eq.${encodeURIComponent(n)}&select=*`,{headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY}});
-    if(!r.ok)return null;const d=await r.json();
-    if(d[0]){cacheCustomer(d[0]);fillCustomerFields(d[0]);return d[0];}
+    // Search all stored formats and normalize them locally, so 70xxxxxx, 03xxxxxx, 961..., and +961... match the same customer.
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/customers?select=*&limit=1000`,{headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY}});
+    if(!r.ok)return null;
+    const d=await r.json();
+    const found=(Array.isArray(d)?d:[]).find(x=>normalizePhone(x.phone)===n);
+    if(found){cacheCustomer(found);fillCustomerFields(found);return found;}
   }catch(e){console.error(e)}
   return null;
 }
-async function handlePhoneChange(){const p=document.getElementById("phone")?.value;if(p&&normalizePhone(p).length>=8)await findCustomer(p)}
+async function handlePhoneChange(){
+  const p=document.getElementById("phone")?.value;
+  const n=normalizePhone(p);
+  if(n && n.replace(/\D/g,"").length>=8) await findCustomer(p);
+}
 async function saveCustomer(c){
   const n=normalizePhone(c?.phone);if(!n)return null;
   const r={phone:n,name:c.name||"",address:c.address||"",notes:c.notes||"",updated_at:new Date().toISOString()};
@@ -525,7 +563,8 @@ async function confirmOrder(){
   if(!selectedOrderType)return alert("اختار نوع الطلب أولاً.");
   if(!cart.length)return alert("السلة فارغة.");
   const name=document.getElementById("name")?.value.trim()||"";
-  const phone=document.getElementById("phone")?.value.trim()||"";
+  const phoneInput=document.getElementById("phone")?.value.trim()||"";
+  const phone=normalizePhone(phoneInput);
   const address=document.getElementById("address")?.value.trim()||"";
   const notes=document.getElementById("notes")?.value.trim()||"";
   if(selectedOrderType==="Delevery"){
@@ -549,6 +588,7 @@ async function confirmOrder(){
   modal("تم تأكيد الطلب",`<div style="text-align:center;padding:12px">
     <div style="font-size:48px;margin-bottom:8px">✓</div>
     <h3 style="margin:8px 0 14px">${sent?"تم حفظ الطلب بنجاح.":"تم حفظ الطلب على الجهاز وسيتم مزامنته عند عودة الإنترنت."}</h3>
+    <div style="font-size:14px;color:#666;margin-top:8px">${formatOrderDateTime(order.created_at)}</div>
     <div style="font-size:22px;font-weight:bold;margin:15px 0">المجموع: $${money(order.total)}</div>
     <button class="primary" onclick="printInvoice(window.lastCompletedOrder)" style="width:100%;margin-bottom:8px">🖨️ طباعة الفاتورة</button>
     <button class="secondary" onclick="closeModal();clearOrder()" style="width:100%">طلب جديد</button>
@@ -585,7 +625,7 @@ async function showOrders(){
     if(!orders.length)return modal("الطلبات السابقة",'<div style="text-align:center;padding:20px">لا يوجد طلبات محفوظة بعد.</div>');
     const html=orders.map((o,i)=>`<div style="border:1px solid #ddd;border-radius:12px;padding:12px;margin-bottom:10px;background:#fff">
       <div style="font-weight:bold;font-size:17px">طلب #${orders.length-i}</div>
-      <div style="font-size:13px;color:#666;margin-top:4px">${escapeHtml(o.created_at?new Date(o.created_at).toLocaleString("ar-LB"):"")}</div>
+      <div style="font-size:13px;color:#666;margin-top:4px">${escapeHtml(o.created_at?formatOrderDateTime(o.created_at):"")}</div>
       <div style="margin-top:8px">النوع: <strong>${escapeHtml(o.order_type||"")}</strong></div>
       ${o.customer_name?`<div>الزبون: ${escapeHtml(o.customer_name)}</div>`:""}
       ${o.customer_phone?`<div>الهاتف: ${escapeHtml(o.customer_phone)}</div>`:""}
@@ -605,6 +645,7 @@ function showOrderDetails(order){
   const items=getOrderItemsHtml(order);
   modal("تفاصيل الطلب",`<div>
     <div style="margin-bottom:8px"><strong>نوع الطلب:</strong> ${escapeHtml(order.order_type||"")}</div>
+    <div style="margin-bottom:8px"><strong>التاريخ والساعة:</strong> ${escapeHtml(formatOrderDateTime(order.created_at))}</div>
     ${order.customer_name?`<div><strong>الزبون:</strong> ${escapeHtml(order.customer_name)}</div>`:""}
     ${order.customer_phone?`<div><strong>الهاتف:</strong> ${escapeHtml(order.customer_phone)}</div>`:""}
     ${order.customer_address?`<div><strong>العنوان:</strong> ${escapeHtml(order.customer_address)}</div>`:""}
@@ -820,6 +861,7 @@ function buildInvoiceHtml(order){
   }).join("");
   return `<!doctype html><html dir="rtl"><head><meta charset="UTF-8"><title>Tabbara Seafood</title><style>body{font-family:Arial;width:80mm;margin:auto;padding:10px}h2{text-align:center}table{width:100%;border-collapse:collapse}td,th{border-bottom:1px dashed #999;padding:5px;font-size:12px}.total{text-align:center;font-size:18px;font-weight:bold;margin-top:15px}</style></head><body>
   <h2>Tabbara Seafood</h2><div style="text-align:center">${escapeHtml(order.order_type||"")}</div>
+  <div style="text-align:center;font-size:11px;margin:4px 0 8px">${escapeHtml(formatOrderDateTime(order.created_at))}</div>
   ${order.customer_name?`<div>الزبون: ${escapeHtml(order.customer_name)}</div>`:""}${order.customer_phone?`<div>الهاتف: ${escapeHtml(order.customer_phone)}</div>`:""}${order.customer_address?`<div>العنوان: ${escapeHtml(order.customer_address)}</div>`:""}
   <table><thead><tr><th>الصنف</th><th>العدد</th><th>السعر</th></tr></thead><tbody>${rows}</tbody></table>
   ${Number(order.delivery_charge||0)>0?`<div style="margin-top:10px;text-align:right">رسوم التوصيل: ${money(order.delivery_charge)}</div>`:""}
