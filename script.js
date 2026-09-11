@@ -703,10 +703,12 @@ function showMenuManager(){
   const rows=menu.map(item=>`<div style="border:1px solid #ddd;border-radius:14px;padding:14px;margin-bottom:10px;background:#fff">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
       <div class="manager-item-info" style="flex:1">
-        <div class="manager-item-name" style="font-size:18px;font-weight:bold">${escapeHtml(item.name)}</div>
+        <div class="manager-item-name-row" style="display:flex;align-items:center;justify-content:flex-start;gap:22px;flex-wrap:wrap">
+          <div class="manager-item-name" style="font-size:18px;font-weight:bold">${escapeHtml(item.name)}</div>
+          <div class="manager-item-availability" style="font-weight:bold;color:${item.available!==false?"#16803c":"#a21d1d"}">${item.available!==false?"✓ متوفر":"✕ منتهي"}</div>
+        </div>
         <div class="manager-item-category" style="font-size:13px;color:#777;margin-top:3px">${escapeHtml(item.category||"")}</div>
         <div class="manager-item-details" style="margin-top:7px">${getManagerPriceText(item)}</div>
-        <div class="manager-item-availability" style="margin-top:7px;font-weight:bold;color:${item.available!==false?"#16803c":"#a21d1d"}">${item.available!==false?"✓ متوفر":"✕ منتهي"}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;min-width:92px">
         <button onclick="toggleAvailability('${item.id}')">${item.available!==false?"خلص":"متوفر"}</button>

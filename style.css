@@ -1121,3 +1121,201 @@ textarea{height:75px;resize:vertical}.customer-message{min-height:22px;font-size
     font-size:38px!important;
   }
 }
+
+
+/* V14 — Menu Manager: availability beside the item name */
+@media (min-width:1000px){
+  #modalRoot .manager-item-name-row{
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:28px!important;
+    flex-wrap:nowrap!important;
+  }
+
+  #modalRoot .manager-item-name{
+    font-size:76px!important;
+    line-height:1.08!important;
+    font-weight:900!important;
+    margin:0!important;
+  }
+
+  #modalRoot .manager-item-availability{
+    font-size:48px!important;
+    line-height:1.1!important;
+    font-weight:900!important;
+    margin:0!important;
+    white-space:nowrap!important;
+  }
+
+  #modalRoot .manager-item-category{
+    font-size:48px!important;
+    line-height:1.15!important;
+    font-weight:800!important;
+    margin-top:10px!important;
+  }
+
+  #modalRoot .manager-item-details{
+    font-size:50px!important;
+    line-height:1.3!important;
+    font-weight:900!important;
+    margin-top:18px!important;
+  }
+}
+
+@media (min-width:1400px){
+  #modalRoot .manager-item-name{font-size:86px!important;}
+  #modalRoot .manager-item-availability{font-size:54px!important;}
+  #modalRoot .manager-item-category{font-size:54px!important;}
+  #modalRoot .manager-item-details{font-size:56px!important;}
+}
+
+
+/* V15 — Current Order compact controls + restore invoice preview size */
+
+/* Current Order: smaller quantity/price and compact delete button so nothing
+   sticks outside the order card. */
+@media (min-width:700px){
+  .cart-item-controls{
+    min-width:145px!important;
+    width:145px!important;
+    gap:5px!important;
+  }
+
+  .cart-item-controls span{
+    min-width:38px!important;
+    font-size:24px!important;
+    line-height:1!important;
+  }
+
+  .cart-item-controls button.remove-btn{
+    width:78px!important;
+    height:46px!important;
+    min-width:78px!important;
+    min-height:46px!important;
+    padding:0 8px!important;
+    font-size:18px!important;
+    font-weight:800!important;
+    border-radius:9px!important;
+  }
+
+  .cart-item-total{
+    font-size:24px!important;
+  }
+
+  .cart-item-info strong{
+    font-size:28px!important;
+  }
+
+  .cart-item-info small{
+    font-size:21px!important;
+  }
+}
+
+@media (min-width:1200px){
+  .cart-item-controls{
+    min-width:160px!important;
+    width:160px!important;
+    gap:6px!important;
+  }
+
+  .cart-item-controls span{
+    min-width:42px!important;
+    font-size:27px!important;
+  }
+
+  .cart-item-controls button.remove-btn{
+    width:88px!important;
+    height:50px!important;
+    min-width:88px!important;
+    min-height:50px!important;
+    font-size:19px!important;
+    border-radius:10px!important;
+  }
+
+  .cart-item-total{
+    font-size:27px!important;
+  }
+}
+
+/* Invoice preview: restore the original compact readable sizing.
+   These rules override the later global XL-text rules only inside the invoice. */
+.invoice-preview-wrap{
+  font-size:inherit!important;
+}
+
+.invoice-preview-title{
+  font-size:19px!important;
+  margin-bottom:10px!important;
+}
+
+.invoice-preview{
+  width:80mm!important;
+  max-width:100%!important;
+  padding:5mm 4mm!important;
+  font-size:12px!important;
+  line-height:1.45!important;
+}
+
+.invoice-preview h4{
+  font-size:19px!important;
+  margin:0 0 3mm!important;
+}
+
+.invoice-preview-date{
+  font-size:10px!important;
+  margin:2mm 0 3mm!important;
+}
+
+.confirm-invoice-head,
+.confirm-invoice-row{
+  font-size:12px!important;
+  padding:2mm 1mm!important;
+}
+
+.confirm-invoice-item small{
+  font-size:9px!important;
+}
+
+.confirm-invoice-total{
+  font-size:17px!important;
+  padding:3mm 1mm 1mm!important;
+}
+
+.confirm-invoice-notes{
+  font-size:10px!important;
+}
+
+.invoice-preview-thanks{
+  font-size:10px!important;
+}
+
+@media (min-width:1000px){
+  .invoice-preview-title{
+    font-size:22px!important;
+    margin-bottom:14px!important;
+  }
+
+  .invoice-preview{
+    width:80mm!important;
+    padding:5mm 4mm!important;
+    font-size:13px!important;
+  }
+
+  .invoice-preview h4{
+    font-size:21px!important;
+  }
+
+  .confirm-invoice-head,
+  .confirm-invoice-row{
+    padding:2.5mm 1mm!important;
+    font-size:13px!important;
+  }
+
+  .confirm-invoice-item small{
+    font-size:10px!important;
+  }
+
+  .confirm-invoice-total{
+    font-size:19px!important;
+  }
+}
