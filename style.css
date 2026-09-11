@@ -595,3 +595,70 @@ textarea{height:75px;resize:vertical}.customer-message{min-height:22px;font-size
     font-size:22px!important;
   }
 }
+
+
+/* ============================================================
+   MENU MANAGER - EXTRA LARGE TEXT FOR TOUCHSCREEN
+   ============================================================ */
+@media (min-width:1000px){
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-size:18px"]{
+    font-size:36px!important;
+    line-height:1.35!important;
+    font-weight:800!important;
+  }
+
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-size:13px"]{
+    font-size:25px!important;
+    line-height:1.45!important;
+    font-weight:600!important;
+  }
+
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="margin-top:7px"]{
+    font-size:25px!important;
+    line-height:1.6!important;
+    font-weight:700!important;
+  }
+
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-weight:bold;color"]{
+    font-size:27px!important;
+    line-height:1.4!important;
+    font-weight:800!important;
+  }
+
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"]{
+    padding:30px!important;
+    margin-bottom:20px!important;
+    border-radius:18px!important;
+  }
+
+  #modalRoot .modal-body > div > div[style*="font-weight:bold"][style*="margin-bottom:8px"]{
+    font-size:29px!important;
+  }
+
+  #modalRoot .modal-body div[style*="font-size:12px"][style*="color:#666"]{
+    font-size:21px!important;
+    line-height:1.6!important;
+  }
+}
+
+@media (min-width:1400px){
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-size:18px"]{
+    font-size:42px!important;
+  }
+
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-size:13px"]{
+    font-size:29px!important;
+  }
+
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="margin-top:7px"]{
+    font-size:29px!important;
+  }
+
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-weight:bold;color"]{
+    font-size:31px!important;
+  }
+
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"]{
+    padding:34px!important;
+  }
+}
