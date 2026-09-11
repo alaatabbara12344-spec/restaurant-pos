@@ -481,7 +481,7 @@ function renderCart(){
     let d=i.weight?`${Number(i.weight).toFixed(2)} كغ • ${escapeHtml(i.preparation||"ني")}`:i.size?escapeHtml(i.size):i.option?escapeHtml(i.option):"";
     const offerDetails=i.offerDetails&&i.offerDetails.length?`<small style="display:block;margin-top:4px">${i.offerDetails.map(x=>escapeHtml([x.name,x.weight?`${Number(x.weight).toFixed(2)} كغ`:"",x.size||"",x.quantity>1?`× ${x.quantity}`:""].filter(Boolean).join(" - "))).join(" + ")}</small>`:"";
     return `<div class="cart-item"><div class="cart-item-info"><strong>${escapeHtml(i.name)}</strong>${d?`<small>${d}</small>`:""}${offerDetails}</div>
-    <div class="cart-item-controls"><button onclick="changeCartQuantity('${i.id}',-1)">−</button><span>${i.quantity||1}</span><button onclick="changeCartQuantity('${i.id}',1)">+</button><button class="remove-btn" onclick="removeFromCart('${i.id}')">🗑</button></div>
+    <div class="cart-item-controls"><span>${i.quantity||1}</span><button class="remove-btn" onclick="removeFromCart('${i.id}')" aria-label="حذف الصنف">🗑 حذف</button></div>
     <div class="cart-item-total">${money(i.total)}</div></div>`;
   }).join("");
   if(t){
@@ -702,10 +702,12 @@ function getManagerPriceText(item){
 function showMenuManager(){
   const rows=menu.map(item=>`<div style="border:1px solid #ddd;border-radius:14px;padding:14px;margin-bottom:10px;background:#fff">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
-      <div style="flex:1"><div style="font-size:18px;font-weight:bold">${escapeHtml(item.name)}</div>
-      <div style="font-size:13px;color:#777;margin-top:3px">${escapeHtml(item.category||"")}</div>
-      <div style="margin-top:7px">${getManagerPriceText(item)}</div>
-      <div style="margin-top:7px;font-weight:bold;color:${item.available!==false?"#16803c":"#a21d1d"}">${item.available!==false?"✓ متوفر":"✕ منتهي"}</div></div>
+      <div class="manager-item-info" style="flex:1">
+        <div class="manager-item-name" style="font-size:18px;font-weight:bold">${escapeHtml(item.name)}</div>
+        <div class="manager-item-category" style="font-size:13px;color:#777;margin-top:3px">${escapeHtml(item.category||"")}</div>
+        <div class="manager-item-details" style="margin-top:7px">${getManagerPriceText(item)}</div>
+        <div class="manager-item-availability" style="margin-top:7px;font-weight:bold;color:${item.available!==false?"#16803c":"#a21d1d"}">${item.available!==false?"✓ متوفر":"✕ منتهي"}</div>
+      </div>
       <div style="display:flex;flex-direction:column;gap:6px;min-width:92px">
         <button onclick="toggleAvailability('${item.id}')">${item.available!==false?"خلص":"متوفر"}</button>
         <button onclick="editMenuItem('${item.id}')">تعديل</button>

@@ -899,3 +899,225 @@ textarea{height:75px;resize:vertical}.customer-message{min-height:22px;font-size
     margin-top:14px!important;
   }
 }
+
+
+/* V11 — Menu Manager item information: use the large white area */
+@media (min-width:1000px){
+  #modalRoot .manager-item-info{
+    min-width:0!important;
+    padding-right:20px!important;
+  }
+
+  #modalRoot .manager-item-name{
+    font-size:76px!important;
+    line-height:1.08!important;
+    font-weight:900!important;
+    margin:0!important;
+  }
+
+  #modalRoot .manager-item-category{
+    font-size:48px!important;
+    line-height:1.15!important;
+    font-weight:800!important;
+    margin-top:10px!important;
+  }
+
+  #modalRoot .manager-item-details{
+    font-size:50px!important;
+    line-height:1.3!important;
+    font-weight:900!important;
+    margin-top:18px!important;
+  }
+
+  #modalRoot .manager-item-availability{
+    font-size:50px!important;
+    line-height:1.2!important;
+    font-weight:900!important;
+    margin-top:20px!important;
+  }
+
+  /* Keep the action buttons at their current V10 size. */
+}
+
+@media (min-width:1400px){
+  #modalRoot .manager-item-name{font-size:86px!important;}
+  #modalRoot .manager-item-category{font-size:54px!important;}
+  #modalRoot .manager-item-details{font-size:56px!important;}
+  #modalRoot .manager-item-availability{font-size:56px!important;}
+}
+
+/* Compact Delivery Charge section further so item details start higher. */
+@media (min-width:1000px){
+  #modalRoot .modal-body > div > div[style*="background:#f8fafb"]{
+    padding:7px 12px!important;
+    margin-bottom:8px!important;
+  }
+  #modalRoot .modal-body > div > div[style*="background:#f8fafb"] div[style*="font-weight:bold"]{
+    font-size:23px!important;
+    margin-bottom:2px!important;
+  }
+  #modalRoot .modal-body > div > div[style*="background:#f8fafb"] div[style*="font-size:12px"]{
+    font-size:17px!important;
+    margin-bottom:2px!important;
+  }
+  #modalRoot .modal-body > div > div[style*="background:#f8fafb"] input{
+    min-height:42px!important;
+    font-size:21px!important;
+    padding:5px 10px!important;
+  }
+}
+
+
+/* V12 — Current Order touch controls
+   The screenshot showed the old selector was not reaching these buttons.
+   Target the actual .cart-item-controls elements directly. */
+@media (min-width:700px){
+  .cart-item-controls{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:8px!important;
+    flex-wrap:nowrap!important;
+    min-width:250px!important;
+  }
+
+  .cart-item-controls button{
+    width:78px!important;
+    height:78px!important;
+    min-width:78px!important;
+    min-height:78px!important;
+    padding:0!important;
+    margin:0!important;
+    font-size:38px!important;
+    font-weight:900!important;
+    line-height:1!important;
+    border-radius:14px!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    cursor:pointer!important;
+  }
+
+  .cart-item-controls .remove-btn{
+    width:82px!important;
+    height:78px!important;
+    min-width:82px!important;
+    font-size:30px!important;
+    font-weight:900!important;
+  }
+
+  .cart-item-controls span{
+    min-width:58px!important;
+    font-size:34px!important;
+    font-weight:900!important;
+    text-align:center!important;
+    line-height:1!important;
+  }
+
+  .cart-item-info strong{
+    font-size:32px!important;
+    line-height:1.2!important;
+  }
+
+  .cart-item-info small{
+    font-size:24px!important;
+    line-height:1.35!important;
+  }
+
+  .cart-item-total{
+    font-size:30px!important;
+    font-weight:900!important;
+    white-space:nowrap!important;
+  }
+}
+
+@media (min-width:1200px){
+  .cart-item-controls{
+    min-width:285px!important;
+    gap:10px!important;
+  }
+
+  .cart-item-controls button{
+    width:88px!important;
+    height:88px!important;
+    min-width:88px!important;
+    min-height:88px!important;
+    font-size:44px!important;
+    border-radius:16px!important;
+  }
+
+  .cart-item-controls .remove-btn{
+    width:92px!important;
+    height:88px!important;
+    min-width:92px!important;
+    font-size:34px!important;
+  }
+
+  .cart-item-controls span{
+    min-width:64px!important;
+    font-size:38px!important;
+  }
+
+  .cart-item-info strong{font-size:36px!important;}
+  .cart-item-info small{font-size:27px!important;}
+  .cart-item-total{font-size:34px!important;}
+}
+
+
+/* V13 — Remove + / - from Current Order; keep one large, clear Delete button */
+@media (min-width:700px){
+  .cart-item-controls{
+    min-width:210px!important;
+    gap:10px!important;
+    justify-content:center!important;
+  }
+
+  .cart-item-controls button.remove-btn{
+    width:150px!important;
+    height:78px!important;
+    min-width:150px!important;
+    min-height:78px!important;
+    padding:0 18px!important;
+    font-size:30px!important;
+    font-weight:900!important;
+    line-height:1!important;
+    border-radius:14px!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+  }
+
+  .cart-item-controls span{
+    min-width:55px!important;
+    font-size:34px!important;
+    font-weight:900!important;
+    text-align:center!important;
+  }
+
+  /* If any old +/- controls remain in another rendered state, hide only the
+     quantity-change buttons; the Delete button remains visible. */
+  .cart-item-controls button:not(.remove-btn){
+    display:none!important;
+  }
+}
+
+@media (min-width:1200px){
+  .cart-item-controls{
+    min-width:235px!important;
+    gap:12px!important;
+  }
+
+  .cart-item-controls button.remove-btn{
+    width:175px!important;
+    height:88px!important;
+    min-width:175px!important;
+    min-height:88px!important;
+    font-size:34px!important;
+    border-radius:16px!important;
+  }
+
+  .cart-item-controls span{
+    min-width:62px!important;
+    font-size:38px!important;
+  }
+}
