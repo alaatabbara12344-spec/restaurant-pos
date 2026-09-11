@@ -1,4 +1,4 @@
-Tabbara Seafood POS
+Tabbara Fish POS
 
 This package includes the POS, multi-device menu sync, modal/print fixes, and editable delivery charge.
 

@@ -859,8 +859,8 @@ function buildInvoiceHtml(order){
     const offerDetails=i.offerDetails&&i.offerDetails.length?`<div style="font-size:10px;margin-top:3px">${i.offerDetails.map(x=>escapeHtml([x.name,x.weight?`${Number(x.weight).toFixed(2)} كغ`:"",x.size||"",x.quantity>1?`× ${x.quantity}`:""].filter(Boolean).join(" - "))).join("<br>")}</div>`:"";
     return `<tr><td>${escapeHtml(title)}${offerDetails}</td><td style="text-align:center">${i.quantity}</td><td>${money(i.total)}</td></tr>`;
   }).join("");
-  return `<!doctype html><html dir="rtl"><head><meta charset="UTF-8"><title>Tabbara Seafood</title><style>body{font-family:Arial;width:80mm;margin:auto;padding:10px}h2{text-align:center}table{width:100%;border-collapse:collapse}td,th{border-bottom:1px dashed #999;padding:5px;font-size:12px}.total{text-align:center;font-size:18px;font-weight:bold;margin-top:15px}</style></head><body>
-  <h2>Tabbara Seafood</h2><div style="text-align:center">${escapeHtml(order.order_type||"")}</div>
+  return `<!doctype html><html dir="rtl"><head><meta charset="UTF-8"><title>Tabbara Fish</title><style>body{font-family:Arial;width:80mm;margin:auto;padding:10px}h2{text-align:center}table{width:100%;border-collapse:collapse}td,th{border-bottom:1px dashed #999;padding:5px;font-size:12px}.total{text-align:center;font-size:18px;font-weight:bold;margin-top:15px}</style></head><body>
+  <h2>Tabbara Fish</h2><div style="text-align:center">${escapeHtml(order.order_type||"")}</div>
   <div style="text-align:center;font-size:11px;margin:4px 0 8px">${escapeHtml(formatOrderDateTime(order.created_at))}</div>
   ${order.customer_name?`<div>الزبون: ${escapeHtml(order.customer_name)}</div>`:""}${order.customer_phone?`<div>الهاتف: ${escapeHtml(order.customer_phone)}</div>`:""}${order.customer_address?`<div>العنوان: ${escapeHtml(order.customer_address)}</div>`:""}
   <table><thead><tr><th>الصنف</th><th>العدد</th><th>السعر</th></tr></thead><tbody>${rows}</tbody></table>
@@ -946,4 +946,4 @@ window.TABBARA_POS={
 window.getTabbaraMenu=()=>getStructuredMenu();
 window.getTabbaraDeviceId=()=>getDeviceId();
 window.syncTabbaraOrders=()=>syncPendingOrders();
-console.log("Tabbara Seafood POS loaded successfully.");
+console.log("Tabbara Fish POS loaded successfully.");
