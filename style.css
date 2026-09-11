@@ -821,3 +821,81 @@ textarea{height:75px;resize:vertical}.customer-message{min-height:22px;font-size
     line-height:1.35!important;
   }
 }
+
+
+/* Tabbara Fish POS - Touch Controls & Menu Details V10 */
+
+/* Current Order: + / - / delete controls */
+@media (min-width: 700px){
+  #cartRoot button,
+  #cart button{
+    min-width:64px!important;
+    min-height:64px!important;
+    padding:12px 16px!important;
+    font-size:30px!important;
+    font-weight:900!important;
+    line-height:1!important;
+    border-radius:14px!important;
+  }
+
+  /* Main navigation/action controls: Previous Orders, Menu Manager, Exit */
+  button[onclick*="showOrders"],
+  button[onclick*="showMenuManager"],
+  button[onclick*="logout"],
+  button[onclick*="logoutUser"],
+  button[onclick*="login"]{
+    min-height:68px!important;
+    padding:14px 24px!important;
+    font-size:29px!important;
+    font-weight:900!important;
+  }
+}
+
+/* Menu Manager: keep Delivery Charge compact, while making item information much larger */
+@media (min-width: 1000px){
+  /* Compact delivery-charge box */
+  #modalRoot .modal-body > div > div[style*="background:#f8fafb"]{
+    padding:10px 14px!important;
+    margin-bottom:10px!important;
+    border-radius:10px!important;
+  }
+  #modalRoot .modal-body > div > div[style*="background:#f8fafb"] div[style*="font-weight:bold"]{
+    font-size:25px!important;
+    line-height:1.2!important;
+    margin-bottom:4px!important;
+  }
+  #modalRoot .modal-body > div > div[style*="background:#f8fafb"] div[style*="font-size:12px"]{
+    font-size:19px!important;
+    line-height:1.25!important;
+    margin-bottom:4px!important;
+  }
+  #modalRoot .modal-body > div > div[style*="background:#f8fafb"] input{
+    min-height:48px!important;
+    font-size:23px!important;
+    padding:7px 12px!important;
+  }
+
+  /* Item details: much larger, buttons intentionally not targeted */
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-size:18px"]{
+    font-size:78px!important;
+    line-height:1.12!important;
+    font-weight:900!important;
+  }
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-size:13px"]{
+    font-size:52px!important;
+    line-height:1.25!important;
+    font-weight:800!important;
+  }
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="margin-top:7px"]{
+    font-size:52px!important;
+    line-height:1.35!important;
+    font-weight:900!important;
+    margin-top:12px!important;
+  }
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] div[style*="font-weight:bold;color"]{
+    font-size:52px!important;
+    line-height:1.25!important;
+    font-weight:900!important;
+    margin-top:14px!important;
+  }
+}
