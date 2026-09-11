@@ -440,3 +440,85 @@ textarea{height:75px;resize:vertical}.customer-message{min-height:22px;font-size
   .confirm-action-buttons{gap:14px}
   .confirm-action-buttons button{min-height:82px!important;font-size:24px!important}
 }
+
+
+/* ============================================================
+   MENU MANAGER - LARGE TOUCHSCREEN CONTROLS
+   ============================================================ */
+@media (min-width:1000px){
+  #modalRoot .manager-grid{
+    gap:18px!important;
+  }
+
+  /* Delivery charge save button */
+  #modalRoot button{
+    min-height:58px;
+    padding:14px 20px;
+    font-size:18px;
+    border-radius:11px;
+    touch-action:manipulation;
+  }
+
+  /* Menu item action buttons: availability / edit / delete */
+  #modalRoot .manager-card button,
+  #modalRoot button[onclick*="toggleAvailability"],
+  #modalRoot button[onclick*="editMenuItem"],
+  #modalRoot button[onclick*="deleteMenuItem"]{
+    min-height:64px!important;
+    min-width:120px!important;
+    padding:14px 20px!important;
+    margin:5px!important;
+    font-size:19px!important;
+    font-weight:bold!important;
+    border-radius:12px!important;
+    cursor:pointer;
+  }
+
+  /* Make each menu item card easier to touch */
+  #modalRoot .manager-card{
+    padding:20px!important;
+    border-radius:15px!important;
+  }
+
+  #modalRoot .manager-card h4{
+    font-size:22px!important;
+    margin-bottom:12px!important;
+  }
+
+  /* Buttons generated inside the menu-manager item rows */
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] button{
+    min-height:64px!important;
+    padding:14px 20px!important;
+    font-size:19px!important;
+    font-weight:bold!important;
+    border-radius:12px!important;
+  }
+
+  /* Add item / add offer controls */
+  #modalRoot .primary,
+  #modalRoot .danger,
+  #modalRoot .secondary{
+    min-height:64px!important;
+    font-size:19px!important;
+  }
+}
+
+@media (min-width:1400px){
+  #modalRoot button,
+  #modalRoot .manager-card button,
+  #modalRoot .modal-body > div > div[style*="border:1px solid #ddd"] button{
+    min-height:72px!important;
+    min-width:135px!important;
+    font-size:21px!important;
+    padding:16px 24px!important;
+    border-radius:13px!important;
+  }
+
+  #modalRoot .manager-card{
+    padding:24px!important;
+  }
+
+  #modalRoot .manager-card h4{
+    font-size:24px!important;
+  }
+}
