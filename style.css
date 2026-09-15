@@ -2,3 +2,16 @@
 @media print{#posPrintArea{display:block}@page{size:80mm auto;margin:0}html,body{margin:0!important;padding:0!important;background:#fff!important}body.printing-invoice>*:not(#posPrintArea){display:none!important}body.printing-invoice #posPrintArea{display:block!important;width:80mm!important;margin:0 auto!important;padding:0!important}}
 
 .manager-settings{background:#f7f9fa;border:1px solid #e1e5e8;border-radius:12px;padding:14px;margin-bottom:14px}.manager-card{background:#fff}.manager-card.manager-sold{opacity:.85;border-color:#e3b8b8}.price-editor{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:end;margin-top:10px}.price-editor input{margin:0}.price-editor button{margin:0;min-height:46px}.sizes-editor{grid-template-columns:repeat(2,1fr)}.sizes-editor>button{grid-column:1/-1}.manager-actions{margin-top:8px}.manager-actions button{width:100%;margin:0}.manager-status{margin-top:7px;font-weight:bold}.manager-card .muted{margin-bottom:4px}@media(max-width:500px){.price-editor,.sizes-editor{grid-template-columns:1fr}.sizes-editor>button{grid-column:auto}.price-editor button{width:100%}}
+.manager-category-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 18px;position:sticky;top:0;background:#fff;padding:8px 0;z-index:2;border-bottom:1px solid #eee}
+.manager-tab{border:1px solid #cfd5da;background:#f4f6f7;border-radius:9px;padding:10px 13px;cursor:pointer;font-weight:bold}
+.manager-tab.active{background:#123b4a;color:#fff;border-color:#123b4a}
+.manager-section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px 2px}
+.manager-section-title h3{margin:0}
+.manager-card input{min-height:44px}
+@media(max-width:600px){.manager-category-tabs{overflow-x:auto;flex-wrap:nowrap}.manager-tab{white-space:nowrap}.manager-grid{grid-template-columns:1fr}}
+.manager-category-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 18px;position:sticky;top:0;background:#fff;padding:8px 0;z-index:2;border-bottom:1px solid #eee}
+.manager-tab{border:1px solid #cfd5da;background:#f4f6f7;border-radius:9px;padding:10px 13px;cursor:pointer;font-weight:bold}
+.manager-tab.active{background:#123b4a;color:#fff;border-color:#123b4a}
+.manager-section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px 2px}
+.manager-section-title h3{margin:0}
+@media(max-width:600px){.manager-category-tabs{overflow-x:auto;flex-wrap:nowrap}.manager-tab{white-space:nowrap}.manager-grid{grid-template-columns:1fr}}
