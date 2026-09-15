@@ -15,3 +15,21 @@
 .manager-section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px 2px}
 .manager-section-title h3{margin:0}
 @media(max-width:600px){.manager-category-tabs{overflow-x:auto;flex-wrap:nowrap}.manager-tab{white-space:nowrap}.manager-grid{grid-template-columns:1fr}}
+
+/* Large touch-friendly item selection */
+.modal-box{width:min(900px,100%)}
+.modal-body{font-size:20px}
+.modal-header h3{font-size:30px}
+.option-group{margin:14px 0}
+.option-group>label{display:block;font-size:22px;font-weight:800;margin-bottom:10px}
+.option-buttons{gap:12px}
+.option-btn,.size-option{min-height:64px;padding:14px 18px;font-size:21px;border-width:2px}
+.modal-input.qty-input{height:70px;font-size:32px;font-weight:800;text-align:center;border:2px solid #9aa6ad;margin:4px 0 10px}
+.numeric-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;max-width:430px;margin:8px auto 14px}
+.numeric-keypad button{height:62px;border:1px solid #c5cdd2;border-radius:10px;background:#f2f4f5;font-size:27px;font-weight:800;cursor:pointer;touch-action:manipulation}
+.numeric-keypad button:active{transform:scale(.97);background:#dfe7ea}
+.numeric-keypad .key-clear{background:#ffe4e4}.numeric-keypad .key-back{background:#e8edf0}
+.qty-input.keypad-active{border-color:#123b4a!important;box-shadow:0 0 0 3px rgba(18,59,74,.15)}
+.size-options{gap:12px}.size-option{min-height:76px}
+.modal-confirm-btn{min-height:68px;font-size:22px}
+@media(max-width:600px){.modal-header h3{font-size:25px}.modal-body{font-size:18px}.option-group>label{font-size:20px}.option-btn,.size-option{font-size:18px;min-height:60px}.modal-input.qty-input{height:64px;font-size:28px}.numeric-keypad{max-width:360px}.numeric-keypad button{height:58px;font-size:25px}}
