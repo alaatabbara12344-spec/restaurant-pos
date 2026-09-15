@@ -32,3 +32,9 @@
 .qty-pad-clear{grid-column:1/-1!important;background:#ffdede!important;color:#a21d1d}
 .qty-pad-wrap{max-width:460px;margin:0 auto}
 @media(max-width:600px){.menu-item{min-height:135px}.menu-item-name{font-size:20px}.categories button{min-height:62px;font-size:17px}.option-btn,.size-option{font-size:17px;padding:12px}.qty-pad button{min-height:58px;font-size:25px}}
+
+/* v33 universal numeric keypad for touch screens */
+.universal-numeric-pad{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);width:min(430px,calc(100vw - 24px));background:#fff;border:2px solid #123b4a;border-radius:16px;box-shadow:0 10px 35px rgba(0,0,0,.28);padding:10px;z-index:99999;direction:rtl}
+.universal-pad-head{display:flex;justify-content:space-between;align-items:center;font-size:18px;padding:4px 4px 9px}.universal-pad-head button{border:0;background:#eee;border-radius:10px;width:42px;height:38px;font-size:20px;cursor:pointer}
+.universal-pad-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;direction:ltr}.universal-pad-keys button{min-height:58px;border:1px solid #c8d0d4;border-radius:12px;background:#f5f7f8;font-size:25px;font-weight:700;cursor:pointer;touch-action:manipulation}.universal-pad-keys button:active{transform:scale(.97)}.universal-pad-keys .empty{visibility:hidden}.universal-pad-clear{grid-column:1/2;background:#ffe0e0!important;color:#a11}.universal-pad-done{grid-column:2/4;background:#123b4a!important;color:#fff}
+@media(max-width:600px){.universal-numeric-pad{bottom:6px}.universal-pad-keys button{min-height:54px;font-size:23px}}

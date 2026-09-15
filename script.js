@@ -171,3 +171,34 @@ function toggleAvailability(id){const i=menu.find(x=>x.id===id);if(!i)return;i.a
 document.getElementById('phone')?.addEventListener('blur',findCustomer);
 window.addEventListener('online',()=>{setStatus();syncPendingOrders();syncMenuFromCloud()});window.addEventListener('offline',setStatus);
 window.addEventListener('load',async()=>{loadSettings();loadMenu();setStatus();if(sessionStorage.getItem('tabbaraLoggedIn')==='1')document.getElementById('loginScreen').style.display='none';renderCategories();renderCart();await syncMenuFromCloud()});
+
+/* v33: universal touch numeric keypad */
+let activeNumericInput=null;
+function ensureUniversalNumericPad(){
+  if(document.getElementById('universalNumericPad'))return;
+  const d=document.createElement('div'); d.id='universalNumericPad'; d.className='universal-numeric-pad'; d.style.display='none';
+  d.innerHTML=`<div class="universal-pad-head"><b>🔢 لوحة الأرقام</b><button type="button" onclick="hideUniversalNumericPad()">✕</button></div><div id="universalPadKeys" class="universal-pad-keys"></div>`;
+  document.body.appendChild(d);
+}
+function showUniversalNumericPad(input){
+  if(!input || input.disabled || input.readOnly)return;
+  ensureUniversalNumericPad(); activeNumericInput=input;
+  const phone=input.type==='tel' || /phone/i.test(input.id||'');
+  const decimal=!phone && (input.type==='number' || input.inputMode==='decimal' || input.step==='0.01');
+  const keys=phone?['1','2','3','4','5','6','7','8','9','+','0','⌫']:['7','8','9','4','5','6','1','2','3',decimal?'.':'','0','⌫'];
+  document.getElementById('universalPadKeys').innerHTML=keys.map(k=>`<button type="button" class="${k===''?'empty':''}" onclick="universalPadPress('${k}')">${k}</button>`).join('')+`<button type="button" class="universal-pad-clear" onclick="universalPadClear()">C</button><button type="button" class="universal-pad-done" onclick="hideUniversalNumericPad()">✓ تم</button>`;
+  dshow('universalNumericPad');
+}
+function dshow(id){const e=document.getElementById(id);if(e)e.style.display='block'}
+function hideUniversalNumericPad(){const e=document.getElementById('universalNumericPad');if(e)e.style.display='none';activeNumericInput=null}
+function universalPadPress(key){const e=activeNumericInput;if(!e)return;e.focus({preventScroll:true});let v=String(e.value||'');const phone=e.type==='tel'||/phone/i.test(e.id||'');
+  if(key==='⌫'){e.value=v.slice(0,-1);}
+  else if(key==='+'){if(v.length===0)e.value='+';}
+  else if(key==='.') {if(!v.includes('.'))e.value=(v||'0')+'.';}
+  else if(/^\d$/.test(key)){e.value=(v==='0'&&!phone?'':v)+key;}
+  e.dispatchEvent(new Event('input',{bubbles:true})); e.dispatchEvent(new Event('change',{bubbles:true}));
+}
+function universalPadClear(){if(!activeNumericInput)return;activeNumericInput.value='';activeNumericInput.dispatchEvent(new Event('input',{bubbles:true}));}
+document.addEventListener('focusin',e=>{const t=e.target;if(!(t instanceof HTMLInputElement))return;if(t.type==='number'||t.type==='tel'){t.setAttribute('inputmode','none');showUniversalNumericPad(t)}});
+document.addEventListener('pointerdown',e=>{const pad=document.getElementById('universalNumericPad');if(!pad||pad.style.display==='none')return;if(!pad.contains(e.target)&&e.target!==activeNumericInput)hideUniversalNumericPad()});
+window.addEventListener('load',ensureUniversalNumericPad);
