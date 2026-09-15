@@ -1,13 +1,24 @@
-Tabbara Fish POS
+Tabbara Fish POS - v20
 
-This package includes the POS, multi-device menu sync, modal/print fixes, and editable delivery charge.
+الملفات:
+- index.html
+- script.js
+- style.css
+- sw.js
 
-Delivery charge:
-- Default is $2.00.
-- Open ⚙️ إدارة المنيو.
-- Edit 🛵 delivery charge and press حفظ.
-- It is added only to Delivery orders, not pickup orders.
-- The charge is saved with each order so old orders keep their original fee.
+التعديلات:
+1) سعر موحّد للقلي والشوي لكل أصناف الوزن، قابل للتعديل من إدارة المنيو.
+2) مخزون بالكيلو للصنف، ينقص تلقائياً عند البيع ويصبح منتهي عند 0.
+3) تقارير مبيعات يومية مع الطلبات، الأصناف المباعة، الإجمالي، طرق الدفع، والمبلغ المفروض بالصندوق.
+4) صفحة الزبائن مع البحث وإجمالي الطلبات والإنفاق وتفاصيل الطلبات.
+5) الاعتماد على Supabase للبيانات مع الحفاظ على العمل أوفلاين والطلبات المعلقة.
+6) لا يحتاج Google Sheets.
 
-Supabase setup:
-Run delivery_charge.sql once in Supabase SQL Editor.
+ملاحظة:
+- المخزون الفارغ يعني "غير محدود" وليس صفر.
+- القلي والشوي الافتراضيان $3 لكل كغ ويمكن تغييرهما من إدارة المنيو.
+- كلمة مرور دخول الـPOS الموجودة في الكود هي كلمة الاختبار الحالية؛ يجب تغييرها قبل الاستخدام الفعلي.
+- مفتاح Supabase الموجود في الواجهة هو publishable key فقط؛ لا تضع أي service-role/secret key داخل هذه الملفات.
+
+رفع الملفات:
+ارفع الملفات الأربعة إلى جذر repository نفسه واستبدل النسخ القديمة. بعدها انتظر Vercel حتى يعيد النشر.
