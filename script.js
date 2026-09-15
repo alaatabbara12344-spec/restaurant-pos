@@ -89,12 +89,67 @@ async function customerDetails(phone){let rows=[];try{const r=await api(`/rest/v
 async function showReports(){const date=new Date().toISOString().slice(0,10);openReportForDate(date)}
 async function openReportForDate(date){let rows=[];try{const from=date+'T00:00:00',to=date+'T23:59:59.999';const r=await api(`/rest/v1/orders?created_at=gte.${encodeURIComponent(from)}&created_at=lte.${encodeURIComponent(to)}&select=*&order=created_at.asc&limit=5000`);if(r.ok)rows=await r.json()}catch(e){console.warn(e)}const stats=buildReport(rows);openModal('📊 تقرير المبيعات اليومية',`<div class="search-row"><input id="reportDate" type="date" value="${date}" onchange="openReportForDate(this.value)"></div><div class="summary-grid"><div class="summary-card">عدد الطلبات<div class="big">${stats.orders}</div></div><div class="summary-card">إجمالي المبيعات<div class="big">$${money(stats.total)}</div></div><div class="summary-card">كاش<div class="big">$${money(stats.cash)}</div></div><div class="summary-card">المفروض بالصندوق<div class="big">$${money(stats.cash)}</div></div></div><h3>📦 شو انباع اليوم</h3>${stats.products.length?`<table class="report-table"><thead><tr><th>الصنف</th><th>الكمية</th><th>المجموع</th></tr></thead><tbody>${stats.products.map(p=>`<tr><td>${esc(p.name)}</td><td>${p.qtyLabel}</td><td>$${money(p.total)}</td></tr>`).join('')}</tbody></table>`:'<p class="muted">لا توجد مبيعات بهذا التاريخ.</p>'}<hr><p>🛵 دليفري: <b>$${money(stats.delivery)}</b> &nbsp; 🏪 استلام: <b>$${money(stats.pickup)}</b></p><p>💵 كاش: <b>$${money(stats.cash)}</b> &nbsp; 💳 بطاقة: <b>$${money(stats.card)}</b> &nbsp; 🏦 تحويل: <b>$${money(stats.transfer)}</b></p>`)}
 function buildReport(rows){const productsMap={};let total=0,cash=0,card=0,transfer=0,delivery=0,pickup=0;for(const o of rows){total+=Number(o.total||0);if(o.order_type==='Delivery')delivery+=Number(o.total||0);else pickup+=Number(o.total||0);const meta=(Array.isArray(o.items)?o.items:[]).find(x=>x.__meta)||{};if(meta.payment_method==='card')card+=Number(o.total||0);else if(meta.payment_method==='transfer')transfer+=Number(o.total||0);else cash+=Number(o.total||0);for(const x of (Array.isArray(o.items)?o.items:[]).filter(x=>!x.__meta)){const k=x.name||x.label||'غير معروف';if(!productsMap[k])productsMap[k]={name:k,qty:0,weight:0,total:0};productsMap[k].qty+=Number(x.quantity||0);productsMap[k].weight+=Number(x.weight||0);productsMap[k].total+=Number(x.total||0)}}const products=Object.values(productsMap).sort((a,b)=>b.total-a.total).map(p=>({...p,qtyLabel:p.weight?money(p.weight)+' كغ':String(p.qty)}));return{orders:rows.length,total,cash,card,transfer,delivery,pickup,products}}
-async function showMenuManager(){const body=`<div class="summary-grid"><div class="summary-card">قلي موحّد<div class="big">$${money(frySurcharge)}</div></div><div class="summary-card">شوي موحّد<div class="big">$${money(grillSurcharge)}</div></div></div><div class="form-grid"><div><label>سعر إضافة القلي لكل كغ</label><input id="globalFry" type="number" step="0.01" min="0" value="${money(frySurcharge)}"></div><div><label>سعر إضافة الشوي لكل كغ</label><input id="globalGrill" type="number" step="0.01" min="0" value="${money(grillSurcharge)}"></div><div class="full"><button class="primary" onclick="saveGlobalSurcharges()">💾 حفظ أسعار القلي والشوي</button></div></div><hr><h3>🍽️ الأصناف والمخزون</h3><div class="manager-grid">${menu.map(managerCard).join('')}</div>`;openModal('⚙️ إدارة المنيو',`<div class="modal-body">${body}</div>`)}
-function managerCard(i){let extra='';if(i.type==='weight')extra=`<div>السعر الأساسي: <b>$${money(i.pricing?.base)}</b> / كغ</div><div class="stock-control"><label>المخزون (كغ):</label><input id="stock-${esc(i.id)}" type="number" min="0" step="0.1" value="${i.stock==null?'':money(i.stock)}" placeholder="فارغ = غير محدود"><button class="primary" onclick="saveStock('${esc(i.id).replace(/'/g,"\\'")}')">حفظ</button></div><div>${i.stock==null?'📦 غير محدد':i.stock>0?'📦 متبقي '+money(i.stock)+' كغ':'❌ منتهي'}</div>`;else extra=`<div>${displayPrice(i)}</div><button class="${i.available?'danger':'primary'}" onclick="toggleAvailability('${esc(i.id).replace(/'/g,"\\'")}')">${i.available?'⛔ إخفاء/منتهي':'✅ إعادة متوفر'}</button>`;return `<div class="manager-card"><h4>${esc(i.name)}</h4><div class="muted">${esc(i.category)}</div>${extra}</div>`}
-async function saveGlobalSurcharges(){const f=Number(document.getElementById('globalFry').value),g=Number(document.getElementById('globalGrill').value);if(!Number.isFinite(f)||f<0||!Number.isFinite(g)||g<0)return alert('أدخل أسعاراً صحيحة.');frySurcharge=f;grillSurcharge=g;localStorage.setItem(GLOBAL_FRY_KEY,String(f));localStorage.setItem(GLOBAL_GRILL_KEY,String(g));await saveSetting('fish_fry_surcharge',f);await saveSetting('fish_grill_surcharge',g);closeModal();renderItems();alert('✅ تم توحيد أسعار القلي والشوي على كل الأصناف.')}
+async function showMenuManager(){
+ const body=`
+ <div class="manager-settings">
+   <h3>⚙️ إعدادات عامة</h3>
+   <div class="form-grid">
+    <div><label>كلفة التوصيل ($)</label><input id="managerDelivery" type="number" step="0.01" min="0" value="${money(deliveryCharge)}"></div>
+    <div><label>إضافة القلي والشوي لكل كغ ($)</label><input id="managerCooking" type="number" step="0.01" min="0" value="${money((Number(frySurcharge)+Number(grillSurcharge))/2)}"></div>
+    <div class="full"><button class="primary" onclick="saveManagerSettings()">💾 حفظ الإعدادات</button></div>
+   </div>
+ </div>
+ <hr><h3>🍽️ تعديل الأصناف والأسعار والمخزون</h3>
+ <p class="muted">عدّل السعر من هون مباشرة. للقلي والشوي، الإضافة موحّدة على كل أصناف الوزن.</p>
+ <div class="manager-grid">${menu.map(managerCard).join('')}</div>`;
+ openModal('⚙️ إدارة المنيو',`<div class="modal-body">${body}</div>`)
+}
+function managerCard(i){
+ const id=esc(i.id).replace(/'/g,"\\'");
+ let priceEditor='';
+ if(i.type==='weight'){
+   priceEditor=`<div class="price-editor"><label>السعر الأساسي / كغ ($)</label><input id="price-${esc(i.id)}" type="number" step="0.01" min="0" value="${money(i.pricing?.base)}"><button class="primary" onclick="saveItemPrice('${id}')">💾 حفظ السعر</button></div>
+   <div class="stock-control"><label>المخزون (كغ)</label><input id="stock-${esc(i.id)}" type="number" min="0" step="0.1" value="${i.stock==null?'':String(i.stock)}" placeholder="فارغ = غير محدد"><button class="primary" onclick="saveStock('${id}')">حفظ المخزون</button></div>
+   <div class="manager-status">${i.stock==null?'📦 المخزون غير محدد':i.stock>0?'📦 متبقي '+money(i.stock)+' كغ':'❌ منتهي'}</div>`;
+ } else if(i.type==='sizes'){
+   priceEditor=`<div class="price-editor sizes-editor">${Object.entries(i.sizes||{}).map(([size,p])=>`<div><label>${esc(size)} ($)</label><input id="price-${esc(i.id)}-${esc(size)}" type="number" step="0.01" min="0" value="${money(p)}"></div>`).join('')}<button class="primary" onclick="saveItemPrice('${id}')">💾 حفظ الأسعار</button></div>`;
+ } else if(i.type==='meal'){
+   priceEditor=`<div class="price-editor"><div><label>وجبة ($)</label><input id="price-${esc(i.id)}-meal" type="number" step="0.01" min="0" value="${money(i.prices?.وجبة)}"></div><div><label>ساندويش ($)</label><input id="price-${esc(i.id)}-sandwich" type="number" step="0.01" min="0" value="${money(i.prices?.ساندويش)}"></div><button class="primary" onclick="saveItemPrice('${id}')">💾 حفظ الأسعار</button></div>`;
+ } else {
+   priceEditor=`<div class="price-editor"><label>السعر ($)</label><input id="price-${esc(i.id)}" type="number" step="0.01" min="0" value="${money(i.price)}"><button class="primary" onclick="saveItemPrice('${id}')">💾 حفظ السعر</button></div>`;
+ }
+ const tracked=i.stock!==null&&i.stock!==undefined;
+ const sold=i.available===false||(tracked&&Number(i.stock)<=0);
+ return `<div class="manager-card ${sold?'manager-sold':''}"><h4>${esc(i.name)}</h4><div class="muted">${esc(i.category)}</div>${priceEditor}<div class="manager-actions"><button class="${sold?'primary':'danger'}" onclick="toggleAvailability('${id}')">${sold?'✅ إعادة متوفر':'⛔ إخفاء/منتهي'}</button></div></div>`
+}
+async function saveManagerSettings(){
+ const d=Number(document.getElementById('managerDelivery').value),c=Number(document.getElementById('managerCooking').value);
+ if(!Number.isFinite(d)||d<0||!Number.isFinite(c)||c<0)return alert('أدخل قيم صحيحة.');
+ deliveryCharge=d;frySurcharge=c;grillSurcharge=c;
+ localStorage.setItem(DELIVERY_CHARGE_KEY,String(d));localStorage.setItem(GLOBAL_FRY_KEY,String(c));localStorage.setItem(GLOBAL_GRILL_KEY,String(c));
+ await Promise.all([saveSetting('delivery_charge',d),saveSetting('fish_fry_surcharge',c),saveSetting('fish_grill_surcharge',c)]);
+ renderCart();showMenuManager();alert('✅ تم حفظ كلفة التوصيل وإضافة القلي والشوي.');
+}
+async function saveItemPrice(id){
+ const i=menu.find(x=>x.id===id);if(!i)return;
+ if(i.type==='weight'){
+  const n=Number(document.getElementById('price-'+id).value);if(!Number.isFinite(n)||n<0)return alert('السعر غير صحيح.');i.pricing=i.pricing||{};i.pricing.base=n;
+ }else if(i.type==='sizes'){
+  const next={};for(const size of Object.keys(i.sizes||{})){const el=document.getElementById('price-'+id+'-'+size);const n=Number(el?.value);if(!Number.isFinite(n)||n<0)return alert('السعر غير صحيح.');next[size]=n}i.sizes=next;
+ }else if(i.type==='meal'){
+  const a=Number(document.getElementById('price-'+id+'-meal').value),b=Number(document.getElementById('price-'+id+'-sandwich').value);if(!Number.isFinite(a)||a<0||!Number.isFinite(b)||b<0)return alert('السعر غير صحيح.');i.prices={وجبة:a,ساندويش:b};
+ }else{
+  const n=Number(document.getElementById('price-'+id).value);if(!Number.isFinite(n)||n<0)return alert('السعر غير صحيح.');i.price=n;
+ }
+ saveMenuLocal();await syncMenuToCloud();renderItems();showMenuManager();
+}
+async function saveGlobalSurcharges(){
+ const c=Number(document.getElementById('globalCooking')?.value ?? document.getElementById('globalFry')?.value);
+ if(!Number.isFinite(c)||c<0)return alert('أدخل سعراً صحيحاً.');frySurcharge=c;grillSurcharge=c;localStorage.setItem(GLOBAL_FRY_KEY,String(c));localStorage.setItem(GLOBAL_GRILL_KEY,String(c));await saveSetting('fish_fry_surcharge',c);await saveSetting('fish_grill_surcharge',c);renderItems();alert('✅ تم توحيد إضافة القلي والشوي.');
+}
 async function saveSetting(id,value){try{const r=await api('/rest/v1/pos_settings?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id,value,updated_at:new Date().toISOString()})});if(!r.ok)console.warn(await r.text())}catch(e){console.warn(e)}}
-async function saveStock(id){const i=menu.find(x=>x.id===id);const v=document.getElementById('stock-'+id).value;if(v===''){i.stock=null;i.available=true}else{const n=Number(v);if(!Number.isFinite(n)||n<0)return alert('كمية غير صحيحة.');i.stock=n;i.available=n>0}saveMenuLocal();await syncMenuToCloud();showMenuManager()}
-async function toggleAvailability(id){const i=menu.find(x=>x.id===id);if(i.stock!=null){i.stock=i.available?0:Number(i.stock)||1;i.available=i.stock>0}else i.available=!i.available;saveMenuLocal();await syncMenuToCloud();showMenuManager()}
+async function saveStock(id){const i=menu.find(x=>x.id===id);if(!i)return;const el=document.getElementById('stock-'+id);if(!el)return;const v=el.value.trim();if(v===''){i.stock=null;i.available=true}else{const n=Number(v);if(!Number.isFinite(n)||n<0)return alert('كمية غير صحيحة.');i.stock=n;i.available=n>0}saveMenuLocal();await syncMenuToCloud();renderItems();showMenuManager()}
+async function toggleAvailability(id){const i=menu.find(x=>x.id===id);if(!i)return;if(i.stock!=null){if(i.available){i.stock=0;i.available=false}else{if(Number(i.stock)<=0){const v=prompt('الصنف مخزونُه صفر. أدخل كمية المخزون بالكيلو:', '1');const n=Number(v);if(!Number.isFinite(n)||n<=0)return;i.stock=n}i.available=true}}else i.available=!i.available;saveMenuLocal();await syncMenuToCloud();renderItems();showMenuManager()}
 document.getElementById('phone')?.addEventListener('blur',findCustomer);
 window.addEventListener('online',()=>{setStatus();syncPendingOrders();syncMenuFromCloud()});window.addEventListener('offline',setStatus);
 window.addEventListener('load',async()=>{loadSettings();loadMenu();setStatus();if(sessionStorage.getItem('tabbaraLoggedIn')==='1')document.getElementById('loginScreen').style.display='none';renderCategories();renderCart();await syncMenuFromCloud()});
