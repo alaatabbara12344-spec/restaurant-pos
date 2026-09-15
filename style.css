@@ -33,3 +33,12 @@
 .size-options{gap:12px}.size-option{min-height:76px}
 .modal-confirm-btn{min-height:68px;font-size:22px}
 @media(max-width:600px){.modal-header h3{font-size:25px}.modal-body{font-size:18px}.option-group>label{font-size:20px}.option-btn,.size-option{font-size:18px;min-height:60px}.modal-input.qty-input{height:64px;font-size:28px}.numeric-keypad{max-width:360px}.numeric-keypad button{height:58px;font-size:25px}}
+/* v33: extra-large touch controls on item selection */
+.categories button{min-height:68px;font-size:21px;padding:16px 10px}
+.items{gap:16px}
+.menu-item{min-height:170px;padding:24px 14px;gap:12px;border-width:2px}
+.menu-item-name{font-size:25px;line-height:1.25}
+.menu-item-price{font-size:21px}
+.menu-item .badge{font-size:15px;padding:6px 10px}
+@media(max-width:800px){.categories button{min-height:68px;font-size:20px}.menu-item{min-height:155px}.menu-item-name{font-size:22px}.menu-item-price{font-size:20px}}
+@media(max-width:500px){.categories button{min-height:64px;font-size:18px}.menu-item{min-height:145px;padding:18px 8px}.menu-item-name{font-size:20px}.menu-item-price{font-size:18px}}
