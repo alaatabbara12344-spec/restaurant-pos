@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#123b4a">
 <title>Tabbara Fish - POS</title>
-<link rel="stylesheet" href="style.css?v=25">
+<link rel="stylesheet" href="style.css?v=26">
 </head>
 <body>
 <div id="loginScreen" class="login-screen">
@@ -30,12 +30,14 @@
 <main>
 <section class="menu">
   <h2>🍽️ قائمة الطعام</h2>
-  <div class="order-type">
-    <button onclick="setOrderType('Delivery')" id="deliveryBtn">🛵 Delivery</button>
+  <div class="order-type order-type-required">
+    <div class="order-type-title">1️⃣ أولاً حدّد نوع الطلب</div>
+    <button onclick="setOrderType('Delivery')" id="deliveryBtn">🛵 دليفري</button>
     <button onclick="setOrderType('استلام من المحل')" id="pickupBtn">🏪 استلام من المحل</button>
+    <div id="orderTypeHint" class="order-type-hint">⚠️ لازم تختار نوع الطلب قبل إضافة أي صنف</div>
   </div>
-  <div id="categories" class="categories"></div>
-  <div id="items" class="items"></div>
+  <div id="categories" class="categories order-step-locked"></div>
+  <div id="items" class="items order-step-locked"></div>
 </section>
 <section class="cart">
   <h2>🛒 الطلب الحالي</h2>
@@ -56,7 +58,7 @@
 </main>
 </div>
 <div id="modalRoot"></div>
-<script src="script.js?v=25"></script>
+<script src="script.js?v=27"></script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));}</script>
 </body>
 </html>
