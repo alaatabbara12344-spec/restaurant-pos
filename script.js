@@ -114,10 +114,16 @@ async function checkWhatsAppOrders(){
     for(const o of rows){
       const id=String(o.id||'');
       if(!id||seen.includes(id))continue;
-      rememberWhatsAppOrder(id);
       showWhatsAppNotice(o);
-      try{await new Promise(resolve=>setTimeout(resolve,250));printOrder(o)}catch(e){console.warn('WhatsApp print',e)}
-      try{await markWhatsAppOrderProcessed(id)}catch(e){console.warn('WhatsApp status update',e)}
+      try{
+        await new Promise(resolve=>setTimeout(resolve,250));
+        printOrder(o);
+        await markWhatsAppOrderProcessed(id);
+        rememberWhatsAppOrder(id);
+      }catch(e){
+        console.warn('WhatsApp order processing',e);
+        // Keep the order pending so it can be retried after the problem is fixed.
+      }
       setTimeout(hideWhatsAppNotice,2500);
     }
   }catch(e){console.warn('WhatsApp orders check',e)}finally{whatsappPollBusy=false}
