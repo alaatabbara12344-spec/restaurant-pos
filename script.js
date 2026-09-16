@@ -87,6 +87,42 @@ function paymentMeta(){const p=document.getElementById('paymentMethod').value;re
 function orderPayload(){const baseTotal=cart.reduce((s,x)=>s+Number(x.total),0),delivery=selectedOrderType==='Delivery'?deliveryCharge:0;const meta={__meta:true,payment_method:document.getElementById('paymentMethod').value,payment_label:paymentMeta(),delivery_charge:delivery};return{order_type:selectedOrderType,customer_name:document.getElementById('name').value.trim(),customer_phone:normalizePhone(document.getElementById('phone').value),customer_address:document.getElementById('address').value.trim(),notes:document.getElementById('notes').value.trim(),items:[...cart,meta],total:baseTotal+delivery,device_id:deviceId,sync_status:navigator.onLine?'synced':'pending',created_at:new Date().toISOString(),delivery_charge:delivery}}
 async function confirmOrder(){if(!selectedOrderType)return alert('اختار نوع الطلب أولاً.');if(!cart.length)return alert('أضف صنفاً واحداً على الأقل.');const payload=orderPayload();const finish=()=>{printOrder(payload);clearOrder()};try{const r=await api('/rest/v1/orders',{method:'POST',body:JSON.stringify(payload)});if(!r.ok)throw new Error(await r.text());saveCustomer().catch(()=>{});alert('✅ تم حفظ الطلب بنجاح');finish()}catch(e){const q=JSON.parse(localStorage.getItem(PENDING_ORDERS_KEY)||'[]');q.push(payload);localStorage.setItem(PENDING_ORDERS_KEY,JSON.stringify(q));alert('📴 تم حفظ الطلب على الجهاز وسيتم مزامنته عند عودة الإنترنت.');finish()}}
 async function syncPendingOrders(){if(!navigator.onLine)return;const q=JSON.parse(localStorage.getItem(PENDING_ORDERS_KEY)||'[]');if(!q.length)return;const left=[];for(const o of q){try{const r=await api('/rest/v1/orders',{method:'POST',body:JSON.stringify(o)});if(!r.ok)throw 0}catch{left.push(o)}}localStorage.setItem(PENDING_ORDERS_KEY,JSON.stringify(left))}
+let whatsappPollBusy=false;
+const WHATSAPP_SEEN_KEY='tabbara_whatsapp_seen_orders';
+function getWhatsAppSeen(){try{const a=JSON.parse(localStorage.getItem(WHATSAPP_SEEN_KEY)||'[]');return Array.isArray(a)?a:[]}catch{return[]}}
+function rememberWhatsAppOrder(id){const a=getWhatsAppSeen();if(!a.includes(String(id)))a.push(String(id));localStorage.setItem(WHATSAPP_SEEN_KEY,JSON.stringify(a.slice(-200)))}
+function showWhatsAppNotice(o){
+  let n=document.getElementById('whatsappOrderNotice');
+  if(!n){n=document.createElement('div');n.id='whatsappOrderNotice';n.style.cssText='position:fixed;top:16px;left:16px;right:16px;z-index:99999;background:#fff;border:2px solid #111;border-radius:14px;padding:14px;box-shadow:0 8px 30px rgba(0,0,0,.25);direction:rtl;text-align:right;font-family:Arial';document.body.appendChild(n)}
+  const items=(Array.isArray(o.items)?o.items:[]).filter(x=>!x.__meta);
+  n.innerHTML=`<div style="font-size:18px;font-weight:800">🔔 طلب WhatsApp جديد</div><div style="margin-top:6px"><b>${esc(o.customer_name||'زبون')}</b> — ${esc(o.customer_phone||'')}</div><div style="margin-top:4px">📦 ${esc(o.order_type||'')} — 💰 $${money(o.total)}</div><div style="margin-top:6px;font-size:13px">${items.map(x=>esc(x.label||x.name||'')).join('، ')}</div>`;
+  n.style.display='block';
+}
+function hideWhatsAppNotice(){const n=document.getElementById('whatsappOrderNotice');if(n)n.style.display='none'}
+async function markWhatsAppOrderProcessed(id){
+  const r=await api(`/rest/v1/orders?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({sync_status:'synced'})});
+  if(!r.ok)throw new Error(await r.text());
+}
+async function checkWhatsAppOrders(){
+  if(!navigator.onLine||whatsappPollBusy)return;
+  whatsappPollBusy=true;
+  try{
+    const r=await api('/rest/v1/orders?device_id=eq.whatsapp&sync_status=eq.pending&select=*&order=created_at.asc&limit=20');
+    if(!r.ok)throw new Error(await r.text());
+    const rows=await r.json();
+    const seen=getWhatsAppSeen();
+    for(const o of rows){
+      const id=String(o.id||'');
+      if(!id||seen.includes(id))continue;
+      rememberWhatsAppOrder(id);
+      showWhatsAppNotice(o);
+      try{await new Promise(resolve=>setTimeout(resolve,250));printOrder(o)}catch(e){console.warn('WhatsApp print',e)}
+      try{await markWhatsAppOrderProcessed(id)}catch(e){console.warn('WhatsApp status update',e)}
+      setTimeout(hideWhatsAppNotice,2500);
+    }
+  }catch(e){console.warn('WhatsApp orders check',e)}finally{whatsappPollBusy=false}
+}
+
 function printOrder(o){const items=(o.items||[]).filter(x=>!x.__meta),meta=(o.items||[]).find(x=>x.__meta)||{};const html=`<div style="width:80mm;font-family:Arial;direction:rtl;text-align:right;padding:8px;box-sizing:border-box"><h2 style="text-align:center;margin:0 0 6px">🐟 Tabbara Fish</h2><div style="text-align:center;font-size:12px">فاتورة طلب</div><div style="border-bottom:1px dashed #000;margin:8px 0"></div><div style="font-size:13px;line-height:1.7"><b>👤 اسم الزبون:</b> ${esc(o.customer_name||'غير محدد')}<br><b>📞 الهاتف:</b> ${esc(o.customer_phone||'غير محدد')}<br><b>📍 العنوان:</b> ${esc(o.customer_address||'غير محدد')}<br><b>📦 نوع الطلب:</b> ${esc(o.order_type||'')}</div><div style="border-bottom:1px dashed #000;margin:8px 0"></div>${items.map(x=>`<div style="margin:6px 0"><b>${esc(x.label||x.name||'')}</b><br>${x.weight?money(x.weight)+' كغ × ':'× '+(x.quantity||1)+' × '}$${money(x.unitPrice)} = $${money(x.total)}${x.type==='offer'&&Array.isArray(x.offerItems)&&x.offerItems.length?`<div style="font-size:12px;margin-top:3px"><b>مكونات العرض:</b>${x.offerItems.map(ci=>`<br>• ${esc(ci.name)}${Number(ci.quantity)>1?' × '+Number(ci.quantity):''}`).join('')}</div>`:''}</div>`).join('')}<div style="border-top:1px dashed #000;padding-top:6px;margin-top:8px"><div><b>المجموع قبل التوصيل:</b> $${money(Number(o.total||0)-Number(o.delivery_charge||0))}</div><div><b>🛵 رسوم التوصيل:</b> $${money(o.delivery_charge||0)}</div><div style="font-size:17px;margin-top:5px"><b>المجموع النهائي: $${money(o.total)}</b></div><div style="margin-top:5px"><b>💳 طريقة الدفع:</b> ${esc(meta.payment_label||'كاش')}</div></div>${o.notes?`<div style="margin-top:8px"><b>ملاحظات:</b> ${esc(o.notes)}</div>`:''}</div>`;let p=document.getElementById('posPrintArea');if(!p){p=document.createElement('div');p.id='posPrintArea';document.body.appendChild(p)}p.innerHTML=html;document.body.classList.add('printing-invoice');setTimeout(()=>{window.print();document.body.classList.remove('printing-invoice')},100)}
 async function showOrders(){let rows=[];try{const r=await api('/rest/v1/orders?select=*&order=created_at.desc&limit=200');if(r.ok)rows=await r.json()}catch(e){console.warn(e)}window.__ordersRows=rows;openModal('📋 الطلبات السابقة',`<div class="search-row"><input id="ordersSearch" placeholder="بحث باسم الزبون أو الهاتف" oninput="filterOrders()"></div><div id="ordersList">${rows.map(orderCard).join('')||'<p class="muted">لا توجد طلبات.</p>'}</div>`)}
 function orderCard(o){const d=new Date(o.created_at),items=(Array.isArray(o.items)?o.items:[]).filter(x=>!x.__meta),meta=(Array.isArray(o.items)?o.items:[]).find(x=>x.__meta)||{};return `<div class="receipt order-record" data-search="${esc((o.customer_name||'')+' '+(o.customer_phone||''))}"><b>${d.toLocaleString('ar-LB')}</b><br>👤 ${esc(o.customer_name||'زبون')} — ${esc(o.customer_phone||'')}<br>📦 ${esc(o.order_type||'')}<br>🧾 ${items.map(x=>esc(x.label||x.name)).join('، ')}<br><strong>💰 $${money(o.total)}</strong> — ${esc(meta.payment_label||'كاش')}<br><button class="primary" onclick="reprintExisting('${esc(o.id).replace(/'/g,"\\'")}')">🖨️ إعادة طباعة</button></div>`}
@@ -169,8 +205,8 @@ async function saveGlobalSurcharges(){
 async function saveSetting(id,value){try{const r=await api('/rest/v1/pos_settings?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id,value,updated_at:new Date().toISOString()})});if(!r.ok)console.warn(await r.text())}catch(e){console.warn(e)}}
 function toggleAvailability(id){const i=menu.find(x=>x.id===id);if(!i)return;i.available=!i.available;saveMenuLocal();syncOneMenuItem(i);renderItems();refreshManagerKeepScroll()}
 document.getElementById('phone')?.addEventListener('blur',findCustomer);
-window.addEventListener('online',()=>{setStatus();syncPendingOrders();syncMenuFromCloud()});window.addEventListener('offline',setStatus);
-window.addEventListener('load',async()=>{loadSettings();loadMenu();setStatus();if(sessionStorage.getItem('tabbaraLoggedIn')==='1')document.getElementById('loginScreen').style.display='none';renderCategories();renderCart();await syncMenuFromCloud()});
+window.addEventListener('online',()=>{setStatus();syncPendingOrders();syncMenuFromCloud();setTimeout(checkWhatsAppOrders,800)});window.addEventListener('offline',setStatus);
+window.addEventListener('load',async()=>{loadSettings();loadMenu();setStatus();if(sessionStorage.getItem('tabbaraLoggedIn')==='1')document.getElementById('loginScreen').style.display='none';renderCategories();renderCart();await syncMenuFromCloud();setTimeout(checkWhatsAppOrders,1200);setInterval(checkWhatsAppOrders,4000)});
 
 /* v33: universal touch numeric keypad */
 let activeNumericInput=null;
