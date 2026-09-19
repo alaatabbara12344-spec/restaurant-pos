@@ -129,19 +129,162 @@ async function checkWhatsAppOrders(){
   }catch(e){console.warn('WhatsApp orders check',e)}finally{whatsappPollBusy=false}
 }
 
-function printOrder(o){const items=(o.items||[]).filter(x=>!x.__meta),meta=(o.items||[]).find(x=>x.__meta)||{};const html=`<div style="width:80mm;font-family:Arial;direction:rtl;text-align:right;padding:8px;box-sizing:border-box"><h2 style="text-align:center;margin:0 0 6px">🐟 Tabbara Fish</h2><div style="text-align:center;font-size:12px">فاتورة طلب</div><div style="border-bottom:1px dashed #000;margin:8px 0"></div><div style="font-size:13px;line-height:1.7"><b>👤 اسم الزبون:</b> ${esc(o.customer_name||'غير محدد')}<br><b>📞 الهاتف:</b> ${esc(o.customer_phone||'غير محدد')}<br><b>📍 العنوان:</b> ${esc(o.customer_address||'غير محدد')}<br><b>📦 نوع الطلب:</b> ${esc(o.order_type||'')}</div><div style="border-bottom:1px dashed #000;margin:8px 0"></div>${items.map(x=>`<div style="margin:6px 0"><b>${esc(x.label||x.name||'')}</b><br>${x.weight?money(x.weight)+' كغ × ':'× '+(x.quantity||1)+' × '}$${money(x.unitPrice)} = $${money(x.total)}${x.type==='offer'&&Array.isArray(x.offerItems)&&x.offerItems.length?`<div style="font-size:12px;margin-top:3px"><b>مكونات العرض:</b>${x.offerItems.map(ci=>`<br>• ${esc(ci.name)}${Number(ci.quantity)>1?' × '+Number(ci.quantity):''}`).join('')}</div>`:''}</div>`).join('')}<div style="border-top:1px dashed #000;padding-top:6px;margin-top:8px"><div><b>المجموع قبل التوصيل:</b> $${money(Number(o.total||0)-Number(o.delivery_charge||0))}</div><div><b>🛵 رسوم التوصيل:</b> $${money(o.delivery_charge||0)}</div><div style="font-size:17px;margin-top:5px"><b>المجموع النهائي: $${money(o.total)}</b></div><div style="margin-top:5px"><b>💳 طريقة الدفع:</b> ${esc(meta.payment_label||'كاش')}</div></div>${o.notes?`<div style="margin-top:8px"><b>ملاحظات:</b> ${esc(o.notes)}</div>`:''}</div>`;let p=document.getElementById('posPrintArea');if(!p){p=document.createElement('div');p.id='posPrintArea';document.body.appendChild(p)}p.innerHTML=html;document.body.classList.add('printing-invoice');setTimeout(()=>{window.print();document.body.classList.remove('printing-invoice')},100)}
-async function showOrders(){let rows=[];try{const r=await api('/rest/v1/orders?select=*&order=created_at.desc&limit=200');if(r.ok)rows=await r.json()}catch(e){console.warn(e)}window.__ordersRows=rows;openModal('📋 الطلبات السابقة',`<div class="search-row"><input id="ordersSearch" placeholder="بحث باسم الزبون أو الهاتف" oninput="filterOrders()"></div><div id="ordersList">${rows.map(orderCard).join('')||'<p class="muted">لا توجد طلبات.</p>'}</div>`)}
-function orderCard(o){const d=new Date(o.created_at),items=(Array.isArray(o.items)?o.items:[]).filter(x=>!x.__meta),meta=(Array.isArray(o.items)?o.items:[]).find(x=>x.__meta)||{};return `<div class="receipt order-record" data-search="${esc((o.customer_name||'')+' '+(o.customer_phone||''))}"><b>${d.toLocaleString('ar-LB')}</b><br>👤 ${esc(o.customer_name||'زبون')} — ${esc(o.customer_phone||'')}<br>📦 ${esc(o.order_type||'')}<br>🧾 ${items.map(x=>esc(x.label||x.name)).join('، ')}<br><strong>💰 $${money(o.total)}</strong> — ${esc(meta.payment_label||'كاش')}<br><button class="primary" onclick="reprintExisting('${esc(o.id).replace(/'/g,"\\'")}')">🖨️ إعادة طباعة</button></div>`}
-function filterOrders(){const e=document.getElementById('ordersSearch');if(!e)return;const q=e.value.toLowerCase();document.querySelectorAll('.order-record').forEach(x=>x.style.display=x.dataset.search.toLowerCase().includes(q)?'block':'none')}
-function reprintExisting(id){const o=(window.__ordersRows||[]).find(x=>String(x.id)===String(id));if(o)printOrder(o)}
-async function showCustomers(){let rows=[];try{const r=await api('/rest/v1/customers?select=*&order=created_at.desc&limit=1000');if(r.ok)rows=await r.json()}catch(e){console.warn(e)}window.__customersRows=rows;openModal('👥 الزبائن',`<div class="search-row"><input id="customersSearch" placeholder="بحث بالاسم أو الهاتف" oninput="filterCustomers()"></div><div id="customersList">${rows.map(customerCard).join('')||'<p class="muted">لا يوجد زبائن.</p>'}</div>`)}
-function customerCard(c){return `<div class="customer-card customer-record" data-search="${esc((c.name||'')+' '+(c.phone||''))}" onclick="customerDetails('${esc(c.phone||'').replace(/'/g,"\\'")}')"><strong>${esc(c.name||'بدون اسم')}</strong><br>📞 ${esc(c.phone||'')}<br>📍 ${esc(c.address||'')}<div class="muted">اضغط لعرض الطلبات والتفاصيل</div></div>`}
-function filterCustomers(){const e=document.getElementById('customersSearch');if(!e)return;const q=e.value.toLowerCase();document.querySelectorAll('.customer-record').forEach(x=>x.style.display=x.dataset.search.toLowerCase().includes(q)?'block':'none')}
-async function customerDetails(phone){let rows=[];try{const r=await api(`/rest/v1/orders?customer_phone=eq.${encodeURIComponent(phone)}&select=*&order=created_at.desc&limit=500`);if(r.ok)rows=await r.json()}catch(e){console.warn(e)}const total=rows.reduce((s,o)=>s+Number(o.total||0),0),customer=(window.__customersRows||[]).find(c=>c.phone===phone)||{};openModal('👤 تفاصيل الزبون',`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><button class="close-btn" onclick="showCustomers()">← رجوع</button><button class="primary" onclick="editCustomer('${esc(phone).replace(/'/g,"\\'")}')">✏️ تعديل بيانات الزبون</button></div><h3>${esc(customer.name||'زبون')}</h3><p>📞 ${esc(customer.phone||phone)}</p><p>📍 ${esc(customer.address||'غير محدد')}</p><div class="summary-grid"><div class="summary-card">الطلبات<div class="big">${rows.length}</div></div><div class="summary-card">إجمالي الإنفاق<div class="big">$${money(total)}</div></div></div>${rows.map(orderCard).join('')||'<p>لا توجد طلبات.</p>'}`);window.__ordersRows=rows}
-function editCustomer(phone){const c=(window.__customersRows||[]).find(x=>x.phone===phone)||{};openModal('✏️ تعديل بيانات الزبون',`<div class="form-grid"><div class="full"><label>الاسم</label><input id="editCustomerName" value="${esc(c.name||'')}"></div><div><label>رقم الهاتف</label><input id="editCustomerPhone" value="${esc(c.phone||phone)}"></div><div><label>العنوان</label><input id="editCustomerAddress" value="${esc(c.address||'')}"></div><div class="full"><label>ملاحظات</label><textarea id="editCustomerNotes">${esc(c.notes||'')}</textarea></div></div><button class="modal-confirm-btn" onclick="saveEditedCustomer('${esc(phone).replace(/'/g,"\\'")}')">💾 حفظ التعديلات</button>`)}
-async function saveEditedCustomer(oldPhone){const name=document.getElementById('editCustomerName')?.value.trim()||'',newPhone=normalizePhone(document.getElementById('editCustomerPhone')?.value||''),address=document.getElementById('editCustomerAddress')?.value.trim()||'',notes=document.getElementById('editCustomerNotes')?.value.trim()||'';if(!newPhone)return alert('أدخل رقم هاتف صحيح.');try{const r=await api(`/rest/v1/customers?phone=eq.${encodeURIComponent(oldPhone)}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({phone:newPhone,name,address,notes,updated_at:new Date().toISOString()})});if(!r.ok)throw new Error(await r.text());let cache=JSON.parse(localStorage.getItem(CUSTOMER_STORAGE_KEY)||'[]');if(!Array.isArray(cache))cache=[];cache=cache.filter(c=>normalizePhone(c.phone)!==normalizePhone(oldPhone)&&normalizePhone(c.phone)!==newPhone);cache.unshift({phone:newPhone,name,address,notes});localStorage.setItem(CUSTOMER_STORAGE_KEY,JSON.stringify(cache.slice(0,500)));alert('✅ تم تعديل بيانات الزبون');showCustomers()}catch(e){console.error(e);alert('❌ تعذّر حفظ التعديل. إذا غيّرت الرقم، تأكد أن الرقم الجديد غير موجود لزبون آخر.')}}
-async function showReports(){openReportForDate(new Date().toISOString().slice(0,10))}
-async function openReportForDate(date){let rows=[];try{const r=await api(`/rest/v1/orders?created_at=gte.${encodeURIComponent(date+'T00:00:00')}&created_at=lt.${encodeURIComponent(date+'T23:59:59.999')}&select=*&order=created_at.asc&limit=5000`);if(r.ok)rows=await r.json()}catch(e){console.warn(e)}const stats=buildReport(rows);window.__reportRows=rows;window.__reportDate=date;window.__reportStats=stats;openModal('📊 تقرير المبيعات اليومية',`<div class="search-row"><input id="reportDate" type="date" value="${date}" onchange="openReportForDate(this.value)"></div><button class="primary" style="width:100%;padding:13px;margin:8px 0;border:0;border-radius:9px;font-weight:bold;cursor:pointer" onclick="printDailyReport()">🖨️ طباعة التقرير اليومي — 80mm</button><div class="summary-grid"><div class="summary-card">عدد الطلبات<div class="big">${stats.orders}</div></div><div class="summary-card">إجمالي المبيعات<div class="big">$${money(stats.total)}</div></div><div class="summary-card">كاش<div class="big">$${money(stats.cash)}</div></div><div class="summary-card">المفروض بالصندوق<div class="big">$${money(stats.cash)}</div></div></div><h3>📦 شو انباع اليوم</h3>${stats.products.length?`<table class="report-table"><thead><tr><th>الصنف</th><th>الكمية</th><th>المجموع</th></tr></thead><tbody>${stats.products.map(p=>`<tr><td>${esc(p.name)}</td><td>${p.qtyLabel}</td><td>$${money(p.total)}</td></tr>`).join('')}</tbody></table>`:'<p class="muted">لا توجد مبيعات بهذا التاريخ.</p>'}<hr><p>🛵 دليفري: <b>$${money(stats.delivery)}</b> &nbsp; 🏪 استلام: <b>$${money(stats.pickup)}</b></p><p>💵 كاش: <b>$${money(stats.cash)}</b> &nbsp; 💳 بطاقة: <b>$${money(stats.card)}</b> &nbsp; 🏦 تحويل: <b>$${money(stats.transfer)}</b></p>`)}
+function printOrder(o){
+  const rawItems=Array.isArray(o.items)?o.items:[];
+  const items=rawItems.filter(x=>!x.__meta);
+  const meta=rawItems.find(x=>x.__meta)||{};
+  const isDelivery=String(o.order_type||'').toLowerCase()==='delivery';
+  const delivery=Number(o.delivery_charge||0);
+
+  // Supports both normal POS items and AI/WhatsApp-created items.
+  const itemTotal=items.reduce((sum,x)=>{
+    const qty=Number(x.weight ?? x.quantity ?? 1);
+    const unit=Number(x.unitPrice ?? x.price ?? x.unit_price ?? 0);
+    const line=Number(x.total ?? x.line_total);
+    return sum + (Number.isFinite(line) ? line : qty * unit);
+  },0);
+
+  const subtotal=Number.isFinite(Number(o.total))
+    ? Number(o.total)-delivery
+    : itemTotal;
+
+  const displayOrderType=isDelivery?'توصيل':'استلام من المحل';
+  const cleanNotes=String(o.notes||'')
+    .replace(/رقم\s*WhatsApp\s*:?\s*[^.،\n]+[.،]?/gi,'')
+    .replace(/كلفة\s*التوصيل[^.،\n]*[.،]?/gi,'')
+    .replace(/السعر\s*يشمل[^.،\n]*[.،]?/gi,'')
+    .replace(/^[.،\s]+|[.،\s]+$/g,'')
+    .trim();
+
+  const orderShort=String(o.id||'').replace(/-/g,'').slice(-6).toUpperCase();
+  const created=o.created_at?new Date(o.created_at):new Date();
+  const date=created.toLocaleDateString('ar-LB');
+  const time=created.toLocaleTimeString('ar-LB',{hour:'2-digit',minute:'2-digit'});
+
+  const rows=items.map(x=>{
+    const qty=Number(x.weight ?? x.quantity ?? 1);
+    const unit=Number(x.unitPrice ?? x.price ?? x.unit_price ?? 0);
+    const line=Number.isFinite(Number(x.total))
+      ? Number(x.total)
+      : qty*unit;
+
+    const preparation=x.preparation||'';
+    const baseName=x.name||x.label||'صنف';
+
+    const label=x.type==='weight' && preparation
+      ? baseName+' - '+(
+          preparation==='grill' ? 'مشوي' :
+          preparation==='fry' ? 'مقلي' :
+          preparation
+        )
+      : (x.label||baseName);
+
+    const qtyText=x.weight!=null
+      ? money(qty)+' كغ'
+      : String(Number(x.quantity??1));
+
+    const offerDetails=
+      x.type==='offer' &&
+      Array.isArray(x.offerItems) &&
+      x.offerItems.length
+      ? '<div style="font-size:11px;margin-top:2px">'+
+        x.offerItems.map(ci=>
+          '• '+esc(ci.name)+
+          (Number(ci.quantity)>1?' × '+Number(ci.quantity):'')
+        ).join('<br>')+
+        '</div>'
+      : '';
+
+    return '<tr>'+
+      '<td style="padding:7px 2px;text-align:right;font-weight:700">'+
+        esc(label)+offerDetails+
+      '</td>'+
+      '<td style="padding:7px 2px;text-align:center;white-space:nowrap">'+
+        esc(qtyText)+
+      '</td>'+
+      '<td style="padding:7px 2px;text-align:center;white-space:nowrap">'+
+        '$'+money(unit)+
+      '</td>'+
+      '<td style="padding:7px 2px;text-align:left;white-space:nowrap;font-weight:700">'+
+        '$'+money(line)+
+      '</td>'+
+    '</tr>';
+  }).join('');
+
+  const deliveryHtml=isDelivery
+    ? (delivery>0 ? '$'+money(delivery) : 'يحدد حسب المنطقة')
+    : '$0.00';
+
+  const finalLabel=isDelivery&&delivery<=0
+    ? 'المجموع قبل التوصيل'
+    : 'المجموع النهائي';
+
+  const finalValue=isDelivery&&delivery<=0
+    ? subtotal
+    : Number(o.total||0);
+
+  const html=`<div style="width:80mm;font-family:Arial,sans-serif;direction:rtl;text-align:right;padding:7px 6px;box-sizing:border-box;color:#000;font-size:12px">
+    <div style="text-align:center">
+      <div style="font-size:24px;font-weight:900;letter-spacing:1px">TABBARA FISH</div>
+      <div style="font-size:11px;font-weight:700">TABBARA SEAFOOD</div>
+      <div style="font-size:11px;margin-top:3px">طعم البحر... على أصوله</div>
+      <div style="font-size:11px;margin-top:4px">01 651 803&nbsp;&nbsp; | &nbsp;&nbsp;70 141 148</div>
+      <div style="font-size:10px;margin-top:3px">برج أبي حيدر - الشارع الرئيسي - بجانب حلويات المصري</div>
+    </div>
+
+    <div style="border-top:2px solid #000;margin:7px 0"></div>
+    <div style="text-align:center;font-size:20px;font-weight:900">فاتورة طلب</div>
+    <div style="text-align:center;font-size:11px;font-weight:700;margin-top:2px">#${esc(orderShort||'طلب')}</div>
+
+    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:11px;font-weight:700">
+      <span>التاريخ: ${esc(date)}</span>
+      <span>الوقت: ${esc(time)}</span>
+    </div>
+
+    <div style="margin-top:5px;padding:5px 0;border-top:1px dashed #000;border-bottom:1px dashed #000;font-size:12px">
+      <div><b>نوع الطلب:</b> ${esc(displayOrderType)}</div>
+      <div style="margin-top:3px"><b>الزبون:</b> ${esc(o.customer_name||'غير محدد')}</div>
+      <div style="margin-top:3px"><b>الهاتف:</b> ${esc(o.customer_phone||'غير محدد')}</div>
+      ${isDelivery?'<div style="margin-top:3px"><b>العنوان:</b> '+esc(o.customer_address||'غير محدد')+'</div>':''}
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;margin-top:7px;font-size:11px">
+      <thead><tr style="border-bottom:1px solid #000">
+        <th style="padding:5px 2px;text-align:right">الصنف</th>
+        <th style="padding:5px 2px;text-align:center">الكمية</th>
+        <th style="padding:5px 2px;text-align:center">السعر</th>
+        <th style="padding:5px 2px;text-align:left">المجموع</th>
+      </tr></thead>
+      <tbody>${rows||'<tr><td colspan="4" style="padding:8px;text-align:center">لا توجد أصناف</td></tr>'}</tbody>
+    </table>
+
+    <div style="border-top:1px dashed #000;margin-top:7px;padding-top:6px;font-size:12px">
+      <div style="display:flex;justify-content:space-between">
+        <b>المجموع قبل التوصيل</b><b>$${money(subtotal)}</b>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px">
+        <b>رسوم التوصيل</b><b>${deliveryHtml}</b>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px;padding:7px 4px;border-top:2px solid #000;border-bottom:2px solid #000;font-size:16px">
+        <b>${finalLabel}</b><b>$${money(finalValue)}</b>
+      </div>
+      <div style="margin-top:6px"><b>طريقة الدفع:</b> ${esc(meta.payment_label||'كاش')}</div>
+    </div>
+
+    ${cleanNotes
+      ? '<div style="margin-top:7px;padding-top:6px;border-top:1px dashed #000"><b>ملاحظات:</b><div style="margin-top:3px;line-height:1.6">'+esc(cleanNotes)+'</div></div>'
+      : ''}
+
+    <div style="border-top:1px dashed #000;margin-top:8px;padding-top:8px;text-align:center;font-size:15px;font-weight:900">شكراً لطلبكم ❤️</div>
+    <div style="text-align:center;font-size:13px;font-weight:800;margin-top:3px">TABBARA FISH</div>
+  </div>`;
+
+  let p=document.getElementById('posPrintArea');
+  if(!p){p=document.createElement('div');p.id='posPrintArea';document.body.appendChild(p)}
+  p.innerHTML=html;
+  document.body.classList.add('printing-invoice');
+  setTimeout(()=>{window.print();document.body.classList.remove('printing-invoice')},100);
+}
 function printDailyReport(){const rows=window.__reportRows||[],stats=window.__reportStats||buildReport(rows),date=window.__reportDate||new Date().toISOString().slice(0,10);const html=`<div style="width:80mm;font-family:Arial;direction:rtl;text-align:right;padding:8px;box-sizing:border-box"><h2 style="text-align:center;margin:0 0 5px">🐟 Tabbara Fish</h2><div style="text-align:center;font-weight:bold">تقرير المبيعات اليومية</div><div style="text-align:center;font-size:12px">${esc(date)}</div><div style="border-bottom:1px dashed #000;margin:8px 0"></div><div><b>عدد الطلبات:</b> ${stats.orders}<br><b>إجمالي المبيعات:</b> $${money(stats.total)}<br><b>دليفري:</b> $${money(stats.delivery)}<br><b>استلام:</b> $${money(stats.pickup)}<br><b>كاش:</b> $${money(stats.cash)}<br><b>بطاقة:</b> $${money(stats.card)}<br><b>تحويل:</b> $${money(stats.transfer)}<br><b>المفروض بالصندوق:</b> $${money(stats.cash)}</div><div style="border-bottom:1px dashed #000;margin:8px 0"></div><h3 style="margin:5px 0">📦 الأصناف المباعة</h3>${stats.products.length?stats.products.map(p=>`<div style="margin:5px 0;border-bottom:1px dotted #aaa;padding-bottom:4px"><b>${esc(p.name)}</b><br>الكمية: ${p.qtyLabel} — $${money(p.total)}</div>`).join(''):'<div>لا توجد مبيعات.</div>'}<div style="border-top:1px dashed #000;margin-top:8px;padding-top:7px;font-size:16px"><b>الإجمالي: $${money(stats.total)}</b></div><div style="text-align:center;margin-top:10px;font-size:11px">نهاية التقرير</div></div>`;let p=document.getElementById('posPrintArea');if(!p){p=document.createElement('div');p.id='posPrintArea';document.body.appendChild(p)}p.innerHTML=html;document.body.classList.add('printing-invoice');setTimeout(()=>{window.print();setTimeout(()=>document.body.classList.remove('printing-invoice'),300)},100)}
 function buildReport(rows){const productsMap={};let total=0,cash=0,card=0,transfer=0,delivery=0,pickup=0;for(const o of rows){total+=Number(o.total||0);if(o.order_type==='Delivery')delivery+=Number(o.total||0);else pickup+=Number(o.total||0);const meta=(Array.isArray(o.items)?o.items:[]).find(x=>x.__meta)||{};if(meta.payment_method==='card')card+=Number(o.total||0);else if(meta.payment_method==='transfer')transfer+=Number(o.total||0);else cash+=Number(o.total||0);for(const x of (Array.isArray(o.items)?o.items:[]).filter(x=>!x.__meta)){const k=x.name||x.label||'غير معروف';if(!productsMap[k])productsMap[k]={name:k,qty:0,weight:0,total:0};productsMap[k].qty+=Number(x.quantity||0);productsMap[k].weight+=Number(x.weight||0);productsMap[k].total+=Number(x.total||0)}}return{orders:rows.length,total,cash,card,transfer,delivery,pickup,products:Object.values(productsMap).sort((a,b)=>b.total-a.total).map(p=>({...p,qtyLabel:p.weight?money(p.weight)+' كغ':String(p.qty)}))}}
 function loadSettings(){deliveryCharge=Number(localStorage.getItem(DELIVERY_CHARGE_KEY));if(!Number.isFinite(deliveryCharge))deliveryCharge=DEFAULT_DELIVERY_CHARGE;grillSurcharge=Number(localStorage.getItem(GLOBAL_GRILL_KEY));if(!Number.isFinite(grillSurcharge))grillSurcharge=DEFAULT_GRILL_SURCHARGE;frySurcharge=Number(localStorage.getItem(GLOBAL_FRY_KEY));if(!Number.isFinite(frySurcharge))frySurcharge=DEFAULT_FRY_SURCHARGE}

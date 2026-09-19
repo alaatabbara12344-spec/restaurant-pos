@@ -15,3 +15,15 @@ Tabbara Fish POS v22
 
 ارفع الملفات الخمسة إلى GitHub واستبدل النسخة السابقة.
 بعد النشر على Vercel اعمل Refresh قوي للموقع، وإذا بقيت النسخة القديمة افتح الموقع في نافذة خاصة أو امسح Cache الموقع.
+
+
+----------------------------------------
+v36 - AI/WhatsApp Receipt + New 80mm Design
+----------------------------------------
+- Fixed AI/WhatsApp item prices on printed receipts.
+- Supports price/unitPrice and calculates line totals when needed.
+- New clean 80mm thermal receipt layout.
+- Shows customer, phone, delivery type, address, date/time and order number.
+- Delivery charge shows "يحدد حسب المنطقة" when it is still 0.
+- Cleans technical delivery/WhatsApp text from receipt notes.
+- Cache versions bumped to load the new print code.
