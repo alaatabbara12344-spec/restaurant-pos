@@ -38,3 +38,21 @@
 .universal-pad-head{display:flex;justify-content:space-between;align-items:center;font-size:18px;padding:4px 4px 9px}.universal-pad-head button{border:0;background:#eee;border-radius:10px;width:42px;height:38px;font-size:20px;cursor:pointer}
 .universal-pad-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;direction:ltr}.universal-pad-keys button{min-height:58px;border:1px solid #c8d0d4;border-radius:12px;background:#f5f7f8;font-size:25px;font-weight:700;cursor:pointer;touch-action:manipulation}.universal-pad-keys button:active{transform:scale(.97)}.universal-pad-keys .empty{visibility:hidden}.universal-pad-clear{grid-column:1/2;background:#ffe0e0!important;color:#a11}.universal-pad-done{grid-column:2/4;background:#123b4a!important;color:#fff}
 @media(max-width:600px){.universal-numeric-pad{bottom:6px}.universal-pad-keys button{min-height:54px;font-size:23px}}
+
+/* v36: data screens for previous orders, customers and sales reports */
+.data-list{display:grid;gap:10px;max-height:65vh;overflow:auto}
+.data-card{position:relative;border:1px solid #d7d7d7;border-radius:12px;padding:11px 12px;background:#fff;direction:rtl;text-align:right}
+.data-card-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:5px}
+.data-card-head span{font-size:11px;color:#666;direction:ltr}
+.data-card-total{margin-top:7px;font-size:17px;font-weight:800;direction:ltr;text-align:left}
+.empty-state,.error-state{padding:18px;text-align:center;border-radius:10px;background:#f7f7f7}
+.error-state{border:1px solid #e0b4b4}
+.report-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.report-stat{border:1px solid #ddd;border-radius:10px;padding:10px;text-align:center;background:#fafafa}
+.report-stat b,.report-stat strong{display:block}.report-stat strong{font-size:19px;margin-top:4px;direction:ltr}
+.report-breakdown{margin-top:12px;padding:10px;border-radius:10px;background:#f7f7f7;font-size:12px;line-height:1.8}
+.report-row{display:flex;justify-content:space-between;gap:10px;padding:9px 2px;border-bottom:1px dashed #ccc}
+.report-row b{direction:ltr}
+@media print{
+  #posPrintArea img{max-height:24mm!important}
+}

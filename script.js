@@ -224,12 +224,10 @@ function printOrder(o){
     : Number(o.total||0);
 
   const html=`<div style="width:80mm;font-family:Arial,sans-serif;direction:rtl;text-align:right;padding:7px 6px;box-sizing:border-box;color:#000;font-size:12px">
-    <div style="text-align:center">
-      <div style="font-size:24px;font-weight:900;letter-spacing:1px">TABBARA FISH</div>
-      <div style="font-size:11px;font-weight:700">TABBARA SEAFOOD</div>
-      <div style="font-size:11px;margin-top:3px">طعم البحر... على أصوله</div>
-      <div style="font-size:11px;margin-top:4px">01 651 803&nbsp;&nbsp; | &nbsp;&nbsp;70 141 148</div>
-      <div style="font-size:10px;margin-top:3px">برج أبي حيدر - الشارع الرئيسي - بجانب حلويات المصري</div>
+    <div style="text-align:center;direction:ltr">
+      <img src="./logo.png?v=36" alt="Tabbara Fish" style="display:block;width:72mm;max-width:100%;height:auto;margin:0 auto 3px;object-fit:contain" onerror="this.style.display='none'">
+      <div style="font-size:11px;margin-top:2px;direction:ltr;unicode-bidi:isolate;white-space:nowrap">01 651 803&nbsp;&nbsp; | &nbsp;&nbsp;70 141 148</div>
+      <div style="font-size:10px;margin-top:3px;direction:rtl">برج أبي حيدر - الشارع الرئيسي - بجانب حلويات المصري</div>
     </div>
 
     <div style="border-top:2px solid #000;margin:7px 0"></div>
@@ -286,7 +284,67 @@ function printOrder(o){
   setTimeout(()=>{window.print();document.body.classList.remove('printing-invoice')},100);
 }
 function printDailyReport(){const rows=window.__reportRows||[],stats=window.__reportStats||buildReport(rows),date=window.__reportDate||new Date().toISOString().slice(0,10);const html=`<div style="width:80mm;font-family:Arial;direction:rtl;text-align:right;padding:8px;box-sizing:border-box"><h2 style="text-align:center;margin:0 0 5px">🐟 Tabbara Fish</h2><div style="text-align:center;font-weight:bold">تقرير المبيعات اليومية</div><div style="text-align:center;font-size:12px">${esc(date)}</div><div style="border-bottom:1px dashed #000;margin:8px 0"></div><div><b>عدد الطلبات:</b> ${stats.orders}<br><b>إجمالي المبيعات:</b> $${money(stats.total)}<br><b>دليفري:</b> $${money(stats.delivery)}<br><b>استلام:</b> $${money(stats.pickup)}<br><b>كاش:</b> $${money(stats.cash)}<br><b>بطاقة:</b> $${money(stats.card)}<br><b>تحويل:</b> $${money(stats.transfer)}<br><b>المفروض بالصندوق:</b> $${money(stats.cash)}</div><div style="border-bottom:1px dashed #000;margin:8px 0"></div><h3 style="margin:5px 0">📦 الأصناف المباعة</h3>${stats.products.length?stats.products.map(p=>`<div style="margin:5px 0;border-bottom:1px dotted #aaa;padding-bottom:4px"><b>${esc(p.name)}</b><br>الكمية: ${p.qtyLabel} — $${money(p.total)}</div>`).join(''):'<div>لا توجد مبيعات.</div>'}<div style="border-top:1px dashed #000;margin-top:8px;padding-top:7px;font-size:16px"><b>الإجمالي: $${money(stats.total)}</b></div><div style="text-align:center;margin-top:10px;font-size:11px">نهاية التقرير</div></div>`;let p=document.getElementById('posPrintArea');if(!p){p=document.createElement('div');p.id='posPrintArea';document.body.appendChild(p)}p.innerHTML=html;document.body.classList.add('printing-invoice');setTimeout(()=>{window.print();setTimeout(()=>document.body.classList.remove('printing-invoice'),300)},100)}
-function buildReport(rows){const productsMap={};let total=0,cash=0,card=0,transfer=0,delivery=0,pickup=0;for(const o of rows){total+=Number(o.total||0);if(o.order_type==='Delivery')delivery+=Number(o.total||0);else pickup+=Number(o.total||0);const meta=(Array.isArray(o.items)?o.items:[]).find(x=>x.__meta)||{};if(meta.payment_method==='card')card+=Number(o.total||0);else if(meta.payment_method==='transfer')transfer+=Number(o.total||0);else cash+=Number(o.total||0);for(const x of (Array.isArray(o.items)?o.items:[]).filter(x=>!x.__meta)){const k=x.name||x.label||'غير معروف';if(!productsMap[k])productsMap[k]={name:k,qty:0,weight:0,total:0};productsMap[k].qty+=Number(x.quantity||0);productsMap[k].weight+=Number(x.weight||0);productsMap[k].total+=Number(x.total||0)}}return{orders:rows.length,total,cash,card,transfer,delivery,pickup,products:Object.values(productsMap).sort((a,b)=>b.total-a.total).map(p=>({...p,qtyLabel:p.weight?money(p.weight)+' كغ':String(p.qty)}))}}
+function buildReport(rows){const productsMap={};let total=0,cash=0,card=0,transfer=0,delivery=0,pickup=0;for(const o of rows){total+=Number(o.total||0);if(String(o.order_type||'').toLowerCase()==='delivery')delivery+=Number(o.total||0);else pickup+=Number(o.total||0);const meta=(Array.isArray(o.items)?o.items:[]).find(x=>x.__meta)||{};if(meta.payment_method==='card')card+=Number(o.total||0);else if(meta.payment_method==='transfer')transfer+=Number(o.total||0);else cash+=Number(o.total||0);for(const x of (Array.isArray(o.items)?o.items:[]).filter(x=>!x.__meta)){const k=x.name||x.label||'غير معروف';if(!productsMap[k])productsMap[k]={name:k,qty:0,weight:0,total:0};productsMap[k].qty+=Number(x.quantity||0);productsMap[k].weight+=Number(x.weight||0);productsMap[k].total+=Number(x.total||0)}}return{orders:rows.length,total,cash,card,transfer,delivery,pickup,products:Object.values(productsMap).sort((a,b)=>b.total-a.total).map(p=>({...p,qtyLabel:p.weight?money(p.weight)+' كغ':String(p.qty)}))}}
+async function showOrders(){
+  openModal('📋 الطلبات السابقة','<div id="ordersList" class="data-list"><div class="muted">⏳ جاري تحميل الطلبات...</div></div>');
+  const host=document.getElementById('ordersList');
+  try{
+    const r=await api('/rest/v1/orders?select=*&order=created_at.desc&limit=100');
+    if(!r.ok)throw new Error(await r.text());
+    const rows=await r.json();
+    if(!rows.length){host.innerHTML='<div class="empty-state">لا توجد طلبات سابقة.</div>';return}
+    host.innerHTML=rows.map((o,i)=>{
+      const items=(Array.isArray(o.items)?o.items:[]).filter(x=>!x.__meta);
+      const date=o.created_at?new Date(o.created_at).toLocaleString('ar-LB',{dateStyle:'short',timeStyle:'short'}):'';
+      return `<div class="data-card">
+        <div class="data-card-head"><b>#${esc(String(o.id||'').replace(/-/g,'').slice(-6).toUpperCase()||String(i+1))}</b><span>${esc(date)}</span></div>
+        <div><b>${esc(o.customer_name||'غير محدد')}</b> — ${esc(o.customer_phone||'')}</div>
+        <div class="muted">${esc(o.order_type||'')} · ${items.map(x=>esc(x.label||x.name||'صنف')).join('، ')||'لا توجد أصناف'}</div>
+        <div class="data-card-total">$${money(o.total)}</div>
+      </div>`;
+    }).join('');
+  }catch(e){console.warn('showOrders',e);host.innerHTML='<div class="error-state">⚠️ تعذّر تحميل الطلبات. تأكد من الاتصال بقاعدة البيانات.</div>'}
+}
+
+async function showCustomers(){
+  openModal('👥 الزبائن','<div id="customersList" class="data-list"><div class="muted">⏳ جاري تحميل الزبائن...</div></div>');
+  const host=document.getElementById('customersList');
+  try{
+    const r=await api('/rest/v1/customers?select=*&order=updated_at.desc&limit=500');
+    if(!r.ok)throw new Error(await r.text());
+    const rows=await r.json();
+    if(!rows.length){host.innerHTML='<div class="empty-state">لا يوجد زبائن مسجلون بعد.</div>';return}
+    host.innerHTML=rows.map(c=>`<div class="data-card">
+      <div class="data-card-head"><b>${esc(c.name||'بدون اسم')}</b><span>${esc(c.phone||'')}</span></div>
+      <div>${esc(c.address||'العنوان غير مسجل')}</div>
+      ${c.notes?`<div class="muted">${esc(c.notes)}</div>`:''}
+    </div>`).join('');
+  }catch(e){console.warn('showCustomers',e);host.innerHTML='<div class="error-state">⚠️ تعذّر تحميل الزبائن. تأكد من الاتصال بقاعدة البيانات.</div>'}
+}
+
+async function showReports(){
+  openModal('📊 تقارير المبيعات','<div id="reportsContent"><div class="muted">⏳ جاري تحميل تقرير المبيعات...</div></div>');
+  const host=document.getElementById('reportsContent');
+  try{
+    const r=await api('/rest/v1/orders?select=*&order=created_at.desc&limit=2000');
+    if(!r.ok)throw new Error(await r.text());
+    const rows=await r.json();
+    const stats=buildReport(rows);
+    window.__reportRows=rows;window.__reportStats=stats;window.__reportDate=new Date().toLocaleDateString('ar-LB');
+    const top=stats.products.slice(0,20);
+    host.innerHTML=`<div class="report-summary-grid">
+      <div class="report-stat"><b>الطلبات</b><strong>${stats.orders}</strong></div>
+      <div class="report-stat"><b>المبيعات</b><strong>$${money(stats.total)}</strong></div>
+      <div class="report-stat"><b>كاش</b><strong>$${money(stats.cash)}</strong></div>
+      <div class="report-stat"><b>بطاقة</b><strong>$${money(stats.card)}</strong></div>
+    </div>
+    <div class="report-breakdown"><b>دليفري:</b> $${money(stats.delivery)} &nbsp; | &nbsp; <b>استلام:</b> $${money(stats.pickup)} &nbsp; | &nbsp; <b>تحويل:</b> $${money(stats.transfer)}</div>
+    <h4 style="margin:16px 0 8px">📦 الأصناف المباعة</h4>
+    ${top.length?top.map(p=>`<div class="report-row"><span>${esc(p.name)} × ${esc(p.qtyLabel)}</span><b>$${money(p.total)}</b></div>`).join(''):'<div class="empty-state">لا توجد مبيعات.</div>'}
+    <button type="button" class="primary" style="width:100%;margin-top:14px" onclick="printDailyReport()">🖨️ طباعة التقرير</button>`;
+  }catch(e){console.warn('showReports',e);host.innerHTML='<div class="error-state">⚠️ تعذّر تحميل تقرير المبيعات. تأكد من الاتصال بقاعدة البيانات.</div>'}
+}
+
 function loadSettings(){deliveryCharge=Number(localStorage.getItem(DELIVERY_CHARGE_KEY));if(!Number.isFinite(deliveryCharge))deliveryCharge=DEFAULT_DELIVERY_CHARGE;grillSurcharge=Number(localStorage.getItem(GLOBAL_GRILL_KEY));if(!Number.isFinite(grillSurcharge))grillSurcharge=DEFAULT_GRILL_SURCHARGE;frySurcharge=Number(localStorage.getItem(GLOBAL_FRY_KEY));if(!Number.isFinite(frySurcharge))frySurcharge=DEFAULT_FRY_SURCHARGE}
 function loadMenu(){try{const x=JSON.parse(localStorage.getItem(MENU_STORAGE_KEY)||'null');if(Array.isArray(x)&&x.length){menu=x;return}}catch{}menu=JSON.parse(JSON.stringify(DEFAULT_MENU));localStorage.setItem(MENU_STORAGE_KEY,JSON.stringify(menu))}
 function cloudRowToLocal(r){const d=r.data&&typeof r.data==='object'?r.data:{};const cat={'الأسماك':'🐟 الأسماك','ثمار البحر':'🦐 ثمار البحر','الوجبات والساندويش':'🍽️ الوجبات والساندويش','العروض':'🎁 العروض','المقبلات':'🥗 المقبلات','السلطات':'🥬 السلطات','المشروبات':'🥤 المشروبات'};const def=DEFAULT_MENU.find(x=>String(x.id)===String(r.id));const item={id:String(r.id),name:r.name||'',category:cat[r.category]||r.category||'',type:r.type||def?.type||'fixed',available:r.available!==false};if(item.type==='weight'){item.pricing={base:Number(d.base??d.basePrice??def?.pricing?.base??0)}}else if(item.type==='sizes'){item.sizes={...(d.sizes||def?.sizes||{})}}else if(item.type==='meal')item.prices={وجبة:Number(d.meal??d.وجبة??d.prices?.وجبة??0),ساندويش:Number(d.sandwich??d.ساندويش??d.prices?.ساندويش??0)};else if(item.type==='offer'){item.price=Number(d.price??r.price??0);item.details=d.details||'';item.items=Array.isArray(d.items)?d.items:[]}else item.price=Number(d.price??r.price??def?.price??0);return item}

@@ -27,3 +27,9 @@ v36 - AI/WhatsApp Receipt + New 80mm Design
 - Delivery charge shows "يحدد حسب المنطقة" when it is still 0.
 - Cleans technical delivery/WhatsApp text from receipt notes.
 - Cache versions bumped to load the new print code.
+
+v37 fixes (2026-09-20)
+- Added the real Tabbara Fish logo to the 80mm receipt.
+- Fixed shop phone display direction so 01 651 803 | 70 141 148 prints correctly.
+- Added/connected Previous Orders, Customers, and Sales Reports screens.
+- Added cache/version bump to force the new files to load.
