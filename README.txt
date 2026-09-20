@@ -55,12 +55,4 @@ v43 final requested changes:
 - Preserved previous reports, customer search/edit, previous order details/delete/reprint, receipt logo/tagline and print layout.
 
 
-v45: final requested POS fixes: separate meals/sandwiches display without meal/sandwich selector, customer lookup refresh, customer delete, WhatsApp item report values, delivery time field, previous order actions, receipt font slightly larger, and cache version 44.
-
-
-V46 Supabase compatibility:
-- Customers require phone + name + address before save.
-- Delivery time is stored in orders.delivery_time.
-- Meals and sandwiches use separate categories from Supabase.
-- Removed the combined meal/sandwich type from the menu editor.
-- POS reads separate meal/sandwich rows and keeps legacy local data compatible.
+v46: final requested POS fixes: separate meals/sandwiches display without meal/sandwich selector, customer lookup refresh, customer delete, WhatsApp item report values, delivery time field, previous order actions, receipt font slightly larger, and cache version 44.
