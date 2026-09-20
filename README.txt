@@ -53,3 +53,6 @@ v43 final requested changes:
 - Customer lookup checks Supabase first by normalized phone, then local cache fallback.
 - Added dedicated delivery time field stored in order metadata and shown in order details/receipt.
 - Preserved previous reports, customer search/edit, previous order details/delete/reprint, receipt logo/tagline and print layout.
+
+
+v44: final requested POS fixes: separate meals/sandwiches display without meal/sandwich selector, customer lookup refresh, customer delete, WhatsApp item report values, delivery time field, previous order actions, receipt font slightly larger, and cache version 44.

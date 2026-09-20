@@ -1,5 +1,5 @@
-const CACHE='tabbara-pos-v43';
-const ASSETS=['./','./index.html','./style.css?v=42','./script.js?v=42','./logo.png'];
+const CACHE='tabbara-pos-v44';
+const ASSETS=['./','./index.html','./style.css?v=44','./script.js?v=44','./logo.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{
