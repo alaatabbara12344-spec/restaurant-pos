@@ -56,3 +56,11 @@
 @media print{
   #posPrintArea img{max-height:24mm!important}
 }
+
+/* v37 receipt test: compact 80mm print and stable table width */
+@media print{
+  @page{size:80mm auto;margin:0!important}
+  html,body{margin:0!important;padding:0!important}
+  body.printing-invoice #posPrintArea{width:80mm!important;max-width:80mm!important;margin:0!important;padding:0!important;display:block!important}
+  body.printing-invoice #posPrintArea img{display:block!important;visibility:visible!important;max-width:58mm!important;max-height:17mm!important;height:auto!important}
+}

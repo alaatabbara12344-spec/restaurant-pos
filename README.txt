@@ -33,3 +33,10 @@ v37 fixes (2026-09-20)
 - Fixed shop phone display direction so 01 651 803 | 70 141 148 prints correctly.
 - Added/connected Previous Orders, Customers, and Sales Reports screens.
 - Added cache/version bump to force the new files to load.
+
+
+V38 RECEIPT TEST
+- Logo is embedded directly as base64 in the print HTML so PrintNode/browser image loading cannot hide it.
+- Receipt typography and spacing are reduced for a more compact 80mm ticket.
+- Item table uses fixed column widths so the Total column is fully visible.
+- Money values are forced LTR to prevent RTL clipping/reversal.
