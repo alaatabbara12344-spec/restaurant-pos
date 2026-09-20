@@ -46,3 +46,10 @@ v41 final adjustments: sales item totals fallback for WhatsApp/AI items; custome
 
 
 V42 cache/update fix: index, CSS and JS use v42; service worker uses network-first for app assets and deletes previous caches on activation.
+
+
+v43 final requested changes:
+- Separate menu tabs: الوجبات and الساندويشات; meal items appear in both with the correct price option.
+- Customer lookup checks Supabase first by normalized phone, then local cache fallback.
+- Added dedicated delivery time field stored in order metadata and shown in order details/receipt.
+- Preserved previous reports, customer search/edit, previous order details/delete/reprint, receipt logo/tagline and print layout.

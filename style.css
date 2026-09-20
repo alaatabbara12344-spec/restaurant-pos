@@ -77,3 +77,8 @@
 @media print{
   #posPrintArea{font-size:10.8px!important}
 }
+
+#deliveryTime{font-size:17px;min-height:48px;width:100%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:10px;background:#fff;margin-top:8px}
+#deliveryTime:disabled{opacity:.55;background:#f4f4f4}
+
+.delivery-time-label{display:block;font-weight:700;font-size:15px;margin-top:8px;margin-bottom:4px}
