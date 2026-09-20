@@ -55,4 +55,4 @@ v43 final requested changes:
 - Preserved previous reports, customer search/edit, previous order details/delete/reprint, receipt logo/tagline and print layout.
 
 
-v44: final requested POS fixes: separate meals/sandwiches display without meal/sandwich selector, customer lookup refresh, customer delete, WhatsApp item report values, delivery time field, previous order actions, receipt font slightly larger, and cache version 44.
+v45: final requested POS fixes: separate meals/sandwiches display without meal/sandwich selector, customer lookup refresh, customer delete, WhatsApp item report values, delivery time field, previous order actions, receipt font slightly larger, and cache version 44.
