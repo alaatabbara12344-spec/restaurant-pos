@@ -43,3 +43,6 @@ V38 RECEIPT TEST
 
 
 v41 final adjustments: sales item totals fallback for WhatsApp/AI items; customer search/edit; automatic customer lookup by phone; previous-order details, reprint and delete/cancel actions; receipt text slightly enlarged; cache bumped to v41.
+
+
+V42 cache/update fix: index, CSS and JS use v42; service worker uses network-first for app assets and deletes previous caches on activation.
