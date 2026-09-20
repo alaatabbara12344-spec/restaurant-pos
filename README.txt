@@ -40,3 +40,6 @@ V38 RECEIPT TEST
 - Receipt typography and spacing are reduced for a more compact 80mm ticket.
 - Item table uses fixed column widths so the Total column is fully visible.
 - Money values are forced LTR to prevent RTL clipping/reversal.
+
+
+v41 final adjustments: sales item totals fallback for WhatsApp/AI items; customer search/edit; automatic customer lookup by phone; previous-order details, reprint and delete/cancel actions; receipt text slightly enlarged; cache bumped to v41.
