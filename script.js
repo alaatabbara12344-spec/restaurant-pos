@@ -134,13 +134,8 @@ function extractDeliveryTime(order, meta){
   if (order?.delivery_time) return String(order.delivery_time).trim();
   if (meta?.delivery_time) return String(meta.delivery_time).trim();
   const notes=String(order?.notes||'');
-  const patterns=[
-    /(?:وقت\s*التوصيل|وقت\s*الطلب|delivery\s*time)\s*[:：-]?\s*(?:الساعة\s*)?([0-2]?\d(?:\s*[:.]\s*[0-5]\d)?\s*(?:صباحاً|مساءً|AM|PM)?)/i,
-    /(?:مطلوب\s*)?(?:التوصيل|التسليم)\s*(?:اليوم\s*)?(?:حوالي\s*)?(?:الساعة\s*)?([0-2]?\d(?:\s*[:.]\s*[0-5]\d)?\s*(?:صباحاً|مساءً|AM|PM)?)/i,
-    /(?:الوصول|وقت الوصول)\s*(?:المطلوب\s*)?(?:حوالي\s*)?(?:الساعة\s*)?([0-2]?\d(?:\s*[:.]\s*[0-5]\d)?\s*(?:صباحاً|مساءً|AM|PM)?)/i
-  ];
-  for(const re of patterns){const m=notes.match(re);if(m)return m[1].replace('.',':').trim();}
-  return '';
+  const m=notes.match(/(?:وقت\s*التوصيل|وقت\s*الطلب|delivery\s*time)\s*[:：-]?\s*([0-2]?\d\s*[:.]\s*[0-5]\d\s*(?:صباحاً|مساءً|AM|PM)?)/i);
+  return m ? m[1].replace('.', ':').trim() : '';
 }
 function cleanOrderNotes(notes){
   return String(notes||'')
@@ -204,7 +199,7 @@ function printOrder(o){
       .receipt-item-head{font-weight:900;border-top:1px solid #000;border-bottom:1px solid #000;padding:2.5px 0;direction:ltr}
       .receipt-item-head>div{text-align:center;white-space:nowrap}.receipt-item-head>div:last-child{text-align:right}
       .receipt-item-row{border-bottom:1px dotted #888;min-height:8mm;padding:3px 0;direction:ltr}.receipt-item-row>div{min-width:0;box-sizing:border-box}
-      .receipt-total,.receipt-price{direction:ltr;text-align:center;white-space:nowrap;font-weight:700}.receipt-qty{text-align:center;white-space:nowrap;direction:ltr}.receipt-delivery-time{margin-top:2.5mm;border:2px solid #000;border-radius:1.5mm;padding:2.5mm 1mm;text-align:center;direction:rtl;background:#fff}
+      .receipt-total,.receipt-price{direction:ltr;text-align:center;white-space:nowrap;font-weight:700}.receipt-qty{text-align:center;white-space:nowrap;direction:ltr}
       .receipt-name{direction:rtl;text-align:right;font-weight:700;white-space:normal;overflow-wrap:anywhere;padding-right:1mm}.receipt-name div{font-weight:400}
     </style>
     <div style="text-align:center;direction:ltr">
@@ -214,13 +209,14 @@ function printOrder(o){
       <div style="font-size:9.5px;margin-top:1.5mm;direction:rtl">برج أبي حيدر - الشارع الرئيسي - بجانب حلويات المصري</div>
     </div>
     <div style="border-top:1.5px solid #000;margin:3mm 0 2mm"></div>
-    <div style="text-align:center;font-size:17px;font-weight:900;line-height:1.1">#${esc(orderShort||'طلب')}</div>
+    <div style="text-align:center;font-size:17px;font-weight:900;line-height:1.1">فاتورة طلب</div>
+    <div style="text-align:center;font-size:10px;font-weight:700;margin-top:1mm">#${esc(orderShort||'طلب')}</div>
     <div style="display:flex;justify-content:space-between;gap:5mm;margin-top:2mm;font-size:9.5px;font-weight:700"><span>التاريخ: ${esc(date)}</span><span>الوقت: ${esc(time)}</span></div>
     <div style="margin-top:2mm;padding:2mm 0;border-top:1px dashed #000;border-bottom:1px dashed #000;font-size:10px;line-height:1.5">
       <div><b>نوع الطلب:</b> ${esc(displayOrderType)}</div>
       <div><b>الزبون:</b> ${esc(o.customer_name||'غير محدد')}</div>
       <div><b>الهاتف:</b> <span dir="ltr" style="direction:ltr;unicode-bidi:isolate">${esc(o.customer_phone||'غير محدد')}</span></div>
-      ${isDelivery?'<div style="font-weight:800;font-size:10.5px"><b>العنوان:</b> '+esc(o.customer_address||'غير محدد')+'</div><div class="receipt-delivery-time"><div style="font-size:11px;font-weight:900">وقت التوصيل</div><div dir="ltr" style="font-size:18px;font-weight:900;line-height:1.1;margin-top:1mm">'+esc(deliveryTime||'غير محدد')+'</div></div>':''}
+      ${isDelivery?'<div style="font-weight:800;font-size:10.5px"><b>العنوان:</b> '+esc(o.customer_address||'غير محدد')+'</div>'+(deliveryTime?'<div style="font-weight:800;font-size:10.5px"><b>وقت التوصيل :</b> <span dir="ltr">'+esc(deliveryTime)+'</span></div>':''):''}
     </div>
     <div class="receipt-items"><div class="receipt-item-head"><div>المجموع</div><div>السعر</div><div>الكمية</div><div>الصنف</div></div>${rows||'<div style="padding:6px;text-align:center">لا توجد أصناف</div>'}</div>
     <div style="border-top:1px dashed #000;margin-top:2mm;padding-top:2mm;font-size:10px">
