@@ -118,7 +118,7 @@ async function checkWhatsAppOrders(){
       showWhatsAppNotice(o);
       try{
         await new Promise(resolve=>setTimeout(resolve,250));
-        await printOrder(o);
+        printOrder(o);
         await markWhatsAppOrderProcessed(id);
         rememberWhatsAppOrder(id);
       }catch(e){
@@ -134,8 +134,12 @@ function extractDeliveryTime(order, meta){
   if (order?.delivery_time) return String(order.delivery_time).trim();
   if (meta?.delivery_time) return String(meta.delivery_time).trim();
   const notes=String(order?.notes||'');
-  const m=notes.match(/(?:وقت\s*التوصيل|وقت\s*الطلب|delivery\s*time)\s*[:：-]?\s*([0-2]?\d\s*[:.]\s*[0-5]\d\s*(?:صباحاً|مساءً|AM|PM)?)/i);
-  return m ? m[1].replace('.', ':').trim() : '';
+  const patterns=[
+    /(?:وقت\s*التوصيل|وقت\s*الطلب|delivery\s*time)\s*[:：-]?\s*(?:الساعة\s*)?([0-2]?\d(?:\s*[:.]\s*[0-5]\d)?\s*(?:صباحاً|مساءً|AM|PM)?)/i,
+    /(?:مطلوب\s*)?(?:التوصيل|التسليم)\s*(?:اليوم\s*)?(?:حوالي\s*)?(?:الساعة\s*)?([0-2]?\d(?:\s*[:.]\s*[0-5]\d)?\s*(?:صباحاً|مساءً|AM|PM)?)/i
+  ];
+  for(const re of patterns){const m=notes.match(re);if(m)return m[1].replace('.',':').trim();}
+  return '';
 }
 function cleanOrderNotes(notes){
   return String(notes||'')
@@ -145,7 +149,7 @@ function cleanOrderNotes(notes){
     .replace(/السعر\s*يشمل[^.،\n]*[.،]?/gi,'')
     .replace(/^[.،\s]+|[.،\s]+$/g,'').trim();
 }
-async function getDailyInvoiceNumber(order){
+function getDailyInvoiceNumber(order){
   const id=String(order?.id||'');
   const mapKey='tabbara_invoice_numbers';
   const seqKey='tabbara_invoice_sequence';
@@ -164,7 +168,7 @@ async function getDailyInvoiceNumber(order){
   return seq.next;
 }
 
-async function printOrder(o){
+function printOrder(o){
   const rawItems=Array.isArray(o.items)?o.items:[];
   const items=rawItems.filter(x=>!x.__meta);
   const meta=rawItems.find(x=>x.__meta)||{};
@@ -194,7 +198,7 @@ async function printOrder(o){
   const finalValue=subtotal+delivery;
   const displayOrderType=isDelivery?'توصيل':'استلام من المحل';
   const cleanNotes=cleanOrderNotes(o.notes);
-  const orderNumber=await getDailyInvoiceNumber(o);
+  const orderNumber=getDailyInvoiceNumber(o);
   const orderShort=String(o.id||'').replace(/-/g,'').slice(-6).toUpperCase();
   const created=o.created_at?new Date(o.created_at):new Date();
   const date=created.toLocaleDateString('ar-LB');
@@ -221,6 +225,7 @@ async function printOrder(o){
       .receipt-item-row{border-bottom:1px dotted #888;min-height:8mm;padding:3px 0;direction:ltr}.receipt-item-row>div{min-width:0;box-sizing:border-box}
       .receipt-total,.receipt-price{direction:ltr;text-align:center;white-space:nowrap;font-weight:700}.receipt-qty{text-align:center;white-space:nowrap;direction:ltr}
       .receipt-name{direction:rtl;text-align:right;font-weight:700;white-space:normal;overflow-wrap:anywhere;padding-right:1mm}.receipt-name div{font-weight:400}
+      .receipt-delivery-time{margin-top:2.5mm;border:2px solid #000;border-radius:1.5mm;padding:2.5mm 1mm;text-align:center;direction:rtl;background:#fff}
     </style>
     <div style="text-align:center;direction:ltr">
       <img src="${logoSrc}" alt="Tabbara Fish" style="display:block;width:55mm;max-width:100%;height:auto;max-height:15mm;object-fit:contain;margin:0 auto 1mm">
@@ -236,7 +241,7 @@ async function printOrder(o){
       <div><b>نوع الطلب:</b> ${esc(displayOrderType)}</div>
       <div><b>الزبون:</b> ${esc(o.customer_name||'غير محدد')}</div>
       <div><b>الهاتف:</b> <span dir="ltr" style="direction:ltr;unicode-bidi:isolate">${esc(o.customer_phone||'غير محدد')}</span></div>
-      ${isDelivery?'<div style="font-weight:800;font-size:10.5px"><b>العنوان:</b> '+esc(o.customer_address||'غير محدد')+'</div>'+(deliveryTime?'<div style="font-weight:900;font-size:15px;line-height:1.25;margin-top:2mm;padding-top:1.5mm;border-top:1px solid #000"><b>وقت التوصيل :</b> <span dir="ltr" style="font-weight:900">'+esc(deliveryTime)+'</span></div>':''):''}
+      ${isDelivery?'<div style="font-weight:800;font-size:10.5px"><b>العنوان:</b> '+esc(o.customer_address||'غير محدد')+'</div><div class="receipt-delivery-time"><div style="font-size:11px;font-weight:900">وقت التوصيل</div><div dir="ltr" style="font-size:18px;font-weight:900;line-height:1.1;margin-top:1mm">'+esc(deliveryTime||'غير محدد')+'</div></div>':''}
     </div>
     <div class="receipt-items"><div class="receipt-item-head"><div>المجموع</div><div>السعر</div><div>الكمية</div><div>الصنف</div></div>${rows||'<div style="padding:6px;text-align:center">لا توجد أصناف</div>'}</div>
     <div style="border-top:1px dashed #000;margin-top:2mm;padding-top:2mm;font-size:10px">
