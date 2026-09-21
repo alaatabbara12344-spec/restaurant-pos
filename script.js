@@ -302,11 +302,56 @@ async function showReports(){
 
 function loadSettings(){deliveryCharge=Number(localStorage.getItem(DELIVERY_CHARGE_KEY));if(!Number.isFinite(deliveryCharge))deliveryCharge=DEFAULT_DELIVERY_CHARGE;grillSurcharge=Number(localStorage.getItem(GLOBAL_GRILL_KEY));if(!Number.isFinite(grillSurcharge))grillSurcharge=DEFAULT_GRILL_SURCHARGE;frySurcharge=Number(localStorage.getItem(GLOBAL_FRY_KEY));if(!Number.isFinite(frySurcharge))frySurcharge=DEFAULT_FRY_SURCHARGE}
 function loadMenu(){try{const x=JSON.parse(localStorage.getItem(MENU_STORAGE_KEY)||'null');if(Array.isArray(x)&&x.length){menu=x;return}}catch{}menu=JSON.parse(JSON.stringify(DEFAULT_MENU));localStorage.setItem(MENU_STORAGE_KEY,JSON.stringify(menu))}
-function cloudRowToLocal(r){const d=r.data&&typeof r.data==='object'?r.data:{};const cat={'الأسماك':'🐟 الأسماك','ثمار البحر':'🦐 ثمار البحر','الوجبات والساندويش':'🍽️ الوجبات','الوجبات':'🍽️ الوجبات','ساندويشات':'🥪 الساندويشات','الساندويشات':'🥪 الساندويشات','العروض':'🎁 العروض','المقبلات':'🥗 المقبلات','السلطات':'🥬 السلطات','المشروبات':'🥤 المشروبات'};const def=DEFAULT_MENU.find(x=>String(x.id)===String(r.id));const category=cat[r.category]||r.category||'';const item={id:String(r.id),name:r.name||'',category,type:r.type||def?.type||'fixed',available:r.available!==false};if(category===MEALS_CATEGORY||category===SANDWICHES_CATEGORY){item.type='fixed';item.price=Number(d.price??r.price??def?.price??0)}else if(item.type==='weight'){item.pricing={base:Number(d.base??d.basePrice??def?.pricing?.base??0)}}else if(item.type==='sizes'){item.sizes={...(d.sizes||def?.sizes||{})}}else if(item.type==='meal')item.prices={وجبة:Number(d.meal??d.وجبة??d.prices?.وجبة??0),ساندويش:Number(d.sandwich??d.ساندويش??d.prices?.ساندويش??0)};else if(item.type==='offer'){item.price=Number(d.price??r.price??0);item.details=d.details||'';item.items=[]}else item.price=Number(d.price??r.price??def?.price??0);return item}
-function localToCloudRow(i){let data={};if(i.type==='weight'){data.base=Number(i.pricing?.base||0)}else if(i.type==='sizes'){data.sizes={...(i.sizes||{})}}else if(i.type==='meal'){data.meal=Number(i.prices?.وجبة||0);data.sandwich=Number(i.prices?.ساندويش||0)}else if(i.type==='offer'){data.price=Number(i.price||0);data.details=i.details||''}else data.price=Number(i.price||0);return{id:String(i.id),name:i.name||'',category:i.category||'',type:i.type||'fixed',available:i.available!==false,data,updated_at:new Date().toISOString()}}
-async function syncMenuFromCloud(){if(!navigator.onLine)return;try{const r=await api('/rest/v1/pos_menu?select=*&limit=1000');if(r.ok){const rows=await r.json();if(rows.length){menu=rows.map(cloudRowToLocal);saveMenuLocal();renderCategories();renderItems()}}}catch(e){console.warn(e)}}
-async function syncMenuToCloud(){if(!navigator.onLine)return;try{for(const i of menu)await api('/rest/v1/pos_menu',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(localToCloudRow(i))})}catch(e){console.warn(e)}}
-async function syncOneMenuItem(i){if(!navigator.onLine||!i)return true;try{const r=await api('/rest/v1/pos_menu',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(localToCloudRow(i))});if(!r.ok){console.warn('menu sync',r.status,await r.text());return false}return true}catch(e){console.warn('menu sync',e);return false}}
+const CATEGORY_ALIASES={'🍽️ وجبات':MEALS_CATEGORY,'🍽️ الوجبات والساندويش':MEALS_CATEGORY,'الوجبات':MEALS_CATEGORY,'🥪 ساندويشات':SANDWICHES_CATEGORY,'ساندويشات':SANDWICHES_CATEGORY,'الساندويشات':SANDWICHES_CATEGORY,'العروض':'🎁 العروض','المقبلات':'🥗 المقبلات','السلطات':'🥬 السلطات','المشروبات':'🥤 المشروبات','الأسماك':'🐟 الأسماك','ثمار البحر':'🦐 ثمار البحر'};
+function canonicalCategory(c){return CATEGORY_ALIASES[String(c||'').trim()]||String(c||'').trim()}
+function cloudRowToLocal(r){
+ const d=r.data&&typeof r.data==='object'?r.data:{};
+ const def=DEFAULT_MENU.find(x=>String(x.id)===String(r.id));
+ const category=canonicalCategory(r.category);
+ const item={id:String(r.id),name:r.name||'',category,type:r.type||def?.type||'fixed',available:r.available!==false};
+ if(category===MEALS_CATEGORY||category===SANDWICHES_CATEGORY){
+   item.type='fixed';
+   const legacyMeal=category===MEALS_CATEGORY?d.meal??d.وجبة:d.sandwich??d.ساندويش;
+   item.price=Number(d.price??legacyMeal??r.price??(category===MEALS_CATEGORY?def?.prices?.وجبة:def?.prices?.ساندويش)??def?.price??0);
+ }else if(item.type==='weight'){
+   item.pricing={base:Number(d.base??d.basePrice??def?.pricing?.base??0)};
+ }else if(item.type==='sizes'){
+   item.sizes={...(d.sizes||def?.sizes||{})};
+ }else if(item.type==='meal'){
+   item.prices={وجبة:Number(d.meal??d.وجبة??d.prices?.وجبة??0),ساندويش:Number(d.sandwich??d.ساندويش??d.prices?.ساندويش??0)};
+ }else if(item.type==='offer'){
+   item.price=Number(d.price??r.price??0);item.details=d.details||'';item.items=[];
+ }else item.price=Number(d.price??r.price??def?.price??0);
+ return item;
+}
+function localToCloudRow(i){
+ const category=canonicalCategory(i.category); let data={};
+ if(i.type==='weight')data.base=Number(i.pricing?.base||0);
+ else if(i.type==='sizes')data.sizes={...(i.sizes||{})};
+ else if(i.type==='meal')data.meal=Number(i.prices?.وجبة||0),data.sandwich=Number(i.prices?.ساندويش||0);
+ else if(i.type==='offer')data.price=Number(i.price||0),data.details=i.details||'';
+ else data.price=Number(i.price||0);
+ return{id:String(i.id),name:i.name||'',category,type:i.type||'fixed',available:i.available!==false,data,updated_at:new Date().toISOString()};
+}
+async function syncMenuFromCloud(){
+ if(!navigator.onLine)return false;
+ try{
+   const r=await api('/rest/v1/pos_menu?select=*&limit=1000');
+   if(!r.ok){console.warn('menu cloud fetch',r.status,await r.text());return false}
+   const rows=await r.json();
+   if(!Array.isArray(rows)||!rows.length)return false;
+   menu=rows.map(cloudRowToLocal);saveMenuLocal();renderCategories();renderItems();return true;
+ }catch(e){console.warn('menu cloud sync',e);return false}
+}
+async function syncMenuToCloud(){return false}
+async function syncOneMenuItem(i){
+ if(!navigator.onLine||!i)return true;
+ try{
+   const r=await api('/rest/v1/pos_menu',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(localToCloudRow(i))});
+   if(!r.ok){console.warn('menu sync',r.status,await r.text());return false}
+   return true;
+ }catch(e){console.warn('menu sync',e);return false}
+}
 function openModal(title,body){document.getElementById('modalRoot').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal-box"><div class="modal-header"><h3>${title}</h3><button type="button" onclick="closeModal()">✕</button></div><div class="modal-body">${body}</div></div></div>`;document.body.style.overflow='hidden'}
 function closeModal(){const root=document.getElementById('modalRoot');if(root)root.innerHTML='';document.body.style.overflow='';}
 function refreshManagerKeepScroll(){
@@ -368,7 +413,7 @@ async function saveSetting(id,value){try{const r=await api('/rest/v1/pos_setting
 async function toggleAvailability(id){const i=menu.find(x=>x.id===id);if(!i)return;const next=!i.available;i.available=next;saveMenuLocal();const synced=await syncOneMenuItem(i);renderItems();refreshManagerKeepScroll();if(!synced&&navigator.onLine){i.available=!next;saveMenuLocal();renderItems();alert('⚠️ لم يتم تحديث توفر الصنف على قاعدة البيانات.');}}
 document.getElementById('phone')?.addEventListener('input',queueCustomerLookup);document.getElementById('phone')?.addEventListener('blur',findCustomer);
 window.addEventListener('online',()=>{setStatus();syncPendingOrders();syncMenuFromCloud();setTimeout(checkWhatsAppOrders,800)});window.addEventListener('offline',setStatus);
-window.addEventListener('load',async()=>{loadSettings();loadMenu();setStatus();if(sessionStorage.getItem('tabbaraLoggedIn')==='1')document.getElementById('loginScreen').style.display='none';renderCategories();renderCart();await syncMenuFromCloud();setTimeout(checkWhatsAppOrders,1200);setInterval(checkWhatsAppOrders,4000)});
+window.addEventListener('load',async()=>{loadSettings();loadMenu();setStatus();if(sessionStorage.getItem('tabbaraLoggedIn')==='1')document.getElementById('loginScreen').style.display='none';if(navigator.onLine)await syncMenuFromCloud();renderCategories();renderItems();renderCart();setTimeout(checkWhatsAppOrders,1200);setInterval(checkWhatsAppOrders,4000)});
 
 /* v33: universal touch numeric keypad */
 let activeNumericInput=null;
