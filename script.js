@@ -151,35 +151,53 @@ async function htmlToPngDataUrl(html){
 }
 async function printWithLocalBridge(html, orderNumber){
   const png=await htmlToPngDataUrl(html);
-  const urls=[
-    'http://127.0.0.1:17890/print',
-    'http://localhost:17890/print'
-  ];
-  let lastError=null;
-  for(const url of urls){
-    const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),10000);
-    try{
-      console.info('Sending print job to Tabbara Print Bridge', {url, orderNumber});
-      const r=await fetch(url,{
-        method:'POST',
-        mode:'cors',
-        credentials:'omit',
-        cache:'no-store',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({orderNumber,printer:'XP-80C',png}),
-        signal:controller.signal
-      });
-      const data=await r.json().catch(()=>({}));
-      if(!r.ok||!data.ok) throw new Error(data.error||('Print Bridge HTTP '+r.status));
-      console.info('Print Bridge accepted job',data);
-      return data.printer||'XP-80C';
-    }catch(e){
-      lastError=e;
-      console.warn('Print Bridge endpoint failed',url,e);
-    }finally{clearTimeout(timer)}
+  const job={orderNumber,printer:'XP-80C',png};
+
+  // Primary path: normal browser form POST. This avoids CORS/Private-Network
+  // preflight entirely because it is a navigation-style form submission.
+  // The local bridge accepts this as application/x-www-form-urlencoded.
+  const submitForm=()=>new Promise((resolve,reject)=>{
+    const iframe=document.createElement('iframe');
+    iframe.name='tabbaraPrintFrame_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+    iframe.style.display='none';
+    const form=document.createElement('form');
+    form.method='POST';
+    form.action='http://127.0.0.1:17890/print';
+    form.target=iframe.name;
+    form.style.display='none';
+    const input=document.createElement('input');
+    input.type='hidden'; input.name='payload'; input.value=JSON.stringify(job);
+    form.appendChild(input);
+    document.body.appendChild(iframe); document.body.appendChild(form);
+    let done=false;
+    const finish=(ok,err)=>{if(done)return;done=true;setTimeout(()=>{iframe.remove();form.remove()},1500);ok?resolve('XP-80C'):reject(err)};
+    iframe.onload=()=>finish(true);
+    iframe.onerror=()=>finish(false,new Error('تعذّرت عملية الإرسال إلى Print Bridge'));
+    try{form.submit();}catch(e){finish(false,e);return}
+    // A navigation can load a response very quickly, but some Chromium
+    // versions do not fire iframe.onload consistently for localhost POSTs.
+    setTimeout(()=>finish(true),900);
+  });
+
+  try{
+    console.info('Submitting print job to Tabbara Print Bridge via local form',{orderNumber});
+    return await submitForm();
+  }catch(formError){
+    console.warn('Local form print failed, trying fetch fallback',formError);
+    const urls=['http://127.0.0.1:17890/print','http://localhost:17890/print'];
+    let lastError=formError;
+    for(const url of urls){
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort(),10000);
+      try{
+        const r=await fetch(url,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify(job),signal:controller.signal});
+        const data=await r.json().catch(()=>({}));
+        if(!r.ok||!data.ok)throw new Error(data.error||('Print Bridge HTTP '+r.status));
+        return data.printer||'XP-80C';
+      }catch(e){lastError=e}finally{clearTimeout(timer)}
+    }
+    throw new Error('تعذّرت الطباعة من Print Bridge: '+(lastError?.message||'تأكد أن البرنامج شغّال على اللابتوب'));
   }
-  throw new Error('تعذّرت الطباعة من Print Bridge: '+(lastError?.message||'تأكد أن البرنامج شغّال على اللابتوب'));
 }
 async function checkWhatsAppOrders(){
   if(!navigator.onLine||whatsappPollBusy)return;
