@@ -118,7 +118,7 @@ async function checkWhatsAppOrders(){
       showWhatsAppNotice(o);
       try{
         await new Promise(resolve=>setTimeout(resolve,250));
-        printOrder(o);
+        await printOrder(o);
         await markWhatsAppOrderProcessed(id);
         rememberWhatsAppOrder(id);
       }catch(e){
@@ -145,7 +145,26 @@ function cleanOrderNotes(notes){
     .replace(/السعر\s*يشمل[^.،\n]*[.،]?/gi,'')
     .replace(/^[.،\s]+|[.،\s]+$/g,'').trim();
 }
-function printOrder(o){
+async function getDailyInvoiceNumber(order){
+  const id=String(order?.id||'');
+  const mapKey='tabbara_invoice_numbers';
+  const seqKey='tabbara_invoice_sequence';
+  let map={};
+  try{map=JSON.parse(localStorage.getItem(mapKey)||'{}')||{}}catch{map={}}
+  if(id && Number.isFinite(Number(map[id]))) return Number(map[id]);
+  const created=order?.created_at?new Date(order.created_at):new Date();
+  const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Beirut',year:'numeric',month:'2-digit',day:'2-digit'}).format(created);
+  let seq={date:day,next:0};
+  try{seq=JSON.parse(localStorage.getItem(seqKey)||'{}')||seq}catch{}
+  if(seq.date!==day) seq={date:day,next:0};
+  seq.next=Number(seq.next||0)+1;
+  if(id) map[id]=seq.next;
+  localStorage.setItem(seqKey,JSON.stringify(seq));
+  localStorage.setItem(mapKey,JSON.stringify(map));
+  return seq.next;
+}
+
+async function printOrder(o){
   const rawItems=Array.isArray(o.items)?o.items:[];
   const items=rawItems.filter(x=>!x.__meta);
   const meta=rawItems.find(x=>x.__meta)||{};
@@ -175,6 +194,7 @@ function printOrder(o){
   const finalValue=subtotal+delivery;
   const displayOrderType=isDelivery?'توصيل':'استلام من المحل';
   const cleanNotes=cleanOrderNotes(o.notes);
+  const orderNumber=await getDailyInvoiceNumber(o);
   const orderShort=String(o.id||'').replace(/-/g,'').slice(-6).toUpperCase();
   const created=o.created_at?new Date(o.created_at):new Date();
   const date=created.toLocaleDateString('ar-LB');
@@ -205,18 +225,18 @@ function printOrder(o){
     <div style="text-align:center;direction:ltr">
       <img src="${logoSrc}" alt="Tabbara Fish" style="display:block;width:55mm;max-width:100%;height:auto;max-height:15mm;object-fit:contain;margin:0 auto 1mm">
       <div style="font-size:11.5px;font-weight:800;direction:rtl;white-space:nowrap;margin-bottom:1mm">طعم البحر على أصوله</div>
-      <div style="font-size:10px;direction:ltr;unicode-bidi:isolate;white-space:nowrap">01 651 803&nbsp;&nbsp; | &nbsp;&nbsp;70 141 148</div>
-      <div style="font-size:9.5px;margin-top:1.5mm;direction:rtl">برج أبي حيدر - الشارع الرئيسي - بجانب حلويات المصري</div>
+      <div style="font-size:10px;font-weight:800;direction:ltr;unicode-bidi:isolate;white-space:nowrap">01 651 803&nbsp;&nbsp; | &nbsp;&nbsp;70 141 148&nbsp;&nbsp; | &nbsp;&nbsp;76 722 885</div>
+      <div style="font-size:10.5px;font-weight:900;margin-top:1.5mm;direction:rtl">عنوان المحل: برج أبي حيدر - الشارع الرئيسي - بجانب حلويات المصري</div>
     </div>
     <div style="border-top:1.5px solid #000;margin:3mm 0 2mm"></div>
     <div style="text-align:center;font-size:17px;font-weight:900;line-height:1.1">فاتورة طلب</div>
-    <div style="text-align:center;font-size:10px;font-weight:700;margin-top:1mm">#${esc(orderShort||'طلب')}</div>
+    <div style="text-align:center;font-size:15px;font-weight:900;margin-top:1.5mm;line-height:1.1">رقم الطلب: ${orderNumber}</div>
     <div style="display:flex;justify-content:space-between;gap:5mm;margin-top:2mm;font-size:9.5px;font-weight:700"><span>التاريخ: ${esc(date)}</span><span>الوقت: ${esc(time)}</span></div>
     <div style="margin-top:2mm;padding:2mm 0;border-top:1px dashed #000;border-bottom:1px dashed #000;font-size:10px;line-height:1.5">
       <div><b>نوع الطلب:</b> ${esc(displayOrderType)}</div>
       <div><b>الزبون:</b> ${esc(o.customer_name||'غير محدد')}</div>
       <div><b>الهاتف:</b> <span dir="ltr" style="direction:ltr;unicode-bidi:isolate">${esc(o.customer_phone||'غير محدد')}</span></div>
-      ${isDelivery?'<div style="font-weight:800;font-size:10.5px"><b>العنوان:</b> '+esc(o.customer_address||'غير محدد')+'</div>'+(deliveryTime?'<div style="font-weight:800;font-size:10.5px"><b>وقت التوصيل :</b> <span dir="ltr">'+esc(deliveryTime)+'</span></div>':''):''}
+      ${isDelivery?'<div style="font-weight:800;font-size:10.5px"><b>العنوان:</b> '+esc(o.customer_address||'غير محدد')+'</div>'+(deliveryTime?'<div style="font-weight:900;font-size:15px;line-height:1.25;margin-top:2mm;padding-top:1.5mm;border-top:1px solid #000"><b>وقت التوصيل :</b> <span dir="ltr" style="font-weight:900">'+esc(deliveryTime)+'</span></div>':''):''}
     </div>
     <div class="receipt-items"><div class="receipt-item-head"><div>المجموع</div><div>السعر</div><div>الكمية</div><div>الصنف</div></div>${rows||'<div style="padding:6px;text-align:center">لا توجد أصناف</div>'}</div>
     <div style="border-top:1px dashed #000;margin-top:2mm;padding-top:2mm;font-size:10px">
@@ -413,7 +433,7 @@ async function saveSetting(id,value){try{const r=await api('/rest/v1/pos_setting
 async function toggleAvailability(id){const i=menu.find(x=>x.id===id);if(!i)return;const next=!i.available;i.available=next;saveMenuLocal();const synced=await syncOneMenuItem(i);renderItems();refreshManagerKeepScroll();if(!synced&&navigator.onLine){i.available=!next;saveMenuLocal();renderItems();alert('⚠️ لم يتم تحديث توفر الصنف على قاعدة البيانات.');}}
 document.getElementById('phone')?.addEventListener('input',queueCustomerLookup);document.getElementById('phone')?.addEventListener('blur',findCustomer);
 window.addEventListener('online',()=>{setStatus();syncPendingOrders();syncMenuFromCloud();setTimeout(checkWhatsAppOrders,800)});window.addEventListener('offline',setStatus);
-window.addEventListener('load',async()=>{loadSettings();loadMenu();setStatus();if(sessionStorage.getItem('tabbaraLoggedIn')==='1')document.getElementById('loginScreen').style.display='none';if(navigator.onLine)await syncMenuFromCloud();renderCategories();renderItems();renderCart();setTimeout(checkWhatsAppOrders,1200);setInterval(checkWhatsAppOrders,4000)});
+window.addEventListener('load',async()=>{loadSettings();loadMenu();setStatus();if(sessionStorage.getItem('tabbaraLoggedIn')==='1')document.getElementById('loginScreen').style.display='none';renderCategories();renderItems();renderCart();setTimeout(checkWhatsAppOrders,1200);setInterval(checkWhatsAppOrders,4000);if(navigator.onLine)syncMenuFromCloud()});
 
 /* v33: universal touch numeric keypad */
 let activeNumericInput=null;
