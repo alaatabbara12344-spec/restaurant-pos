@@ -104,6 +104,34 @@ async function markWhatsAppOrderProcessed(id){
   const r=await api(`/rest/v1/orders?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({sync_status:'synced'})});
   if(!r.ok)throw new Error(await r.text());
 }
+const PRINT_BRIDGE_URL='http://127.0.0.1:17890/print';
+async function htmlToPngDataUrl(html){
+  const width=576, cssWidth=272, scale=width/cssWidth, height=1800;
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" xmlns:xhtml="http://www.w3.org/1999/xhtml" width="${width}" height="${height}"><rect width="100%" height="100%" fill="white"/><g transform="scale(${scale})"><foreignObject x="0" y="0" width="${cssWidth}" height="${height/scale}"><div xmlns="http://www.w3.org/1999/xhtml">${html}</div></foreignObject></g></svg>`;
+  const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  try{
+    const img=new Image();
+    await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=url});
+    const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+    const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,width,height);ctx.drawImage(img,0,0);
+    let crop=height;const data=ctx.getImageData(0,0,width,height).data;
+    outer:for(let y=height-1;y>0;y--){for(let x=0;x<width;x+=4){const i=(y*width+x)*4;if(data[i]<245||data[i+1]<245||data[i+2]<245){crop=y+8;break outer}}}
+    crop=Math.min(height,Math.max(1,crop));
+    const out=document.createElement('canvas');out.width=width;out.height=crop;out.getContext('2d').drawImage(canvas,0,0,width,crop,0,0,width,crop);
+    return out.toDataURL('image/png');
+  }finally{URL.revokeObjectURL(url)}
+}
+async function printWithLocalBridge(html, orderNumber){
+  const png=await htmlToPngDataUrl(html);
+  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),10000);
+  try{
+    const r=await fetch(PRINT_BRIDGE_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderNumber,printer:'XP-80C',png}),signal:controller.signal});
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok||!data.ok) throw new Error(data.error||'Print Bridge رفض الطباعة');
+    return data.printer||'XP-80C';
+  }finally{clearTimeout(timer)}
+}
 async function checkWhatsAppOrders(){
   if(!navigator.onLine||whatsappPollBusy)return;
   whatsappPollBusy=true;
@@ -118,7 +146,7 @@ async function checkWhatsAppOrders(){
       showWhatsAppNotice(o);
       try{
         await new Promise(resolve=>setTimeout(resolve,250));
-        printOrder(o);
+        await printOrder(o);
         await markWhatsAppOrderProcessed(id);
         rememberWhatsAppOrder(id);
       }catch(e){
@@ -176,7 +204,7 @@ function getDailyInvoiceNumber(order){
   return seq.next;
 }
 
-function printOrder(o){
+async function printOrder(o){
   const rawItems=Array.isArray(o.items)?o.items:[];
   const items=rawItems.filter(x=>!x.__meta);
   const meta=rawItems.find(x=>x.__meta)||{};
@@ -262,7 +290,15 @@ function printOrder(o){
     <div style="text-align:center;font-size:11px;font-weight:800;margin-top:1mm">TABBARA FISH</div>
   </div>`;
   let p=document.getElementById('posPrintArea');if(!p){p=document.createElement('div');p.id='posPrintArea';document.body.appendChild(p)}
-  p.innerHTML=html;document.body.classList.add('printing-invoice');setTimeout(()=>{window.print();setTimeout(()=>document.body.classList.remove('printing-invoice'),300)},150);
+  p.innerHTML=html;
+  try{
+    const printer=await printWithLocalBridge(html,orderNumber);
+    console.info('Printed with Tabbara Print Bridge:',printer,'invoice',orderNumber);
+    return true;
+  }catch(e){
+    console.error('Tabbara Print Bridge print failed',e);
+    throw e;
+  }
 }
 function printDailyReport(){const rows=window.__reportRows||[],stats=window.__reportStats||buildReport(rows),date=window.__reportDate||new Date().toISOString().slice(0,10);const html=`<div style="width:80mm;font-family:Arial;direction:rtl;text-align:right;padding:8px;box-sizing:border-box"><h2 style="text-align:center;margin:0 0 5px">🐟 Tabbara Fish</h2><div style="text-align:center;font-weight:bold">تقرير المبيعات اليومية</div><div style="text-align:center;font-size:12px">${esc(date)}</div><div style="border-bottom:1px dashed #000;margin:8px 0"></div><div><b>عدد الطلبات:</b> ${stats.orders}<br><b>إجمالي المبيعات:</b> $${money(stats.total)}<br><b>دليفري:</b> $${money(stats.delivery)}<br><b>استلام:</b> $${money(stats.pickup)}<br><b>كاش:</b> $${money(stats.cash)}<br><b>بطاقة:</b> $${money(stats.card)}<br><b>تحويل:</b> $${money(stats.transfer)}<br><b>المفروض بالصندوق:</b> $${money(stats.cash)}</div><div style="border-bottom:1px dashed #000;margin:8px 0"></div><h3 style="margin:5px 0">📦 الأصناف المباعة</h3>${stats.products.length?stats.products.map(p=>`<div style="margin:5px 0;border-bottom:1px dotted #aaa;padding-bottom:4px"><b>${esc(p.name)}</b><br>الكمية: ${p.qtyLabel} — $${money(p.total)}</div>`).join(''):'<div>لا توجد مبيعات.</div>'}<div style="border-top:1px dashed #000;margin-top:8px;padding-top:7px;font-size:16px"><b>الإجمالي: $${money(stats.total)}</b></div><div style="text-align:center;margin-top:10px;font-size:11px">نهاية التقرير</div></div>`;let p=document.getElementById('posPrintArea');if(!p){p=document.createElement('div');p.id='posPrintArea';document.body.appendChild(p)}p.innerHTML=html;document.body.classList.add('printing-invoice');setTimeout(()=>{window.print();setTimeout(()=>document.body.classList.remove('printing-invoice'),300)},100)}
 function buildReport(rows){const productsMap={};let total=0,cash=0,card=0,transfer=0,delivery=0,pickup=0;for(const o of rows){total+=Number(o.total||0);if(String(o.order_type||'').toLowerCase()==='delivery')delivery+=Number(o.total||0);else pickup+=Number(o.total||0);const meta=(Array.isArray(o.items)?o.items:[]).find(x=>x.__meta)||{};if(meta.payment_method==='card')card+=Number(o.total||0);else if(meta.payment_method==='transfer')transfer+=Number(o.total||0);else cash+=Number(o.total||0);for(const x of (Array.isArray(o.items)?o.items:[]).filter(x=>!x.__meta)){const k=x.name||x.label||'غير معروف';const qty=Number(x.weight ?? x.quantity ?? 1);const unit=Number(x.unitPrice ?? x.price ?? x.unit_price ?? 0);const storedTotal=Number(x.total ?? x.line_total);const lineTotal=Number.isFinite(storedTotal)&&storedTotal>0?storedTotal:qty*unit;if(!productsMap[k])productsMap[k]={name:k,qty:0,weight:0,total:0};productsMap[k].qty+=Number(x.quantity||0);productsMap[k].weight+=Number(x.weight||0);productsMap[k].total+=Number.isFinite(lineTotal)?lineTotal:0}}return{orders:rows.length,total,cash,card,transfer,delivery,pickup,products:Object.values(productsMap).sort((a,b)=>b.total-a.total).map(p=>({...p,qtyLabel:p.weight?money(p.weight)+' كغ':String(p.qty)}))}}
