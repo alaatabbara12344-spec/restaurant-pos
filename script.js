@@ -86,7 +86,34 @@ function queueCustomerLookup(){clearTimeout(customerLookupTimer);customerLookupT
 async function saveCustomer(){const phone=normalizePhone(document.getElementById('phone').value),name=document.getElementById('name').value.trim(),address=document.getElementById('address').value.trim(),notes=document.getElementById('notes').value.trim();if(!phone||!navigator.onLine)return;try{const r=await api('/rest/v1/customers?on_conflict=phone',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({phone,name,address,notes,updated_at:new Date().toISOString()})});if(!r.ok)console.warn('customer save',r.status,await r.text())}catch(e){console.warn(e)}}
 function paymentMeta(){const p=document.getElementById('paymentMethod').value;return p==='cash'?'كاش':p==='card'?'بطاقة':'تحويل'}
 function orderPayload(){const baseTotal=cart.reduce((s,x)=>s+Number(x.total),0),delivery=selectedOrderType==='Delivery'?deliveryCharge:0,deliveryTime=document.getElementById('deliveryTime')?.value||'';const meta={__meta:true,payment_method:document.getElementById('paymentMethod').value,payment_label:paymentMeta(),delivery_charge:delivery,delivery_time:deliveryTime};return{order_type:selectedOrderType,customer_name:document.getElementById('name').value.trim(),customer_phone:normalizePhone(document.getElementById('phone').value),customer_address:document.getElementById('address').value.trim(),notes:document.getElementById('notes').value.trim(),delivery_time:deliveryTime||null,items:[...cart,meta],total:baseTotal+delivery,device_id:deviceId,sync_status:navigator.onLine?'synced':'pending',created_at:new Date().toISOString(),delivery_charge:delivery}}
-async function confirmOrder(){if(!selectedOrderType)return alert('اختار نوع الطلب أولاً.');if(!cart.length)return alert('أضف صنفاً واحداً على الأقل.');const payload=orderPayload();const finish=()=>{printOrder(payload);clearOrder()};try{const r=await api('/rest/v1/orders',{method:'POST',body:JSON.stringify(payload)});if(!r.ok)throw new Error(await r.text());saveCustomer().catch(()=>{});alert('✅ تم حفظ الطلب بنجاح');finish()}catch(e){const q=JSON.parse(localStorage.getItem(PENDING_ORDERS_KEY)||'[]');q.push(payload);localStorage.setItem(PENDING_ORDERS_KEY,JSON.stringify(q));alert('📴 تم حفظ الطلب على الجهاز وسيتم مزامنته عند عودة الإنترنت.');finish()}}
+async function confirmOrder(){
+  if(!selectedOrderType)return alert('اختار نوع الطلب أولاً.');
+  if(!cart.length)return alert('أضف صنفاً واحداً على الأقل.');
+  const payload=orderPayload();
+  const finish=async()=>{
+    try{
+      await printOrder(payload);
+      clearOrder();
+    }catch(e){
+      console.error(e);
+      alert('⚠️ تم حفظ الطلب لكن الطباعة فشلت.\n'+e.message);
+    }
+  };
+  try{
+    const r=await api('/rest/v1/orders',{method:'POST',body:JSON.stringify(payload)});
+    if(!r.ok)throw new Error(await r.text());
+    saveCustomer().catch(()=>{});
+    alert('✅ تم حفظ الطلب بنجاح');
+    await finish();
+  }catch(e){
+    const q=JSON.parse(localStorage.getItem(PENDING_ORDERS_KEY)||'[]');
+    q.push(payload);
+    localStorage.setItem(PENDING_ORDERS_KEY,JSON.stringify(q));
+    alert('📴 تم حفظ الطلب على الجهاز وسيتم مزامنته عند عودة الإنترنت.');
+    await finish();
+  }
+}
+
 async function syncPendingOrders(){if(!navigator.onLine)return;const q=JSON.parse(localStorage.getItem(PENDING_ORDERS_KEY)||'[]');if(!q.length)return;const left=[];for(const o of q){try{const r=await api('/rest/v1/orders',{method:'POST',body:JSON.stringify(o)});if(!r.ok)throw 0}catch{left.push(o)}}localStorage.setItem(PENDING_ORDERS_KEY,JSON.stringify(left))}
 let whatsappPollBusy=false;
 const WHATSAPP_SEEN_KEY='tabbara_whatsapp_seen_orders';
@@ -124,13 +151,35 @@ async function htmlToPngDataUrl(html){
 }
 async function printWithLocalBridge(html, orderNumber){
   const png=await htmlToPngDataUrl(html);
-  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),10000);
-  try{
-    const r=await fetch(PRINT_BRIDGE_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderNumber,printer:'XP-80C',png}),signal:controller.signal});
-    const data=await r.json().catch(()=>({}));
-    if(!r.ok||!data.ok) throw new Error(data.error||'Print Bridge رفض الطباعة');
-    return data.printer||'XP-80C';
-  }finally{clearTimeout(timer)}
+  const urls=[
+    'http://127.0.0.1:17890/print',
+    'http://localhost:17890/print'
+  ];
+  let lastError=null;
+  for(const url of urls){
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),10000);
+    try{
+      console.info('Sending print job to Tabbara Print Bridge', {url, orderNumber});
+      const r=await fetch(url,{
+        method:'POST',
+        mode:'cors',
+        credentials:'omit',
+        cache:'no-store',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({orderNumber,printer:'XP-80C',png}),
+        signal:controller.signal
+      });
+      const data=await r.json().catch(()=>({}));
+      if(!r.ok||!data.ok) throw new Error(data.error||('Print Bridge HTTP '+r.status));
+      console.info('Print Bridge accepted job',data);
+      return data.printer||'XP-80C';
+    }catch(e){
+      lastError=e;
+      console.warn('Print Bridge endpoint failed',url,e);
+    }finally{clearTimeout(timer)}
+  }
+  throw new Error('تعذّرت الطباعة من Print Bridge: '+(lastError?.message||'تأكد أن البرنامج شغّال على اللابتوب'));
 }
 async function checkWhatsAppOrders(){
   if(!navigator.onLine||whatsappPollBusy)return;
@@ -335,7 +384,7 @@ async function showOrders(){
 function getPreviousOrder(id){return (window.__previousOrders||[]).find(o=>String(o.id)===String(id))||null}
 function orderItemsSummary(o){const items=(Array.isArray(o?.items)?o.items:[]).filter(x=>!x.__meta);return items.map(x=>{const qty=Number(x.weight??x.quantity??1);const unit=Number(x.unitPrice??x.price??x.unit_price??0);const stored=Number(x.total??x.line_total);const line=Number.isFinite(stored)&&stored>0?stored:qty*unit;const label=x.label||x.name||'صنف';return `<div class="detail-item"><span>${esc(label)} × ${esc(String(Number(x.weight)>0?money(Number(x.weight))+' كغ':x.quantity||1))}</span><b dir="ltr">$${money(line)}</b></div>`}).join('')||'<div class="muted">لا توجد أصناف.</div>'}
 function viewOrderDetails(id){const o=getPreviousOrder(id);if(!o)return alert('الطلب غير موجود.');const meta=(Array.isArray(o.items)?o.items:[]).find(x=>x.__meta)||{};const date=o.created_at?new Date(o.created_at).toLocaleString('ar-LB',{dateStyle:'medium',timeStyle:'short'}):'';const short=String(o.id||'').replace(/-/g,'').slice(-6).toUpperCase();openModal('📋 تفاصيل الطلب #'+esc(short),`<div class="order-details"><div><b>التاريخ:</b> ${esc(date)}</div><div><b>نوع الطلب:</b> ${esc(o.order_type||'')}</div><div><b>الزبون:</b> ${esc(o.customer_name||'غير محدد')}</div><div><b>الهاتف:</b> <span dir="ltr">${esc(o.customer_phone||'')}</span></div>${String(o.order_type||'').toLowerCase()==='delivery'?`<div><b>العنوان:</b> ${esc(o.customer_address||'غير محدد')}</div>${meta.delivery_time?`<div><b>وقت التوصيل:</b> <span dir="ltr">${esc(meta.delivery_time)}</span></div>`:''}`:''}<div><b>طريقة الدفع:</b> ${esc(meta.payment_label||'كاش')}</div><hr><h4>الأصناف</h4>${orderItemsSummary(o)}<hr><div class="detail-total"><span>المجموع</span><b dir="ltr">$${money(o.total)}</b></div>${o.notes?`<div><b>ملاحظات:</b> ${esc(o.notes)}</div>`:''}<div class="data-card-actions"><button type="button" class="primary" onclick="reprintOrder('${esc(String(o.id||''))}')">🖨️ إعادة طباعة</button><button type="button" class="danger" onclick="deletePreviousOrder('${esc(String(o.id||''))}')">🗑️ إلغاء/حذف</button></div></div>`)}
-function reprintOrder(id){const o=getPreviousOrder(id);if(!o)return alert('الطلب غير موجود.');closeModal();printOrder(o)}
+async function reprintOrder(id){const o=getPreviousOrder(id);if(!o)return alert('الطلب غير موجود.');closeModal();try{await printOrder(o);alert('✅ تمت إعادة الطباعة.')}catch(e){console.error('reprintOrder',e);alert('⚠️ إعادة الطباعة فشلت.\n'+e.message)}}
 async function deletePreviousOrder(id){const o=getPreviousOrder(id);if(!o)return alert('الطلب غير موجود.');const short=String(o.id||'').replace(/-/g,'').slice(-6).toUpperCase();if(!confirm(`هل تريد إلغاء وحذف الطلب #${short} نهائياً؟`))return;try{const r=await api(`/rest/v1/orders?id=eq.${encodeURIComponent(id)}`,{method:'DELETE',headers:{Prefer:'return=minimal'}});if(!r.ok)throw new Error(await r.text());window.__previousOrders=(window.__previousOrders||[]).filter(x=>String(x.id)!==String(id));alert('✅ تم إلغاء وحذف الطلب.');showOrders()}catch(e){console.warn('deletePreviousOrder',e);alert('⚠️ لم يتم حذف الطلب. تأكد من صلاحية الحذف في Supabase.')}}
 
 async function showCustomers(){
