@@ -137,9 +137,9 @@ function makeReceiptHtmlXmlSafe(html){
   // Convert named entities which are not valid XML entities.
   s=s.replace(/&nbsp;/gi,'&#160;');
   // Escape stray ampersands while preserving the five XML entities and numeric entities.
-  s=s.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\\d+;|#x[0-9a-fA-F]+;)/gi,'&amp;');
+  s=s.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)/gi,'&amp;');
   // SVG foreignObject is parsed as XML, so HTML void elements must be self-closed.
-  s=s.replace(/<\\s*(br|hr|img|input|meta|link|source|area|base|col|embed|param|track|wbr)(\\b[^>]*?)(?<!\\/)\\s*>/gi,'<$1$2/>');
+  s=s.replace(/<\s*(br|hr|img|input|meta|link|source|area|base|col|embed|param|track|wbr)(\b[^>]*?)(?<!\/)\s*>/gi,'<$1$2/>');
   return s;
 }
 async function htmlToPngDataUrl(html){
