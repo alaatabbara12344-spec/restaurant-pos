@@ -132,14 +132,27 @@ async function markWhatsAppOrderProcessed(id){
   if(!r.ok)throw new Error(await r.text());
 }
 const PRINT_BRIDGE_URL='http://127.0.0.1:17890/print';
+function makeReceiptHtmlXmlSafe(html){
+  return String(html??'')
+    // Named HTML entities such as &nbsp; are not valid XML entities.
+    // Convert them to numeric entities before putting the HTML inside SVG.
+    .replace(/&nbsp;/gi,'&#160;')
+    // Escape any stray ampersands while preserving valid XML/HTML entities.
+    .replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\\d+;|#x[0-9a-fA-F]+;)/gi,'&amp;');
+}
 async function htmlToPngDataUrl(html){
   const width=576, cssWidth=272, scale=width/cssWidth, height=1800;
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" xmlns:xhtml="http://www.w3.org/1999/xhtml" width="${width}" height="${height}"><rect width="100%" height="100%" fill="white"/><g transform="scale(${scale})"><foreignObject x="0" y="0" width="${cssWidth}" height="${height/scale}"><div xmlns="http://www.w3.org/1999/xhtml">${html}</div></foreignObject></g></svg>`;
+  const safeHtml=makeReceiptHtmlXmlSafe(html);
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" xmlns:xhtml="http://www.w3.org/1999/xhtml" width="${width}" height="${height}"><rect width="100%" height="100%" fill="white"/><g transform="scale(${scale})"><foreignObject x="0" y="0" width="${cssWidth}" height="${height/scale}"><div xmlns="http://www.w3.org/1999/xhtml">${safeHtml}</div></foreignObject></g></svg>`;
   const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   try{
     const img=new Image();
-    await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=url});
+    await new Promise((resolve,reject)=>{
+      img.onload=resolve;
+      img.onerror=()=>reject(new Error('فشل تحويل الفاتورة إلى صورة. تم تنظيف HTML/XML قبل التحويل.'));
+      img.src=url;
+    });
     const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
     const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,width,height);ctx.drawImage(img,0,0);
     let crop=height;const data=ctx.getImageData(0,0,width,height).data;
@@ -302,7 +315,7 @@ async function printOrder(o){
     <div style="text-align:center;direction:ltr">
       <img src="${logoSrc}" alt="Tabbara Fish" style="display:block;width:55mm;max-width:100%;height:auto;max-height:15mm;object-fit:contain;margin:0 auto 1mm">
       <div style="font-size:11.5px;font-weight:800;direction:rtl;white-space:nowrap;margin-bottom:1mm">طعم البحر على أصوله</div>
-      <div style="font-size:10px;font-weight:800;direction:ltr;unicode-bidi:isolate;white-space:nowrap">01 651 803&nbsp;&nbsp; | &nbsp;&nbsp;70 141 148&nbsp;&nbsp; | &nbsp;&nbsp;76 722 885</div>
+      <div style="font-size:10px;font-weight:800;direction:ltr;unicode-bidi:isolate;white-space:nowrap">01 651 803   |   70 141 148   |   76 722 885</div>
       <div style="font-size:11px;font-weight:900;margin-top:1.5mm;direction:rtl">برج أبي حيدر - الشارع الرئيسي - بجانب حلويات المصري</div>
     </div>
     <div style="border-top:1.5px solid #000;margin:3mm 0 2mm"></div>
