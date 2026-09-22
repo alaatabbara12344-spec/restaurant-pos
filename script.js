@@ -133,12 +133,14 @@ async function markWhatsAppOrderProcessed(id){
 }
 const PRINT_BRIDGE_URL='http://127.0.0.1:17890/print';
 function makeReceiptHtmlXmlSafe(html){
-  return String(html??'')
-    // Named HTML entities such as &nbsp; are not valid XML entities.
-    // Convert them to numeric entities before putting the HTML inside SVG.
-    .replace(/&nbsp;/gi,'&#160;')
-    // Escape any stray ampersands while preserving valid XML/HTML entities.
-    .replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\\d+;|#x[0-9a-fA-F]+;)/gi,'&amp;');
+  let s=String(html??'');
+  // Convert named entities which are not valid XML entities.
+  s=s.replace(/&nbsp;/gi,'&#160;');
+  // Escape stray ampersands while preserving the five XML entities and numeric entities.
+  s=s.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\\d+;|#x[0-9a-fA-F]+;)/gi,'&amp;');
+  // SVG foreignObject is parsed as XML, so HTML void elements must be self-closed.
+  s=s.replace(/<\\s*(br|hr|img|input|meta|link|source|area|base|col|embed|param|track|wbr)(\\b[^>]*?)(?<!\\/)\\s*>/gi,'<$1$2/>');
+  return s;
 }
 async function htmlToPngDataUrl(html){
   const width=576, cssWidth=272, scale=width/cssWidth, height=1800;
