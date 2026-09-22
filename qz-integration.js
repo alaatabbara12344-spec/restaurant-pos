@@ -1,6 +1,5 @@
-/* Tabbara Fish - QZ Tray signed Arabic renderer v7
-   Browser DOM -> html2canvas -> PNG -> QZ ESC/POS.
-   This avoids SVG foreignObject and QZ's HTML Arabic shaping.
+/* Tabbara Fish - QZ Tray signed Arabic PNG renderer v8
+   Chrome DOM -> html2canvas -> PNG -> QZ ESC/POS raster + paper cut.
 */
 (function () {
   'use strict';
@@ -34,27 +33,6 @@
       localText('/qz/certificate').then(resolve).catch(reject);
     });
     qz.security.setSignatureAlgorithm('SHA512');
-    qz.security.setSignaturePromise(toSign => resolve => {
-      localText('/qz/private-key').then(privateKey => {
-        try {
-          const key = KEYUTIL.getKey(privateKey);
-          const sig = new KJUR.crypto.Signature({ alg: 'SHA512withRSA' });
-          sig.init(key);
-          sig.updateString(toSign);
-          resolve(hextob64(sig.sign()));
-        } catch (e) {
-          throw e;
-        }
-      }).catch(() => {});
-    });
-  }
-
-  // The promise above needs a reject path too; install the robust version.
-  function configureSigningRobust() {
-    qz.security.setCertificatePromise((resolve, reject) => {
-      localText('/qz/certificate').then(resolve).catch(reject);
-    });
-    qz.security.setSignatureAlgorithm('SHA512');
     qz.security.setSignaturePromise(toSign => (resolve, reject) => {
       localText('/qz/private-key').then(privateKey => {
         try {
@@ -72,8 +50,7 @@
 
   async function ensureQz() {
     await loadScript(QZ_SRC, 'qz');
-    if (!window.KEYUTIL) throw new Error('jsrsasign is not loaded');
-    configureSigningRobust();
+    configureSigning();
     if (!qz.websocket.isActive()) await qz.websocket.connect();
   }
 
@@ -91,102 +68,90 @@
     throw new Error('XP-80C printer not found. Printers: ' + list.join(', '));
   }
 
-  function renderReceiptToPng(documentHtml) {
-    return new Promise(async (resolve, reject) => {
-      try {
-        await ensureHtml2Canvas();
+  async function renderReceiptToPng(documentHtml) {
+    await ensureHtml2Canvas();
 
-        const host = document.createElement('div');
-        host.style.position = 'fixed';
-        host.style.left = '-10000px';
-        host.style.top = '0';
-        host.style.width = '72mm';
-        host.style.background = '#fff';
-        host.style.zIndex = '-1';
-        host.style.direction = 'rtl';
-        host.style.color = '#000';
+    const host = document.createElement('div');
+    host.style.position = 'fixed';
+    host.style.left = '-10000px';
+    host.style.top = '0';
+    host.style.width = '72mm';
+    host.style.background = '#fff';
+    host.style.zIndex = '-1';
+    host.style.direction = 'rtl';
+    host.style.color = '#000';
 
-        const style = document.createElement('style');
-        style.textContent = `
-          .tabbara-print-root, .tabbara-print-root * {
-            box-sizing: border-box !important;
-          }
-          .tabbara-print-root {
-            width: 72mm !important;
-            max-width: 72mm !important;
-            margin: 0 !important;
-            padding: 1.5mm 0.5mm 2mm 0.5mm !important;
-            background: #fff !important;
-            color: #000 !important;
-            direction: rtl !important;
-            text-align: right !important;
-            font-family: Tahoma, Arial, sans-serif !important;
-            font-size: 11.5px !important;
-            line-height: 1.25 !important;
-          }
-          .tabbara-print-root img {
-            max-width: 100% !important;
-          }
-          .tabbara-print-root .receipt-name,
-          .tabbara-print-root [dir="rtl"] {
-            direction: rtl !important;
-            unicode-bidi: plaintext !important;
-          }
-        `;
-        host.appendChild(style);
-
-        const root = document.createElement('div');
-        root.className = 'tabbara-print-root';
-        root.innerHTML = String(documentHtml)
-          .replace(/<script[\s\S]*?<\/script>/gi, '')
-          .replace(/<iframe[\s\S]*?<\/iframe>/gi, '');
-
-        host.appendChild(root);
-        document.body.appendChild(host);
-
-        if (document.fonts && document.fonts.ready) await document.fonts.ready;
-
-        const images = Array.from(root.querySelectorAll('img'));
-        await Promise.all(images.map(img => {
-          if (img.complete) return Promise.resolve();
-          return new Promise(res => {
-            img.onload = res;
-            img.onerror = res;
-          });
-        }));
-
-        const canvas = await html2canvas(root, {
-          backgroundColor: '#ffffff',
-          scale: 2,
-          useCORS: true,
-          allowTaint: false,
-          logging: false,
-          imageTimeout: 10000
-        });
-
-        document.body.removeChild(host);
-
-        // Convert to the printer's 576-dot width while preserving the
-        // browser-rendered Arabic exactly as seen by Chrome.
-        const targetWidth = 576;
-        const targetHeight = Math.max(120, Math.round(canvas.height * targetWidth / canvas.width));
-        const out = document.createElement('canvas');
-        out.width = targetWidth;
-        out.height = targetHeight;
-        const ctx = out.getContext('2d', { alpha: false });
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(0, 0, targetWidth, targetHeight);
-        ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight);
-
-        resolve(out.toDataURL('image/png'));
-      } catch (e) {
-        try {
-          const node = document.querySelector('.tabbara-print-root');
-          if (node && node.parentNode) node.parentNode.removeChild(node);
-        } catch (_) {}
-        reject(e);
+    const style = document.createElement('style');
+    style.textContent = `
+      .tabbara-print-root, .tabbara-print-root * {
+        box-sizing: border-box !important;
       }
-    });
+      .tabbara-print-root {
+        width: 72mm !important;
+        max-width: 72mm !important;
+        margin: 0 !important;
+        padding: 1.5mm 0.5mm 2mm 0.5mm !important;
+        background: #fff !important;
+        color: #000 !important;
+        direction: rtl !important;
+        text-align: right !important;
+        font-family: Tahoma, Arial, sans-serif !important;
+        font-size: 11.5px !important;
+        line-height: 1.25 !important;
+      }
+      .tabbara-print-root img { max-width: 100% !important; }
+      .tabbara-print-root .receipt-name,
+      .tabbara-print-root [dir="rtl"] {
+        direction: rtl !important;
+        unicode-bidi: plaintext !important;
+      }
+    `;
+    host.appendChild(style);
+
+    const root = document.createElement('div');
+    root.className = 'tabbara-print-root';
+    root.innerHTML = String(documentHtml)
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<iframe[\s\S]*?<\/iframe>/gi, '');
+    host.appendChild(root);
+    document.body.appendChild(host);
+
+    try {
+      if (document.fonts && document.fonts.ready) await document.fonts.ready;
+
+      const images = Array.from(root.querySelectorAll('img'));
+      await Promise.all(images.map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise(res => {
+          img.onload = res;
+          img.onerror = res;
+        });
+      }));
+
+      const canvas = await html2canvas(root, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        imageTimeout: 10000
+      });
+
+      const targetWidth = 576;
+      const targetHeight = Math.max(120, Math.round(canvas.height * targetWidth / canvas.width));
+      const out = document.createElement('canvas');
+      out.width = targetWidth;
+      out.height = targetHeight;
+
+      const ctx = out.getContext('2d', { alpha: false });
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, targetWidth, targetHeight);
+      ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight);
+
+      return out.toDataURL('image/png');
+    } finally {
+      if (host.parentNode) host.parentNode.removeChild(host);
+    }
   }
 
   async function printWithQz(documentHtml, orderNumber) {
@@ -199,17 +164,29 @@
       jobName: 'Tabbara Fish #' + (orderNumber || '')
     });
 
-    await qz.print(config, [{
-      type: 'raw',
-      format: 'image',
-      flavor: 'base64',
-      data: base64,
-      options: {
-        language: 'ESCPOS',
-        dotDensity: 'double'
+    // Print the browser-rendered Arabic image, then feed a few lines and
+    // issue a standard ESC/POS full-cut command.
+    const data = [
+      {
+        type: 'raw',
+        format: 'image',
+        flavor: 'base64',
+        data: base64,
+        options: {
+          language: 'ESCPOS',
+          dotDensity: 'double'
+        }
+      },
+      {
+        type: 'raw',
+        format: 'command',
+        flavor: 'hex',
+        // ESC d 3 = feed 3 lines; GS V 0 = full cut.
+        data: '1B64031D5600'
       }
-    }]);
+    ];
 
+    await qz.print(config, data);
     return printer;
   }
 
@@ -224,6 +201,6 @@
   };
 
   ensureQz()
-    .then(() => console.info('QZ Tray connected - signed browser Arabic PNG renderer v7'))
+    .then(() => console.info('QZ Tray connected - signed Arabic PNG renderer v8 (auto-cut)'))
     .catch(err => console.error('QZ Tray setup failed', err));
 })();
