@@ -1,20 +1,21 @@
-/* Tabbara Fish - QZ Tray signed Arabic PNG renderer
-   Renders the receipt in the browser first, then sends a PNG to QZ as
-   ESC/POS raster data. This avoids QZ's HTML/RTL shaping problems.
+/* Tabbara Fish - QZ Tray signed Arabic renderer v7
+   Browser DOM -> html2canvas -> PNG -> QZ ESC/POS.
+   This avoids SVG foreignObject and QZ's HTML Arabic shaping.
 */
 (function () {
   'use strict';
 
   const QZ_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/qz-tray/2.3.0/qz-tray.js';
+  const H2C_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
   const SIGNER = 'http://127.0.0.1:17890';
 
-  function loadScript(src) {
+  function loadScript(src, globalName) {
     return new Promise((resolve, reject) => {
-      if (window.qz) return resolve();
+      if (globalName && window[globalName]) return resolve();
       const s = document.createElement('script');
       s.src = src;
       s.onload = resolve;
-      s.onerror = () => reject(new Error('Could not load QZ Tray library'));
+      s.onerror = () => reject(new Error('Could not load ' + src));
       document.head.appendChild(s);
     });
   }
@@ -29,32 +30,55 @@
     if (!window.KEYUTIL || !window.KJUR || !window.hextob64) {
       throw new Error('jsrsasign is not loaded');
     }
-
-    qz.security.setCertificatePromise(function (resolve, reject) {
+    qz.security.setCertificatePromise((resolve, reject) => {
       localText('/qz/certificate').then(resolve).catch(reject);
     });
     qz.security.setSignatureAlgorithm('SHA512');
-    qz.security.setSignaturePromise(function (toSign) {
-      return function (resolve, reject) {
-        localText('/qz/private-key').then(function (privateKey) {
-          try {
-            const key = KEYUTIL.getKey(privateKey);
-            const sig = new KJUR.crypto.Signature({ alg: 'SHA512withRSA' });
-            sig.init(key);
-            sig.updateString(toSign);
-            resolve(hextob64(sig.sign()));
-          } catch (e) {
-            reject(e);
-          }
-        }).catch(reject);
-      };
+    qz.security.setSignaturePromise(toSign => resolve => {
+      localText('/qz/private-key').then(privateKey => {
+        try {
+          const key = KEYUTIL.getKey(privateKey);
+          const sig = new KJUR.crypto.Signature({ alg: 'SHA512withRSA' });
+          sig.init(key);
+          sig.updateString(toSign);
+          resolve(hextob64(sig.sign()));
+        } catch (e) {
+          throw e;
+        }
+      }).catch(() => {});
+    });
+  }
+
+  // The promise above needs a reject path too; install the robust version.
+  function configureSigningRobust() {
+    qz.security.setCertificatePromise((resolve, reject) => {
+      localText('/qz/certificate').then(resolve).catch(reject);
+    });
+    qz.security.setSignatureAlgorithm('SHA512');
+    qz.security.setSignaturePromise(toSign => (resolve, reject) => {
+      localText('/qz/private-key').then(privateKey => {
+        try {
+          const key = KEYUTIL.getKey(privateKey);
+          const sig = new KJUR.crypto.Signature({ alg: 'SHA512withRSA' });
+          sig.init(key);
+          sig.updateString(toSign);
+          resolve(hextob64(sig.sign()));
+        } catch (e) {
+          reject(e);
+        }
+      }).catch(reject);
     });
   }
 
   async function ensureQz() {
-    await loadScript(QZ_SRC);
-    configureSigning();
+    await loadScript(QZ_SRC, 'qz');
+    if (!window.KEYUTIL) throw new Error('jsrsasign is not loaded');
+    configureSigningRobust();
     if (!qz.websocket.isActive()) await qz.websocket.connect();
+  }
+
+  async function ensureHtml2Canvas() {
+    await loadScript(H2C_SRC, 'html2canvas');
   }
 
   async function findPrinter() {
@@ -67,92 +91,115 @@
     throw new Error('XP-80C printer not found. Printers: ' + list.join(', '));
   }
 
-  function htmlToPngDataUrl(html) {
-    return new Promise((resolve, reject) => {
-      const width = 576;
-      const cssWidth = 272;
-      const scale = width / cssWidth;
-      const height = 2400;
+  function renderReceiptToPng(documentHtml) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        await ensureHtml2Canvas();
 
-      const safe = String(html)
-        .replace(/<script[\s\S]*?<\/script>/gi, '')
-        .replace(/<iframe[\s\S]*?<\/iframe>/gi, '');
+        const host = document.createElement('div');
+        host.style.position = 'fixed';
+        host.style.left = '-10000px';
+        host.style.top = '0';
+        host.style.width = '72mm';
+        host.style.background = '#fff';
+        host.style.zIndex = '-1';
+        host.style.direction = 'rtl';
+        host.style.color = '#000';
 
-      const svg =
-        '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xhtml="http://www.w3.org/1999/xhtml"' +
-        ' width="' + width + '" height="' + height + '">' +
-        '<rect width="100%" height="100%" fill="white"/>' +
-        '<foreignObject x="0" y="0" width="' + width + '" height="' + height + '">' +
-        '<div xmlns="http://www.w3.org/1999/xhtml" style="' +
-          'width:' + cssWidth + 'px;' +
-          'min-height:' + Math.floor(height / scale) + 'px;' +
-          'background:#fff;color:#000;' +
-          'font-family:Tahoma,Arial,sans-serif;' +
-          'font-size:11.5px;line-height:1.35;' +
-          'direction:rtl;text-align:right;' +
-          'overflow:hidden;">' +
-          safe +
-        '</div></foreignObject></svg>';
-
-      const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const img = new Image();
-
-      img.onload = function () {
-        try {
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d', { alpha: false });
-          ctx.fillStyle = '#fff';
-          ctx.fillRect(0, 0, width, height);
-          ctx.drawImage(img, 0, 0, width, height);
-          URL.revokeObjectURL(url);
-
-          // Trim only empty white space from the bottom.
-          const pixels = ctx.getImageData(0, 0, width, height).data;
-          let bottom = height;
-          outer:
-          for (let y = height - 1; y >= 0; y--) {
-            for (let x = 0; x < width; x++) {
-              const i = (y * width + x) * 4;
-              if (pixels[i] < 245 || pixels[i + 1] < 245 || pixels[i + 2] < 245) {
-                bottom = Math.min(height, y + 12);
-                break outer;
-              }
-            }
+        const style = document.createElement('style');
+        style.textContent = `
+          .tabbara-print-root, .tabbara-print-root * {
+            box-sizing: border-box !important;
           }
+          .tabbara-print-root {
+            width: 72mm !important;
+            max-width: 72mm !important;
+            margin: 0 !important;
+            padding: 1.5mm 0.5mm 2mm 0.5mm !important;
+            background: #fff !important;
+            color: #000 !important;
+            direction: rtl !important;
+            text-align: right !important;
+            font-family: Tahoma, Arial, sans-serif !important;
+            font-size: 11.5px !important;
+            line-height: 1.25 !important;
+          }
+          .tabbara-print-root img {
+            max-width: 100% !important;
+          }
+          .tabbara-print-root .receipt-name,
+          .tabbara-print-root [dir="rtl"] {
+            direction: rtl !important;
+            unicode-bidi: plaintext !important;
+          }
+        `;
+        host.appendChild(style);
 
-          const out = document.createElement('canvas');
-          out.width = width;
-          out.height = Math.max(120, bottom);
-          out.getContext('2d').drawImage(canvas, 0, 0, width, out.height, 0, 0, width, out.height);
-          resolve(out.toDataURL('image/png'));
-        } catch (e) {
-          URL.revokeObjectURL(url);
-          reject(e);
-        }
-      };
-      img.onerror = function () {
-        URL.revokeObjectURL(url);
-        reject(new Error('Browser could not render receipt HTML as PNG'));
-      };
-      img.src = url;
+        const root = document.createElement('div');
+        root.className = 'tabbara-print-root';
+        root.innerHTML = String(documentHtml)
+          .replace(/<script[\s\S]*?<\/script>/gi, '')
+          .replace(/<iframe[\s\S]*?<\/iframe>/gi, '');
+
+        host.appendChild(root);
+        document.body.appendChild(host);
+
+        if (document.fonts && document.fonts.ready) await document.fonts.ready;
+
+        const images = Array.from(root.querySelectorAll('img'));
+        await Promise.all(images.map(img => {
+          if (img.complete) return Promise.resolve();
+          return new Promise(res => {
+            img.onload = res;
+            img.onerror = res;
+          });
+        }));
+
+        const canvas = await html2canvas(root, {
+          backgroundColor: '#ffffff',
+          scale: 2,
+          useCORS: true,
+          allowTaint: false,
+          logging: false,
+          imageTimeout: 10000
+        });
+
+        document.body.removeChild(host);
+
+        // Convert to the printer's 576-dot width while preserving the
+        // browser-rendered Arabic exactly as seen by Chrome.
+        const targetWidth = 576;
+        const targetHeight = Math.max(120, Math.round(canvas.height * targetWidth / canvas.width));
+        const out = document.createElement('canvas');
+        out.width = targetWidth;
+        out.height = targetHeight;
+        const ctx = out.getContext('2d', { alpha: false });
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, targetWidth, targetHeight);
+        ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight);
+
+        resolve(out.toDataURL('image/png'));
+      } catch (e) {
+        try {
+          const node = document.querySelector('.tabbara-print-root');
+          if (node && node.parentNode) node.parentNode.removeChild(node);
+        } catch (_) {}
+        reject(e);
+      }
     });
   }
 
   async function printWithQz(documentHtml, orderNumber) {
     await ensureQz();
     const printer = await findPrinter();
-
-    const png = await htmlToPngDataUrl(documentHtml);
-    const base64 = png.substring(png.indexOf(',') + 1);
+    const png = await renderReceiptToPng(documentHtml);
+    const base64 = png.slice(png.indexOf(',') + 1);
 
     const config = qz.configs.create(printer, {
       jobName: 'Tabbara Fish #' + (orderNumber || '')
     });
 
-    const data = [{
+    await qz.print(config, [{
       type: 'raw',
       format: 'image',
       flavor: 'base64',
@@ -161,17 +208,15 @@
         language: 'ESCPOS',
         dotDensity: 'double'
       }
-    }];
+    }]);
 
-    await qz.print(config, data);
     return printer;
   }
 
-  window.printWithLocalBridge = function (documentHtml, orderNumber) {
-    return printWithQz(documentHtml, orderNumber);
-  };
+  window.printWithLocalBridge = (documentHtml, orderNumber) =>
+    printWithQz(documentHtml, orderNumber);
 
-  window.tabbaraQzTest = async function () {
+  window.tabbaraQzTest = async () => {
     await ensureQz();
     const printer = await findPrinter();
     console.log('XP-80C found:', printer);
@@ -179,6 +224,6 @@
   };
 
   ensureQz()
-    .then(() => console.info('QZ Tray connected - signed Arabic PNG renderer'))
+    .then(() => console.info('QZ Tray connected - signed browser Arabic PNG renderer v7'))
     .catch(err => console.error('QZ Tray setup failed', err));
 })();
