@@ -328,7 +328,7 @@ async function printOrder(o){
   let p=document.getElementById('posPrintArea');if(!p){p=document.createElement('div');p.id='posPrintArea';document.body.appendChild(p)}
   p.innerHTML=html;
   try{
-    const printer=await printWithLocalBridge(html,orderNumber);
+    const printer=await window.printWithLocalBridge(html,orderNumber);
     console.info('Printed with Tabbara Print Bridge:',printer,'invoice',orderNumber);
     return true;
   }catch(e){
