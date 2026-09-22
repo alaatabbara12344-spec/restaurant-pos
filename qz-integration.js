@@ -1,6 +1,6 @@
-/* Tabbara Fish - QZ Tray signed integration
-   Uses the local Tabbara Print Bridge for the QZ demo certificate/private key.
-   The private key never leaves the local computer.
+/* Tabbara Fish - QZ Tray signed Arabic PNG renderer
+   Renders the receipt in the browser first, then sends a PNG to QZ as
+   ESC/POS raster data. This avoids QZ's HTML/RTL shaping problems.
 */
 (function () {
   'use strict';
@@ -20,16 +20,12 @@
   }
 
   async function localText(path) {
-    const r = await fetch(SIGNER + path, {
-      cache: 'no-store',
-      credentials: 'omit'
-    });
-    if (!r.ok) throw new Error('Local signer returned HTTP ' + r.status + ' for ' + path);
+    const r = await fetch(SIGNER + path, { cache: 'no-store', credentials: 'omit' });
+    if (!r.ok) throw new Error('Local signer HTTP ' + r.status + ' for ' + path);
     return r.text();
   }
 
   function configureSigning() {
-    if (!window.qz || !qz.security) throw new Error('QZ security API unavailable');
     if (!window.KEYUTIL || !window.KJUR || !window.hextob64) {
       throw new Error('jsrsasign is not loaded');
     }
@@ -37,9 +33,7 @@
     qz.security.setCertificatePromise(function (resolve, reject) {
       localText('/qz/certificate').then(resolve).catch(reject);
     });
-
     qz.security.setSignatureAlgorithm('SHA512');
-
     qz.security.setSignaturePromise(function (toSign) {
       return function (resolve, reject) {
         localText('/qz/private-key').then(function (privateKey) {
@@ -60,9 +54,7 @@
   async function ensureQz() {
     await loadScript(QZ_SRC);
     configureSigning();
-    if (!qz.websocket.isActive()) {
-      await qz.websocket.connect();
-    }
+    if (!qz.websocket.isActive()) await qz.websocket.connect();
   }
 
   async function findPrinter() {
@@ -75,71 +67,100 @@
     throw new Error('XP-80C printer not found. Printers: ' + list.join(', '));
   }
 
-  function wrapReceiptHtml(documentHtml) {
-    return `<!doctype html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<style>
-@page { size: 80mm auto; margin: 0; }
-html, body {
-  margin: 0 !important;
-  padding: 0 !important;
-  width: 80mm !important;
-  background: #fff !important;
-  direction: rtl !important;
-  text-align: right !important;
-}
-body {
-  font-family: Tahoma, Arial, sans-serif !important;
-  color: #000 !important;
-  font-size: 11.5px !important;
-  line-height: 1.35 !important;
-}
-*, *::before, *::after {
-  box-sizing: border-box;
-  font-family: Tahoma, Arial, sans-serif !important;
-}
-[dir="rtl"], .receipt-name {
-  direction: rtl !important;
-  unicode-bidi: plaintext !important;
-}
-.receipt-name {
-  text-align: right !important;
-  white-space: normal !important;
-  word-break: normal !important;
-  overflow-wrap: anywhere !important;
-}
-</style>
-</head>
-<body>
-<div style="width:80mm;max-width:80mm;margin:0;padding:0 3mm 2mm 3mm;direction:rtl;text-align:right;">
-${documentHtml}
-</div>
-</body>
-</html>`;
+  function htmlToPngDataUrl(html) {
+    return new Promise((resolve, reject) => {
+      const width = 576;
+      const cssWidth = 272;
+      const scale = width / cssWidth;
+      const height = 2400;
+
+      const safe = String(html)
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<iframe[\s\S]*?<\/iframe>/gi, '');
+
+      const svg =
+        '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xhtml="http://www.w3.org/1999/xhtml"' +
+        ' width="' + width + '" height="' + height + '">' +
+        '<rect width="100%" height="100%" fill="white"/>' +
+        '<foreignObject x="0" y="0" width="' + width + '" height="' + height + '">' +
+        '<div xmlns="http://www.w3.org/1999/xhtml" style="' +
+          'width:' + cssWidth + 'px;' +
+          'min-height:' + Math.floor(height / scale) + 'px;' +
+          'background:#fff;color:#000;' +
+          'font-family:Tahoma,Arial,sans-serif;' +
+          'font-size:11.5px;line-height:1.35;' +
+          'direction:rtl;text-align:right;' +
+          'overflow:hidden;">' +
+          safe +
+        '</div></foreignObject></svg>';
+
+      const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+
+      img.onload = function () {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d', { alpha: false });
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+          URL.revokeObjectURL(url);
+
+          // Trim only empty white space from the bottom.
+          const pixels = ctx.getImageData(0, 0, width, height).data;
+          let bottom = height;
+          outer:
+          for (let y = height - 1; y >= 0; y--) {
+            for (let x = 0; x < width; x++) {
+              const i = (y * width + x) * 4;
+              if (pixels[i] < 245 || pixels[i + 1] < 245 || pixels[i + 2] < 245) {
+                bottom = Math.min(height, y + 12);
+                break outer;
+              }
+            }
+          }
+
+          const out = document.createElement('canvas');
+          out.width = width;
+          out.height = Math.max(120, bottom);
+          out.getContext('2d').drawImage(canvas, 0, 0, width, out.height, 0, 0, width, out.height);
+          resolve(out.toDataURL('image/png'));
+        } catch (e) {
+          URL.revokeObjectURL(url);
+          reject(e);
+        }
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        reject(new Error('Browser could not render receipt HTML as PNG'));
+      };
+      img.src = url;
+    });
   }
 
   async function printWithQz(documentHtml, orderNumber) {
     await ensureQz();
     const printer = await findPrinter();
 
+    const png = await htmlToPngDataUrl(documentHtml);
+    const base64 = png.substring(png.indexOf(',') + 1);
+
     const config = qz.configs.create(printer, {
-      jobName: 'Tabbara Fish #' + (orderNumber || ''),
-      units: 'mm',
-      margins: 0,
-      orientation: 'portrait',
-      scaleContent: false,
-      size: { width: 80, height: 300 }
+      jobName: 'Tabbara Fish #' + (orderNumber || '')
     });
 
     const data = [{
-      type: 'pixel',
-      format: 'html',
-      flavor: 'plain',
-      data: wrapReceiptHtml(documentHtml),
-      options: { pageWidth: 80 }
+      type: 'raw',
+      format: 'image',
+      flavor: 'base64',
+      data: base64,
+      options: {
+        language: 'ESCPOS',
+        dotDensity: 'double'
+      }
     }];
 
     await qz.print(config, data);
@@ -158,6 +179,6 @@ ${documentHtml}
   };
 
   ensureQz()
-    .then(() => console.info('QZ Tray connected - signed Arabic HTML renderer'))
+    .then(() => console.info('QZ Tray connected - signed Arabic PNG renderer'))
     .catch(err => console.error('QZ Tray setup failed', err));
 })();
