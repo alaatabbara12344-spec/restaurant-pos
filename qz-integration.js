@@ -1,11 +1,12 @@
-/* Tabbara Fish - QZ Tray Arabic test renderer
-   IMPORTANT: This version intentionally uses NO signing.
-   QZ Tray may show a permission prompt. Silent printing/signing comes later.
+/* Tabbara Fish - QZ Tray signed integration
+   Uses the local Tabbara Print Bridge for the QZ demo certificate/private key.
+   The private key never leaves the local computer.
 */
 (function () {
   'use strict';
 
-  const QZ_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/qz-tray/2.2.5/qz-tray.js';
+  const QZ_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/qz-tray/2.3.0/qz-tray.js';
+  const SIGNER = 'http://127.0.0.1:17890';
 
   function loadScript(src) {
     return new Promise((resolve, reject) => {
@@ -18,8 +19,47 @@
     });
   }
 
+  async function localText(path) {
+    const r = await fetch(SIGNER + path, {
+      cache: 'no-store',
+      credentials: 'omit'
+    });
+    if (!r.ok) throw new Error('Local signer returned HTTP ' + r.status + ' for ' + path);
+    return r.text();
+  }
+
+  function configureSigning() {
+    if (!window.qz || !qz.security) throw new Error('QZ security API unavailable');
+    if (!window.KEYUTIL || !window.KJUR || !window.hextob64) {
+      throw new Error('jsrsasign is not loaded');
+    }
+
+    qz.security.setCertificatePromise(function (resolve, reject) {
+      localText('/qz/certificate').then(resolve).catch(reject);
+    });
+
+    qz.security.setSignatureAlgorithm('SHA512');
+
+    qz.security.setSignaturePromise(function (toSign) {
+      return function (resolve, reject) {
+        localText('/qz/private-key').then(function (privateKey) {
+          try {
+            const key = KEYUTIL.getKey(privateKey);
+            const sig = new KJUR.crypto.Signature({ alg: 'SHA512withRSA' });
+            sig.init(key);
+            sig.updateString(toSign);
+            resolve(hextob64(sig.sign()));
+          } catch (e) {
+            reject(e);
+          }
+        }).catch(reject);
+      };
+    });
+  }
+
   async function ensureQz() {
     await loadScript(QZ_SRC);
+    configureSigning();
     if (!qz.websocket.isActive()) {
       await qz.websocket.connect();
     }
@@ -94,33 +134,30 @@ ${documentHtml}
       size: { width: 80, height: 300 }
     });
 
-    const html = wrapReceiptHtml(documentHtml);
-
     const data = [{
       type: 'pixel',
       format: 'html',
       flavor: 'plain',
-      data: html,
-      options: {
-        pageWidth: 80
-      }
+      data: wrapReceiptHtml(documentHtml),
+      options: { pageWidth: 80 }
     }];
 
     await qz.print(config, data);
     return printer;
   }
 
-  window.printWithLocalBridge = async function (documentHtml, orderNumber) {
+  window.printWithLocalBridge = function (documentHtml, orderNumber) {
     return printWithQz(documentHtml, orderNumber);
   };
 
   window.tabbaraQzTest = async function () {
+    await ensureQz();
     const printer = await findPrinter();
     console.log('XP-80C found:', printer);
     return printer;
   };
 
   ensureQz()
-    .then(() => console.info('QZ Tray connected - Arabic HTML renderer (unsigned test)'))
-    .catch(err => console.error('QZ Tray connection failed', err));
+    .then(() => console.info('QZ Tray connected - signed Arabic HTML renderer'))
+    .catch(err => console.error('QZ Tray setup failed', err));
 })();
