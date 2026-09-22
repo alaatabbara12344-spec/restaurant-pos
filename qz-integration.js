@@ -1,8 +1,9 @@
-/* Tabbara Fish - QZ Tray signed integration
-   IMPORTANT:
-   - private-key.pem stays on the Windows PC.
-   - It is NOT stored in GitHub.
-   - The local signer must be running on the POS computer.
+/* Tabbara Fish - QZ Tray FINAL HTML printing
+   Root fix:
+   - Does NOT convert the receipt to PNG/canvas.
+   - Sends the existing receipt HTML directly to QZ Tray's pixel HTML engine.
+   - This avoids the cross-origin/canvas-taint SecurityError completely.
+   - The private key remains on the POS PC via the local signer.
 */
 (function () {
   'use strict';
@@ -10,256 +11,139 @@
   const SIGNER = 'http://127.0.0.1:17891';
 
   async function localText(path) {
-    const response = await fetch(SIGNER + path, {
-      cache: 'no-store'
-    });
-
+    const response = await fetch(SIGNER + path, { cache: 'no-store' });
     if (!response.ok) {
       throw new Error('Local QZ signer error: ' + response.status);
     }
-
-    return await response.text();
+    return response.text();
   }
 
   // QZ certificate
   qz.security.setCertificatePromise(function (resolve, reject) {
-    localText('/certificate')
-      .then(resolve)
-      .catch(reject);
+    localText('/certificate').then(resolve).catch(reject);
   });
 
-  // QZ signature algorithm
   qz.security.setSignatureAlgorithm('SHA512');
 
-  // QZ signature
+  // QZ digital signature
   qz.security.setSignaturePromise(function (toSign) {
     return function (resolve, reject) {
-
       localText('/private-key')
         .then(function (privateKey) {
-
           try {
-
             if (
               typeof KEYUTIL === 'undefined' ||
               typeof KJUR === 'undefined' ||
               typeof hextob64 === 'undefined'
             ) {
-              throw new Error(
-                'jsrsasign library is not loaded.'
-              );
+              throw new Error('jsrsasign library is not loaded.');
             }
 
             const key = KEYUTIL.getKey(privateKey);
-
-            const signature =
-              new KJUR.crypto.Signature({
-                alg: 'SHA512withRSA'
-              });
+            const signature = new KJUR.crypto.Signature({
+              alg: 'SHA512withRSA'
+            });
 
             signature.init(key);
             signature.updateString(toSign);
 
-            const signed = signature.sign();
-
-            resolve(hextob64(signed));
-
+            resolve(hextob64(signature.sign()));
           } catch (error) {
             reject(error);
           }
-
         })
         .catch(reject);
     };
   });
 
-
   async function connectQZ() {
-
     if (!window.qz) {
-      throw new Error(
-        'QZ Tray Connector غير محمّل.'
-      );
+      throw new Error('QZ Tray Connector غير محمّل.');
     }
-
-    if (qz.websocket.isActive()) {
-      return;
+    if (!qz.websocket.isActive()) {
+      await qz.websocket.connect();
     }
-
-    await qz.websocket.connect();
   }
 
-
   async function findPrinter() {
-
     await connectQZ();
 
     const printers = await qz.printers.find();
-
-    const list =
-      Array.isArray(printers)
-        ? printers
-        : [printers];
+    const list = Array.isArray(printers) ? printers : [printers];
 
     const exact = list.find(
-      p =>
-        String(p)
-          .trim()
-          .toLowerCase() === 'xp-80c'
+      p => String(p).trim().toLowerCase() === 'xp-80c'
     );
+    if (exact) return exact;
 
-    if (exact) {
-      return exact;
-    }
+    const match = list.find(p => /xp[- ]?80c|80c/i.test(String(p)));
+    if (match) return match;
 
-    const match = list.find(
-      p => /xp[- ]?80c|80c/i.test(String(p))
-    );
-
-    if (match) {
-      return match;
-    }
-
-    throw new Error(
-      'QZ Tray شغّال، لكن ما لقى طابعة XP-80C.'
-    );
+    throw new Error('QZ Tray شغّال، لكن ما لقى طابعة XP-80C.');
   }
 
-
-  async function printThroughQZ(
-    html,
-    orderNumber
-  ) {
-
+  async function printThroughQZ(html, orderNumber) {
     const printer = await findPrinter();
 
-    if (
-      typeof window.htmlToPngDataUrl !==
-      'function'
-    ) {
-      throw new Error(
-        'دالة تجهيز الفاتورة غير موجودة في POS.'
-      );
-    }
-
-    const png =
-      await window.htmlToPngDataUrl(html);
-
-    const base64 =
-      png.substring(
-        png.indexOf(',') + 1
-      );
-
-
-    const config =
-      qz.configs.create(
-        printer,
-        {
-          jobName:
-            'Tabbara Fish #' +
-            orderNumber
-        }
-      );
-
-
-    const data = [
-
-      {
-        type: 'raw',
-
-        format: 'image',
-
-        flavor: 'base64',
-
-        data: base64,
-
-        options: {
-          language: 'ESCPOS',
-          dotDensity: 'double'
-        }
+    // IMPORTANT:
+    // Print HTML directly. Do not call htmlToPngDataUrl().
+    // This is the actual root fix for the canvas SecurityError.
+    const config = qz.configs.create(printer, {
+      jobName: 'Tabbara Fish #' + orderNumber,
+      units: 'mm',
+      margins: 0,
+      scaleContent: false,
+      orientation: 'portrait',
+      size: {
+        width: 80,
+        height: 300
       }
+    });
 
-    ];
+    const data = [{
+      type: 'pixel',
+      format: 'html',
+      flavor: 'plain',
+      data: String(html || ''),
+      options: {
+        pageWidth: 72
+      }
+    }];
 
-
-    await qz.print(
-      config,
-      data
-    );
-
+    await qz.print(config, data);
     return printer;
   }
 
+  // Replace the POS print transport.
+  window.printWithLocalBridge = printThroughQZ;
 
-  /*
-    Existing POS printing function.
-    We replace only the printing transport.
-  */
-
-  window.printWithLocalBridge =
-    printThroughQZ;
-
-
-  /*
-    Manual QZ test.
-  */
-
-  window.tabbaraQzTest =
-    async function () {
-
-      const health =
-        await localText('/health');
-
-      if (health !== 'OK') {
-        throw new Error(
-          'Local QZ signer is not running.'
-        );
-      }
-
-      const printer =
-        await findPrinter();
-
-      alert(
-        '✅ QZ Tray + التوقيع شغّال\n' +
-        '🖨️ الطابعة: ' +
-        printer
-      );
-
-      return printer;
-    };
-
-
-  /*
-    Connect when POS loads.
-  */
-
-  window.addEventListener(
-    'load',
-    function () {
-
-      if (!window.qz) {
-        return;
-      }
-
-      qz.websocket
-        .connect()
-        .then(function () {
-
-          console.info(
-            'QZ Tray connected with signing'
-          );
-
-        })
-        .catch(function (error) {
-
-          console.warn(
-            'QZ Tray connection:',
-            error
-          );
-
-        });
-
+  // Manual connection/printer test.
+  window.tabbaraQzTest = async function () {
+    const health = await localText('/health');
+    if (health !== 'OK') {
+      throw new Error('Local QZ signer is not running.');
     }
-  );
 
+    const printer = await findPrinter();
+
+    alert(
+      '✅ QZ Tray + التوقيع شغّال\n' +
+      '🖨️ الطابعة: ' + printer
+    );
+
+    return printer;
+  };
+
+  window.addEventListener('load', function () {
+    if (!window.qz) return;
+
+    qz.websocket
+      .connect()
+      .then(function () {
+        console.info('QZ Tray connected with signing (HTML mode)');
+      })
+      .catch(function (error) {
+        console.warn('QZ Tray connection:', error);
+      });
+  });
 })();
