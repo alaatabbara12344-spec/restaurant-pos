@@ -1,12 +1,13 @@
-/* Tabbara Fish - QZ Tray signed Arabic PNG renderer v8
+/* Tabbara Fish - QZ Tray signed Arabic PNG renderer v9
    Chrome DOM -> html2canvas -> PNG -> QZ ESC/POS raster + paper cut.
+   External libraries use jsDelivr instead of cdnjs for reliability.
 */
 (function () {
   'use strict';
 
-  const QZ_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/qz-tray/2.3.0/qz-tray.js';
-  const H2C_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-  const JSRSASIGN_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/11.1.0/jsrsasign-all-min.js';
+  const QZ_SRC = 'https://cdn.jsdelivr.net/npm/qz-tray@2.3.0/qz-tray.js';
+  const H2C_SRC = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+  const JSRSASIGN_SRC = 'https://cdn.jsdelivr.net/npm/jsrsasign@11.1.0/lib/jsrsasign-all-min.js';
   const SIGNER = 'http://127.0.0.1:17890';
   let qzReadyPromise = null;
 
@@ -178,16 +179,12 @@
           format: 'image',
           flavor: 'base64',
           data: base64,
-          options: {
-            language: 'ESCPOS',
-            dotDensity: 'double'
-          }
+          options: { language: 'ESCPOS', dotDensity: 'double' }
         },
         {
           type: 'raw',
           format: 'command',
           flavor: 'hex',
-          // ESC d 3 = feed 3 lines; GS V 0 = full cut.
           data: '1B64031D5600'
         }
       ];
@@ -195,7 +192,6 @@
       console.info('Printed invoice copy', copyNo, 'for #', orderNumber || '');
     };
 
-    // Two physically separate copies: print -> cut, then print -> cut.
     await oneCopy(1);
     await new Promise(resolve => setTimeout(resolve, 350));
     await oneCopy(2);
@@ -216,6 +212,4 @@
     console.log('XP-80C found:', printer);
     return printer;
   };
-
-  // QZ Tray is intentionally initialized lazily on the first print so the login screen stays fast.
 })();
