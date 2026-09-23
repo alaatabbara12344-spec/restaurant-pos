@@ -1,11 +1,11 @@
-const CACHE="tabbara-pos-v57";
-const ASSETS=["./","./index.html","./style.css?v=57","./script.js?v=57","./logo.png"];
+const CACHE="tabbara-pos-v60";
+const ASSETS=["./","./index.html","./style.css?v=60","./script.js?v=60","./logo.png","./qz-integration.js?v=3"];
 self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener("fetch",e=>{
   const req=e.request;
   const url=new URL(req.url);
-  const isAppAsset=req.mode==='navigate'||url.pathname.endsWith('/index.html')||url.pathname.endsWith('/script.js')||url.pathname.endsWith('/style.css')||url.pathname.endsWith('/sw.js');
+  const isAppAsset=req.mode==='navigate'||url.pathname.endsWith('/index.html')||url.pathname.endsWith('/script.js')||url.pathname.endsWith('/style.css')||url.pathname.endsWith('/sw.js')||url.pathname.endsWith('/qz-integration.js');
   if(isAppAsset){
     e.respondWith(fetch(req,{cache:'no-store'}).then(res=>{
       if(res && res.ok){const copy=res.clone();caches.open(CACHE).then(c=>c.put(req,copy));}

@@ -6,7 +6,9 @@
 
   const QZ_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/qz-tray/2.3.0/qz-tray.js';
   const H2C_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+  const JSRSASIGN_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/11.1.0/jsrsasign-all-min.js';
   const SIGNER = 'http://127.0.0.1:17890';
+  let qzReadyPromise = null;
 
   function loadScript(src, globalName) {
     return new Promise((resolve, reject) => {
@@ -49,9 +51,14 @@
   }
 
   async function ensureQz() {
-    await loadScript(QZ_SRC, 'qz');
-    configureSigning();
-    if (!qz.websocket.isActive()) await qz.websocket.connect();
+    if (qzReadyPromise) return qzReadyPromise;
+    qzReadyPromise = (async () => {
+      await loadScript(JSRSASIGN_SRC, 'KEYUTIL');
+      await loadScript(QZ_SRC, 'qz');
+      configureSigning();
+      if (!qz.websocket.isActive()) await qz.websocket.connect();
+    })().catch(err => { qzReadyPromise = null; throw err; });
+    return qzReadyPromise;
   }
 
   async function ensureHtml2Canvas() {
@@ -164,34 +171,44 @@
       jobName: 'Tabbara Fish #' + (orderNumber || '')
     });
 
-    // Print the browser-rendered Arabic image, then feed a few lines and
-    // issue a standard ESC/POS full-cut command.
-    const data = [
-      {
-        type: 'raw',
-        format: 'image',
-        flavor: 'base64',
-        data: base64,
-        options: {
-          language: 'ESCPOS',
-          dotDensity: 'double'
+    const oneCopy = async (copyNo) => {
+      const data = [
+        {
+          type: 'raw',
+          format: 'image',
+          flavor: 'base64',
+          data: base64,
+          options: {
+            language: 'ESCPOS',
+            dotDensity: 'double'
+          }
+        },
+        {
+          type: 'raw',
+          format: 'command',
+          flavor: 'hex',
+          // ESC d 3 = feed 3 lines; GS V 0 = full cut.
+          data: '1B64031D5600'
         }
-      },
-      {
-        type: 'raw',
-        format: 'command',
-        flavor: 'hex',
-        // ESC d 3 = feed 3 lines; GS V 0 = full cut.
-        data: '1B64031D5600'
-      }
-    ];
+      ];
+      await qz.print(config, data);
+      console.info('Printed invoice copy', copyNo, 'for #', orderNumber || '');
+    };
 
-    await qz.print(config, data);
+    // Two physically separate copies: print -> cut, then print -> cut.
+    await oneCopy(1);
+    await new Promise(resolve => setTimeout(resolve, 350));
+    await oneCopy(2);
     return printer;
   }
 
   window.printWithLocalBridge = (documentHtml, orderNumber) =>
     printWithQz(documentHtml, orderNumber);
+
+  window.tabbaraPreparePrinter = async () => {
+    await ensureQz();
+    return findPrinter();
+  };
 
   window.tabbaraQzTest = async () => {
     await ensureQz();
@@ -200,7 +217,5 @@
     return printer;
   };
 
-  ensureQz()
-    .then(() => console.info('QZ Tray connected - signed Arabic PNG renderer v8 (auto-cut)'))
-    .catch(err => console.error('QZ Tray setup failed', err));
+  // QZ Tray is intentionally initialized lazily on the first print so the login screen stays fast.
 })();
