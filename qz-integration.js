@@ -6,7 +6,7 @@
   'use strict';
 
   const QZ_SRC = 'https://cdn.jsdelivr.net/npm/qz-tray@2.3.0/qz-tray.js';
-  const H2C_SRC = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+  const H2C_SRC = './html2canvas.min.js';
   const JSRSASIGN_SRC = 'https://cdn.jsdelivr.net/npm/jsrsasign@11.1.0/lib/jsrsasign-all-min.js';
   const SIGNER = 'http://127.0.0.1:17890';
   let qzReadyPromise = null;
