@@ -289,7 +289,7 @@ function extractDeliveryTime(order, meta){
   const notes=String(order?.notes||'');
   const patterns=[
     /(?:وقت\s*التوصيل|وقت\s*الطلب|delivery\s*time)\s*[:：-]?\s*(?:الساعة\s*)?([0-2]?\d(?:\s*[:.]\s*[0-5]\d)?\s*(?:صباحاً|مساءً|AM|PM)?)/i,
-    /(?:مطلوب\s*)?(?:التوصيل|التسليم)\s*(?:اليوم\s*)?(?:حوالي\s*)?(?:الساعة\s*)?([0-2]?\d(?:\s*[:.]\s*[0-5]\d)?\s*(?:صباحاً|مساءً|AM|PM)?)/i
+    /(?:مطلوب\s*)?(?:التوصيل|التسليم)\s*(?:المطلوب\s*)?(?:اليوم\s*)?(?:حوالي\s*)?(?:[:：-]\s*)?(?:الساعة\s*)?([0-2]?\d(?:\s*[:.]\s*[0-5]\d)?\s*(?:صباحاً|مساءً|AM|PM)?)/i
   ];
   for(const re of patterns){const m=notes.match(re);if(m)return normalizeDeliveryTime(m[1]);}
   return '';
