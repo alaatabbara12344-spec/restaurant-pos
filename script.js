@@ -449,10 +449,12 @@ function normalizeItemData(x){
   const prepKey=/مشوي|شوي|grill/i.test(preparation)?'grill':/مقلي|قلي|fry/i.test(preparation)?'fry':preparation;
   const legacyWhatsapp=x?.unitPrice==null&&x?.unit_price==null&&x?.price!=null&&(typeof rawQty==='string'||!!x?.preparation);
   let unit=Number(x?.unitPrice??x?.unit_price??x?.price??0);
-  if(legacyWhatsapp&&hasWeight&&prepKey==='grill') unit+=Number(grillSurcharge||0);
-  if(legacyWhatsapp&&hasWeight&&prepKey==='fry') unit+=Number(frySurcharge||0);
+  const grillExtra=Number.isFinite(Number(grillSurcharge))&&Number(grillSurcharge)>0?Number(grillSurcharge):DEFAULT_GRILL_SURCHARGE;
+  const fryExtra=Number.isFinite(Number(frySurcharge))&&Number(frySurcharge)>0?Number(frySurcharge):DEFAULT_FRY_SURCHARGE;
+  if(legacyWhatsapp&&hasWeight&&prepKey==='grill') unit+=grillExtra;
+  if(legacyWhatsapp&&hasWeight&&prepKey==='fry') unit+=fryExtra;
   const stored=Number(x?.total??x?.line_total);
-  const line=Number.isFinite(stored)&&stored>=0?stored:(hasWeight?weight*unit:qty*unit);
+  const line=legacyWhatsapp&&hasWeight?weight*unit:(Number.isFinite(stored)&&stored>=0?stored:(hasWeight?weight*unit:qty*unit));
   return {weight:hasWeight?weight:0,qty,unit,line,preparation:prepKey};
 }
 
