@@ -1,0 +1,1 @@
+v67: fixes legacy WhatsApp weight quantities such as "3 كيلو", applies grill/fry surcharge when WhatsApp stores only base price, and updates order details/report item parsing. Printing bridge and invoice assignment logic are otherwise unchanged.
