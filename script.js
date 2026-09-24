@@ -86,12 +86,46 @@ function queueCustomerLookup(){clearTimeout(customerLookupTimer);customerLookupT
 async function saveCustomer(){const phone=normalizePhone(document.getElementById('phone').value),name=document.getElementById('name').value.trim(),address=document.getElementById('address').value.trim(),notes=document.getElementById('notes').value.trim();if(!phone||!navigator.onLine)return;try{const r=await api('/rest/v1/customers?on_conflict=phone',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({phone,name,address,notes,updated_at:new Date().toISOString()})});if(!r.ok)console.warn('customer save',r.status,await r.text())}catch(e){console.warn(e)}}
 function paymentMeta(){const p=document.getElementById('paymentMethod').value;return p==='cash'?'كاش':p==='card'?'بطاقة':'تحويل'}
 function makeClientOrderId(){try{if(window.crypto&&typeof window.crypto.randomUUID==='function')return window.crypto.randomUUID()}catch{}return 'client-'+Date.now()+'-'+Math.random().toString(36).slice(2,12)}
-function orderPayload(clientOrderId){const baseTotal=cart.reduce((s,x)=>s+Number(x.total),0),deliveryTime=document.getElementById('deliveryTime')?.value||'';const meta={__meta:true,payment_method:document.getElementById('paymentMethod').value,payment_label:paymentMeta(),delivery_charge:0,delivery_time:deliveryTime};return{client_order_id:clientOrderId||makeClientOrderId(),order_type:selectedOrderType,customer_name:document.getElementById('name').value.trim(),customer_phone:normalizePhone(document.getElementById('phone').value),customer_address:document.getElementById('address').value.trim(),notes:document.getElementById('notes').value.trim(),delivery_time:deliveryTime||null,items:[...cart,meta],total:baseTotal,device_id:deviceId,sync_status:navigator.onLine?'synced':'pending',created_at:new Date().toISOString(),delivery_charge:0}}
+
+const INVOICE_RANGE_KEY='tabbara_invoice_range_v1';
+function beirutInvoiceDate(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Beirut',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}
+function loadInvoiceRange(){try{return JSON.parse(localStorage.getItem(INVOICE_RANGE_KEY)||'null')}catch{return null}}
+function saveInvoiceRange(r){localStorage.setItem(INVOICE_RANGE_KEY,JSON.stringify(r))}
+async function reserveInvoiceRange(count=20){
+  const date=beirutInvoiceDate();
+  const current=loadInvoiceRange();
+  if(current && current.date===date && Number(current.next)<=Number(current.end)) return current;
+  if(!navigator.onLine) return null;
+  const r=await api('/rest/v1/rpc/reserve_invoice_range',{method:'POST',body:JSON.stringify({p_device_id:deviceId,p_invoice_date:date,p_count:count})});
+  if(!r.ok) throw new Error(await r.text());
+  const rows=await r.json();
+  const row=Array.isArray(rows)?rows[0]:rows;
+  if(!row || !Number.isFinite(Number(row.start_invoice_no))) throw new Error('Invalid invoice range response');
+  const range={date,start:Number(row.start_invoice_no),end:Number(row.end_invoice_no),next:Number(row.start_invoice_no)};
+  saveInvoiceRange(range);
+  return range;
+}
+async function assignCentralInvoice(payload){
+  if(payload.invoice_no && payload.invoice_date) return payload;
+  const date=beirutInvoiceDate();
+  let range=loadInvoiceRange();
+  if(!range || range.date!==date || Number(range.next)>Number(range.end)) range=await reserveInvoiceRange(20);
+  if(range && Number(range.next)<=Number(range.end)){
+    payload.invoice_date=date;
+    payload.invoice_no=Number(range.next);
+    range.next=Number(range.next)+1;
+    saveInvoiceRange(range);
+  }
+  return payload;
+}
+
+function orderPayload(clientOrderId){const baseTotal=cart.reduce((s,x)=>s+Number(x.total),0),deliveryTime=document.getElementById('deliveryTime')?.value||'';const meta={__meta:true,payment_method:document.getElementById('paymentMethod').value,payment_label:paymentMeta(),delivery_charge:0,delivery_time:deliveryTime};return{client_order_id:clientOrderId||makeClientOrderId(),order_type:selectedOrderType,customer_name:document.getElementById('name').value.trim(),customer_phone:normalizePhone(document.getElementById('phone').value),customer_address:document.getElementById('address').value.trim(),notes:document.getElementById('notes').value.trim(),delivery_time:deliveryTime||null,items:[...cart,meta],total:baseTotal,device_id:deviceId,sync_status:navigator.onLine?'synced':'pending',created_at:new Date().toISOString(),delivery_charge:0,invoice_date:null,invoice_no:null}}
 async function confirmOrder(){
   if(!selectedOrderType)return alert('اختار نوع الطلب أولاً.');
   if(!cart.length)return alert('أضف صنفاً واحداً على الأقل.');
   const clientOrderId=makeClientOrderId();
   const payload=orderPayload(clientOrderId);
+  try{await assignCentralInvoice(payload)}catch(e){console.warn('invoice allocation',e)}
   const finish=async()=>{
     try{
       await printOrder(payload);
@@ -339,7 +373,7 @@ async function printOrder(o){
   const finalValue=subtotal+delivery;
   const displayOrderType=isDelivery?'توصيل':'استلام من المحل';
   const cleanNotes=cleanOrderNotes(o.notes);
-  const orderNumber=getDailyInvoiceNumber(o);
+  const orderNumber=(o.invoice_no!=null?Number(o.invoice_no):getDailyInvoiceNumber(o));
   const orderShort=String(o.id||'').replace(/-/g,'').slice(-6).toUpperCase();
   const created=o.created_at?new Date(o.created_at):new Date();
   const date=created.toLocaleDateString('ar-LB');
@@ -588,7 +622,7 @@ async function saveSetting(id,value){try{const r=await api('/rest/v1/pos_setting
 async function toggleAvailability(id){const i=menu.find(x=>x.id===id);if(!i)return;const next=!i.available;i.available=next;saveMenuLocal();const synced=await syncOneMenuItem(i);renderItems();refreshManagerKeepScroll();if(!synced&&navigator.onLine){i.available=!next;saveMenuLocal();renderItems();alert('⚠️ لم يتم تحديث توفر الصنف على قاعدة البيانات.');}}
 document.getElementById('phone')?.addEventListener('input',queueCustomerLookup);document.getElementById('phone')?.addEventListener('blur',findCustomer);
 window.addEventListener('online',()=>{setStatus();syncPendingOrders();syncMenuFromCloud();setTimeout(checkWhatsAppOrders,800)});window.addEventListener('offline',setStatus);
-window.addEventListener('load',async()=>{loadSettings();loadMenu();setStatus();if(sessionStorage.getItem('tabbaraLoggedIn')==='1')document.getElementById('loginScreen').style.display='none';if(navigator.onLine){await syncMenuFromCloud();}renderCategories();renderItems();renderCart();setTimeout(checkWhatsAppOrders,400);setInterval(checkWhatsAppOrders,4000);});
+window.addEventListener('load',async()=>{loadSettings();loadMenu();setStatus();if(sessionStorage.getItem('tabbaraLoggedIn')==='1')document.getElementById('loginScreen').style.display='none';if(navigator.onLine){await syncMenuFromCloud();try{await reserveInvoiceRange(20)}catch(e){console.warn('invoice range preload',e)}}renderCategories();renderItems();renderCart();setTimeout(checkWhatsAppOrders,400);setInterval(checkWhatsAppOrders,4000);});
 
 /* v33: universal touch numeric keypad */
 let activeNumericInput=null;
