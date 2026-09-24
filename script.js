@@ -85,11 +85,13 @@ async function findCustomer(){const raw=String(document.getElementById('phone')?
 function queueCustomerLookup(){clearTimeout(customerLookupTimer);customerLookupTimer=setTimeout(findCustomer,300)}
 async function saveCustomer(){const phone=normalizePhone(document.getElementById('phone').value),name=document.getElementById('name').value.trim(),address=document.getElementById('address').value.trim(),notes=document.getElementById('notes').value.trim();if(!phone||!navigator.onLine)return;try{const r=await api('/rest/v1/customers?on_conflict=phone',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({phone,name,address,notes,updated_at:new Date().toISOString()})});if(!r.ok)console.warn('customer save',r.status,await r.text())}catch(e){console.warn(e)}}
 function paymentMeta(){const p=document.getElementById('paymentMethod').value;return p==='cash'?'كاش':p==='card'?'بطاقة':'تحويل'}
-function orderPayload(){const baseTotal=cart.reduce((s,x)=>s+Number(x.total),0),deliveryTime=document.getElementById('deliveryTime')?.value||'';const meta={__meta:true,payment_method:document.getElementById('paymentMethod').value,payment_label:paymentMeta(),delivery_charge:0,delivery_time:deliveryTime};return{order_type:selectedOrderType,customer_name:document.getElementById('name').value.trim(),customer_phone:normalizePhone(document.getElementById('phone').value),customer_address:document.getElementById('address').value.trim(),notes:document.getElementById('notes').value.trim(),delivery_time:deliveryTime||null,items:[...cart,meta],total:baseTotal,device_id:deviceId,sync_status:navigator.onLine?'synced':'pending',created_at:new Date().toISOString(),delivery_charge:0}}
+function makeClientOrderId(){try{if(window.crypto&&typeof window.crypto.randomUUID==='function')return window.crypto.randomUUID()}catch{}return 'client-'+Date.now()+'-'+Math.random().toString(36).slice(2,12)}
+function orderPayload(clientOrderId){const baseTotal=cart.reduce((s,x)=>s+Number(x.total),0),deliveryTime=document.getElementById('deliveryTime')?.value||'';const meta={__meta:true,payment_method:document.getElementById('paymentMethod').value,payment_label:paymentMeta(),delivery_charge:0,delivery_time:deliveryTime};return{client_order_id:clientOrderId||makeClientOrderId(),order_type:selectedOrderType,customer_name:document.getElementById('name').value.trim(),customer_phone:normalizePhone(document.getElementById('phone').value),customer_address:document.getElementById('address').value.trim(),notes:document.getElementById('notes').value.trim(),delivery_time:deliveryTime||null,items:[...cart,meta],total:baseTotal,device_id:deviceId,sync_status:navigator.onLine?'synced':'pending',created_at:new Date().toISOString(),delivery_charge:0}}
 async function confirmOrder(){
   if(!selectedOrderType)return alert('اختار نوع الطلب أولاً.');
   if(!cart.length)return alert('أضف صنفاً واحداً على الأقل.');
-  const payload=orderPayload();
+  const clientOrderId=makeClientOrderId();
+  const payload=orderPayload(clientOrderId);
   const finish=async()=>{
     try{
       await printOrder(payload);
@@ -103,7 +105,7 @@ async function confirmOrder(){
   // OFFLINE POS orders: save locally first and print immediately. Never wait for Supabase.
   if(!navigator.onLine){
     const q=JSON.parse(localStorage.getItem(PENDING_ORDERS_KEY)||'[]');
-    const localOrder={local_order_id:'local-'+Date.now()+'-'+Math.random().toString(36).slice(2,10),payload,printed:false};
+    const localOrder={local_order_id:clientOrderId,payload,printed:false};
     q.push(localOrder);
     localStorage.setItem(PENDING_ORDERS_KEY,JSON.stringify(q));
     try{
@@ -121,7 +123,7 @@ async function confirmOrder(){
 
   // ONLINE POS orders: save to Supabase, then print. Printing is not part of sync.
   try{
-    const r=await api('/rest/v1/orders',{method:'POST',body:JSON.stringify(payload)});
+    const r=await api('/rest/v1/orders?on_conflict=client_order_id',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:JSON.stringify(payload)});
     if(!r.ok)throw new Error(await r.text());
     saveCustomer().catch(()=>{});
     alert('✅ تم حفظ الطلب بنجاح');
@@ -129,7 +131,7 @@ async function confirmOrder(){
   }catch(e){
     // A transient failure after the POS was online is treated as a local pending order.
     const q=JSON.parse(localStorage.getItem(PENDING_ORDERS_KEY)||'[]');
-    const localOrder={local_order_id:'local-'+Date.now()+'-'+Math.random().toString(36).slice(2,10),payload,printed:false};
+    const localOrder={local_order_id:clientOrderId,payload,printed:false};
     q.push(localOrder);
     localStorage.setItem(PENDING_ORDERS_KEY,JSON.stringify(q));
     try{
@@ -153,7 +155,10 @@ async function syncPendingOrders(){
   for(const entry of q){
     const item=entry?.payload?entry:{payload:entry,printed:true};
     try{
-      const r=await api('/rest/v1/orders',{method:'POST',body:JSON.stringify(item.payload)});
+      if(!item.payload.client_order_id){
+        item.payload.client_order_id=item.local_order_id||makeClientOrderId();
+      }
+      const r=await api('/rest/v1/orders?on_conflict=client_order_id',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:JSON.stringify(item.payload)});
       if(!r.ok)throw new Error(await r.text());
       // IMPORTANT: syncing a POS-local order never triggers printing again.
     }catch(e){
