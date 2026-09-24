@@ -54,7 +54,7 @@ async function api(path,opt={}){const headers=Object.assign({apikey:SUPABASE_KEY
 function setStatus(){const e=document.getElementById('connectionStatus');if(!e)return;e.textContent=navigator.onLine?'🟢 متصل':'🔴 أوفلاين';e.className='status-badge '+(navigator.onLine?'status-online':'status-offline')}
 function login(){const input=document.getElementById('loginPassword'),err=document.getElementById('loginError');if(input&&input.value===LOGIN_PASSWORD){sessionStorage.setItem('tabbaraLoggedIn','1');const screen=document.getElementById('loginScreen');if(screen)screen.style.display='none';if(err)err.style.display='none'}else if(err){err.style.display='block'}}
 function logout(){sessionStorage.removeItem('tabbaraLoggedIn');location.reload()}
-function setOrderType(t){selectedOrderType=t;document.getElementById('orderType').textContent=t;document.getElementById('deliveryBtn').classList.toggle('active',t==='Delivery');document.getElementById('pickupBtn').classList.toggle('active',t==='استلام من المحل');const dt=document.getElementById('deliveryTime');if(dt){dt.disabled=t!=='Delivery';if(t!=='Delivery')dt.value=''}if(!currentCategory)currentCategory=CATEGORIES[0];renderCategories();renderItems();renderCart()}
+function setOrderType(t){selectedOrderType=t;document.getElementById('orderType').textContent=t;document.getElementById('deliveryBtn').classList.toggle('active',t==='Delivery');document.getElementById('pickupBtn').classList.toggle('active',t==='استلام من المحل');const dt=document.getElementById('deliveryTime');const dtLabel=document.querySelector('label[for=deliveryTime]');if(dt){dt.disabled=!t;if(!t)dt.value='';if(dtLabel)dtLabel.textContent=t==='Delivery'?'🕐 وقت التوصيل':'🕐 وقت الاستلام'}if(!currentCategory)currentCategory=CATEGORIES[0];renderCategories();renderItems();renderCart()}
 function renderCategories(){const box=document.getElementById('categories');if(!box)return;if(!currentCategory)currentCategory=CATEGORIES[0];box.innerHTML=CATEGORIES.map(c=>`<button type="button" class="${c===currentCategory?'active':''}" onclick="selectCategory('${esc(c).replace(/'/g,"\\'")}')">${c}</button>`).join('')}
 function selectCategory(c){if(!selectedOrderType){alert('⚠️ أولاً اختار نوع الطلب: دليفري أو استلام من المحل.');return}currentCategory=c;renderCategories();renderItems()}
 function effectivePrice(item,prep){if(item.type==='weight')return Number(item.pricing?.base||0)+((prep==='grill')?grillSurcharge:(prep==='fry'?frySurcharge:0));if(item.type==='fixed')return Number(item.price||0);return 0}
@@ -289,7 +289,7 @@ function extractDeliveryTime(order, meta){
   const notes=String(order?.notes||'');
   const patterns=[
     /(?:وقت\s*التوصيل|وقت\s*الطلب|delivery\s*time)\s*[:：-]?\s*(?:الساعة\s*)?([0-2]?\d(?:\s*[:.]\s*[0-5]\d)?\s*(?:صباحاً|مساءً|AM|PM)?)/i,
-    /(?:مطلوب\s*)?(?:التوصيل|التسليم)\s*(?:المطلوب\s*)?(?:اليوم\s*)?(?:حوالي\s*)?(?:[:：-]\s*)?(?:الساعة\s*)?([0-2]?\d(?:\s*[:.]\s*[0-5]\d)?\s*(?:صباحاً|مساءً|AM|PM)?)/i
+    /(?:مطلوب\s*)?(?:التوصيل|التسليم)\s*(?:اليوم\s*)?(?:حوالي\s*)?(?:الساعة\s*)?([0-2]?\d(?:\s*[:.]\s*[0-5]\d)?\s*(?:صباحاً|مساءً|AM|PM)?)/i
   ];
   for(const re of patterns){const m=notes.match(re);if(m)return normalizeDeliveryTime(m[1]);}
   return '';
@@ -336,9 +336,25 @@ async function printOrder(o,displayInvoiceNumber=null){
   const isDelivery=String(o.order_type||'').toLowerCase()==='delivery';
   const delivery=0;
   const deliveryTime=normalizeDeliveryTime(extractDeliveryTime(o,meta));
-  const getQty=x=>{const d=normalizeItemData(x);return d.weight||d.qty;};
-  const getUnit=x=>normalizeItemData(x).unit;
-  const getLineTotal=x=>normalizeItemData(x).line;
+  const getQty=x=>{
+    const w=Number(x?.weight);
+    if(Number.isFinite(w) && w>0) return w;
+    const q=Number(x?.quantity);
+    return Number.isFinite(q) && q>0 ? q : 1;
+  };
+  const getUnit=x=>{
+    for(const v of [x?.unitPrice,x?.unit_price,x?.price]){
+      const n=Number(v);
+      if(Number.isFinite(n) && n>=0 && v!==undefined && v!==null && String(v)!=='') return n;
+    }
+    return 0;
+  };
+  const getLineTotal=x=>{
+    const qty=getQty(x),unit=getUnit(x);
+    if(unit>0) return qty*unit;
+    const stored=Number(x?.total ?? x?.line_total);
+    return Number.isFinite(stored) && stored>=0 ? stored : 0;
+  };
   const subtotal=items.reduce((sum,x)=>sum+getLineTotal(x),0);
   const finalValue=subtotal+delivery;
   const displayOrderType=isDelivery?'توصيل':'استلام من المحل';
@@ -351,12 +367,12 @@ async function printOrder(o,displayInvoiceNumber=null){
   const moneyHtml=v=>'<span dir="ltr" style="direction:ltr;unicode-bidi:isolate;white-space:nowrap">$'+money(v)+'</span>';
   const rows=items.map(x=>{
     const qty=getQty(x),unit=getUnit(x),line=getLineTotal(x);
-    const d=normalizeItemData(x);
+    const preparation=x.preparation||'';
     const baseName=x.name||x.label||'صنف';
-    const prepLabel=d.preparation==='grill'?'مشوي':d.preparation==='fry'?'مقلي':d.preparation==='raw'?'ني':d.preparation;
+    const prepLabel=preparation==='grill'?'مشوي':preparation==='fry'?'مقلي':preparation==='raw'?'ني':preparation;
     const rawLabel=x.label||baseName;
-    const label=(d.weight && prepLabel) ? baseName+' - '+prepLabel : rawLabel.replace(/\bRaw\b/gi,'ني');
-    const qtyText=d.weight ? money(d.weight)+' كغ' : String(qty);
+    const label=x.type==='weight' && preparation ? baseName+' - '+prepLabel : rawLabel.replace(/\bRaw\b/gi,'ني');
+    const qtyText=Number(x.weight)>0 ? money(qty)+' كغ' : String(qty);
     const offerDetails=x.type==='offer'&&Array.isArray(x.offerItems)&&x.offerItems.length ? '<div style="font-size:8px;margin-top:1px;line-height:1.15">'+x.offerItems.map(ci=>'• '+esc(ci.name)+(Number(ci.quantity)>1?' × '+Number(ci.quantity):'')).join('<br>')+'</div>' : '';
     return '<div class="receipt-item-row"><div class="receipt-total">'+moneyHtml(line)+'</div><div class="receipt-price">'+moneyHtml(unit)+'</div><div class="receipt-qty">'+esc(qtyText)+'</div><div class="receipt-name">'+esc(label)+offerDetails+'</div></div>';
   }).join('');
@@ -387,7 +403,7 @@ async function printOrder(o,displayInvoiceNumber=null){
       <div><b>نوع الطلب:</b> ${esc(displayOrderType)}</div>
       <div><b>الزبون:</b> ${esc(o.customer_name||'غير محدد')}</div>
       <div><b>الهاتف:</b> <span dir="ltr" style="direction:ltr;unicode-bidi:isolate">${esc(o.customer_phone||'غير محدد')}</span></div>
-      ${isDelivery?'<div style="font-weight:800;font-size:10.5px"><b>العنوان:</b> '+esc(o.customer_address||'غير محدد')+'</div><div class="receipt-delivery-time"><div style="font-size:11px;font-weight:900">وقت التوصيل</div><div dir="ltr" style="font-size:18px;font-weight:900;line-height:1.1;margin-top:1mm">'+esc(deliveryTime||'غير محدد')+'</div></div>':''}
+      ${isDelivery?'<div style="font-weight:800;font-size:10.5px"><b>العنوان:</b> '+esc(o.customer_address||'غير محدد')+'</div>':''}${deliveryTime?'<div class="receipt-delivery-time"><div style="font-size:11px;font-weight:900">'+(isDelivery?'وقت التوصيل':'وقت الاستلام')+'</div><div dir="ltr" style="font-size:18px;font-weight:900;line-height:1.1;margin-top:1mm">'+esc(deliveryTime)+'</div></div>':''}
     </div>
     <div class="receipt-items"><div class="receipt-item-head"><div>المجموع</div><div>السعر</div><div>الكمية</div><div>الصنف</div></div>${rows||'<div style="padding:6px;text-align:center">لا توجد أصناف</div>'}</div>
     <div style="border-top:1px dashed #000;margin-top:2mm;padding-top:2mm;font-size:10px">
@@ -430,35 +446,8 @@ function renderSalesReport(date){
   host.innerHTML=`<div class="report-date-picker" style="margin-bottom:12px"><label style="display:block;margin-bottom:6px;font-weight:bold">📅 اختر يوم التقرير</label><select id="reportDateSelect" class="modal-input" onchange="renderSalesReport(this.value)">${(window.__reportDates||[]).map(d=>`<option value="${esc(d)}" ${d===date?'selected':''}>${esc(reportDateLabel(d))}</option>`).join('')}</select></div><div style="text-align:center;font-weight:bold;margin:8px 0 12px">${esc(reportDateLabel(date))}</div><div class="report-summary-grid"><div class="report-stat"><b>الطلبات</b><strong>${stats.orders}</strong></div><div class="report-stat"><b>المبيعات</b><strong>$${money(stats.total)}</strong></div><div class="report-stat"><b>كاش</b><strong>$${money(stats.cash)}</strong></div><div class="report-stat"><b>بطاقة</b><strong>$${money(stats.card)}</strong></div></div><div class="report-breakdown"><b>دليفري:</b> $${money(stats.delivery)} &nbsp; | &nbsp; <b>استلام:</b> $${money(stats.pickup)} &nbsp; | &nbsp; <b>تحويل:</b> $${money(stats.transfer)}</div><h4 style="margin:16px 0 8px">📦 الأصناف المباعة</h4>${top.length?top.map(p=>`<div class="report-row"><span>${esc(p.name)} × ${esc(p.qtyLabel)}</span><b>$${money(p.total)}</b></div>`).join(''):'<div class="empty-state">لا توجد مبيعات بهذا اليوم.</div>'}<button type="button" class="primary" style="width:100%;margin-top:14px" onclick="printDailyReport()">🖨️ طباعة تقرير ${esc(date)}</button>`;
 }
 function printDailyReport(){const rows=window.__reportRows||[],stats=window.__reportStats||buildReport(rows),date=window.__reportDate||beirutInvoiceDate();const html=`<div style="width:80mm;font-family:Arial;direction:rtl;text-align:right;padding:8px;box-sizing:border-box"><h2 style="text-align:center;margin:0 0 5px">🐟 Tabbara Fish</h2><div style="text-align:center;font-weight:bold">تقرير المبيعات اليومية</div><div style="text-align:center;font-size:12px">${esc(reportDateLabel(date))}</div><div style="border-bottom:1px dashed #000;margin:8px 0"></div><div><b>عدد الطلبات:</b> ${stats.orders}<br><b>إجمالي المبيعات:</b> $${money(stats.total)}<br><b>دليفري:</b> $${money(stats.delivery)}<br><b>استلام:</b> $${money(stats.pickup)}<br><b>كاش:</b> $${money(stats.cash)}<br><b>بطاقة:</b> $${money(stats.card)}<br><b>تحويل:</b> $${money(stats.transfer)}<br><b>المفروض بالصندوق:</b> $${money(stats.cash)}</div><div style="border-bottom:1px dashed #000;margin:8px 0"></div><h3 style="margin:5px 0">📦 الأصناف المباعة</h3>${stats.products.length?stats.products.map(p=>`<div style="margin:5px 0;border-bottom:1px dotted #aaa;padding-bottom:4px"><b>${esc(p.name)}</b><br>الكمية: ${p.qtyLabel} — $${money(p.total)}</div>`).join(''):'<div>لا توجد مبيعات.</div>'}<div style="border-top:1px dashed #000;margin-top:8px;padding-top:7px;font-size:16px"><b>الإجمالي: $${money(stats.total)}</b></div><div style="text-align:center;margin-top:10px;font-size:11px">نهاية التقرير</div></div>`;let p=document.getElementById('posPrintArea');if(!p){p=document.createElement('div');p.id='posPrintArea';document.body.appendChild(p)}p.innerHTML=html;document.body.classList.add('printing-invoice');setTimeout(()=>{window.print();setTimeout(()=>document.body.classList.remove('printing-invoice'),300)},100)}
-function normalizeItemData(x){
-  const rawQty=x?.quantity;
-  let weight=Number(x?.weight);
-  if(!Number.isFinite(weight)||weight<=0){
-    const m=String(rawQty??'').trim().match(/(\d+(?:[.,]\d+)?)\s*(?:كغ|كيلو|كيلوغرام|kg|kilo)/i);
-    if(m) weight=Number(m[1].replace(',','.'));
-  }
-  const hasWeight=Number.isFinite(weight)&&weight>0;
-  let qty=Number(rawQty);
-  if(!Number.isFinite(qty)||qty<=0||(typeof rawQty==='string'&&/كغ|كيلو|كيلوغرام|kg|kilo/i.test(rawQty))) qty=hasWeight?weight:1;
-  let preparation=String(x?.preparation||'').trim();
-  if(!preparation){
-    const label=String(x?.label||x?.name||'');
-    if(/مشوي|شوي/i.test(label)) preparation='grill';
-    else if(/مقلي|قلي/i.test(label)) preparation='fry';
-  }
-  const prepKey=/مشوي|شوي|grill/i.test(preparation)?'grill':/مقلي|قلي|fry/i.test(preparation)?'fry':preparation;
-  const legacyWhatsapp=x?.unitPrice==null&&x?.unit_price==null&&x?.price!=null&&(typeof rawQty==='string'||!!x?.preparation);
-  let unit=Number(x?.unitPrice??x?.unit_price??x?.price??0);
-  const grillExtra=Number.isFinite(Number(grillSurcharge))&&Number(grillSurcharge)>0?Number(grillSurcharge):DEFAULT_GRILL_SURCHARGE;
-  const fryExtra=Number.isFinite(Number(frySurcharge))&&Number(frySurcharge)>0?Number(frySurcharge):DEFAULT_FRY_SURCHARGE;
-  if(legacyWhatsapp&&hasWeight&&prepKey==='grill') unit+=grillExtra;
-  if(legacyWhatsapp&&hasWeight&&prepKey==='fry') unit+=fryExtra;
-  const stored=Number(x?.total??x?.line_total);
-  const line=legacyWhatsapp&&hasWeight?weight*unit:(Number.isFinite(stored)&&stored>=0?stored:(hasWeight?weight*unit:qty*unit));
-  return {weight:hasWeight?weight:0,qty,unit,line,preparation:prepKey};
-}
+function buildReport(rows){const productsMap={};let total=0,cash=0,card=0,transfer=0,delivery=0,pickup=0;for(const o of rows){total+=Number(o.total||0);if(String(o.order_type||'').toLowerCase()==='delivery')delivery+=Number(o.total||0);else pickup+=Number(o.total||0);const meta=(Array.isArray(o.items)?o.items:[]).find(x=>x.__meta)||{};if(meta.payment_method==='card')card+=Number(o.total||0);else if(meta.payment_method==='transfer')transfer+=Number(o.total||0);else cash+=Number(o.total||0);for(const x of (Array.isArray(o.items)?o.items:[]).filter(x=>!x.__meta)){const k=x.name||x.label||'غير معروف';const qty=Number(x.weight ?? x.quantity ?? 1);const unit=Number(x.unitPrice ?? x.price ?? x.unit_price ?? 0);const storedTotal=Number(x.total ?? x.line_total);const lineTotal=Number.isFinite(storedTotal)&&storedTotal>0?storedTotal:qty*unit;if(!productsMap[k])productsMap[k]={name:k,qty:0,weight:0,total:0};productsMap[k].qty+=Number(x.quantity||0);productsMap[k].weight+=Number(x.weight||0);productsMap[k].total+=Number.isFinite(lineTotal)?lineTotal:0}}return{orders:rows.length,total,cash,card,transfer,delivery,pickup,products:Object.values(productsMap).sort((a,b)=>b.total-a.total).map(p=>({...p,qtyLabel:p.weight?money(p.weight)+' كغ':String(p.qty)}))}}
 
-function buildReport(rows){const productsMap={};let total=0,cash=0,card=0,transfer=0,delivery=0,pickup=0;for(const o of rows){total+=Number(o.total||0);if(String(o.order_type||'').toLowerCase()==='delivery')delivery+=Number(o.total||0);else pickup+=Number(o.total||0);const meta=(Array.isArray(o.items)?o.items:[]).find(x=>x.__meta)||{};if(meta.payment_method==='card')card+=Number(o.total||0);else if(meta.payment_method==='transfer')transfer+=Number(o.total||0);else cash+=Number(o.total||0);for(const x of (Array.isArray(o.items)?o.items:[]).filter(x=>!x.__meta)){const k=x.name||x.label||'غير معروف';const d=normalizeItemData(x);if(!productsMap[k])productsMap[k]={name:k,qty:0,weight:0,total:0};productsMap[k].qty+=d.weight?0:d.qty;productsMap[k].weight+=d.weight;productsMap[k].total+=Number.isFinite(d.line)?d.line:0}}return{orders:rows.length,total,cash,card,transfer,delivery,pickup,products:Object.values(productsMap).sort((a,b)=>b.total-a.total).map(p=>({...p,qtyLabel:p.weight?money(p.weight)+' كغ':String(p.qty)}))}}
 async function showOrders(){
   openModal('📋 الطلبات السابقة','<div id="ordersList" class="data-list"><div class="muted">⏳ جاري تحميل الطلبات...</div></div>');
   const host=document.getElementById('ordersList');
@@ -473,7 +462,7 @@ async function showOrders(){
       const date=o.created_at?new Date(o.created_at).toLocaleString('ar-LB',{dateStyle:'short',timeStyle:'short'}):'';
       const oid=esc(String(o.id||'')).replace(/'/g,"\\'");
       const short=String(o.id||'').replace(/-/g,'').slice(-6).toUpperCase()||String(i+1);
-      const itemText=items.map(x=>{const d=normalizeItemData(x);const label=x.label||x.name||'صنف';const qtyText=d.weight?money(d.weight)+' كغ':String(d.qty);return `${esc(label)} × ${esc(qtyText)}`}).join('، ')||'لا توجد أصناف';
+      const itemText=items.map(x=>`${esc(x.label||x.name||'صنف')} × ${esc(String(Number(x.weight)>0?money(Number(x.weight))+' كغ':x.quantity||1))}`).join('، ')||'لا توجد أصناف';
       return `<div class="data-card">
         <div class="data-card-head"><b>#${esc(short)}</b><span>${esc(date)}</span></div>
         <div><b>${esc(o.customer_name||'غير محدد')}</b> — <span dir="ltr">${esc(o.customer_phone||'')}</span></div>
@@ -490,7 +479,7 @@ async function showOrders(){
 }
 
 function getPreviousOrder(id){return (window.__previousOrders||[]).find(o=>String(o.id)===String(id))||null}
-function orderItemsSummary(o){const items=(Array.isArray(o?.items)?o.items:[]).filter(x=>!x.__meta);return items.map(x=>{const d=normalizeItemData(x);const label=x.label||x.name||'صنف';const qtyText=d.weight?money(d.weight)+' كغ':String(d.qty);return `<div class="detail-item"><span>${esc(label)} × ${esc(qtyText)}</span><b dir="ltr">$${money(d.line)}</b></div>`}).join('')||'<div class="muted">لا توجد أصناف.</div>'}
+function orderItemsSummary(o){const items=(Array.isArray(o?.items)?o.items:[]).filter(x=>!x.__meta);return items.map(x=>{const qty=Number(x.weight??x.quantity??1);const unit=Number(x.unitPrice??x.price??x.unit_price??0);const stored=Number(x.total??x.line_total);const line=Number.isFinite(stored)&&stored>0?stored:qty*unit;const label=x.label||x.name||'صنف';return `<div class="detail-item"><span>${esc(label)} × ${esc(String(Number(x.weight)>0?money(Number(x.weight))+' كغ':x.quantity||1))}</span><b dir="ltr">$${money(line)}</b></div>`}).join('')||'<div class="muted">لا توجد أصناف.</div>'}
 function viewOrderDetails(id){const o=getPreviousOrder(id);if(!o)return alert('الطلب غير موجود.');const meta=(Array.isArray(o.items)?o.items:[]).find(x=>x.__meta)||{};const date=o.created_at?new Date(o.created_at).toLocaleString('ar-LB',{dateStyle:'medium',timeStyle:'short'}):'';const short=String(o.id||'').replace(/-/g,'').slice(-6).toUpperCase();openModal('📋 تفاصيل الطلب #'+esc(short),`<div class="order-details"><div><b>التاريخ:</b> ${esc(date)}</div><div><b>نوع الطلب:</b> ${esc(o.order_type||'')}</div><div><b>الزبون:</b> ${esc(o.customer_name||'غير محدد')}</div><div><b>الهاتف:</b> <span dir="ltr">${esc(o.customer_phone||'')}</span></div>${String(o.order_type||'').toLowerCase()==='delivery'?`<div><b>العنوان:</b> ${esc(o.customer_address||'غير محدد')}</div>${extractDeliveryTime(o,meta)?`<div><b>وقت التوصيل:</b> <span dir="ltr">${esc(normalizeDeliveryTime(extractDeliveryTime(o,meta)))}</span></div>`:''}`:''}<div><b>طريقة الدفع:</b> ${esc(meta.payment_label||'كاش')}</div><hr><h4>الأصناف</h4>${orderItemsSummary(o)}<hr><div class="detail-total"><span>المجموع</span><b dir="ltr">$${money(o.total)}</b></div>${o.notes?`<div><b>ملاحظات:</b> ${esc(o.notes)}</div>`:''}<div class="data-card-actions"><button type="button" class="primary" onclick="reprintOrder('${esc(String(o.id||''))}')">🖨️ إعادة طباعة</button><button type="button" class="danger" onclick="deletePreviousOrder('${esc(String(o.id||''))}')">🗑️ إلغاء/حذف</button></div></div>`)}
 async function reprintOrder(id){const o=getPreviousOrder(id);if(!o)return alert('الطلب غير موجود.');closeModal();try{await printOrder(o);alert('✅ تمت إعادة الطباعة.')}catch(e){console.error('reprintOrder',e);alert('⚠️ إعادة الطباعة فشلت.\n'+e.message)}}
 async function deletePreviousOrder(id){const o=getPreviousOrder(id);if(!o)return alert('الطلب غير موجود.');const short=String(o.id||'').replace(/-/g,'').slice(-6).toUpperCase();if(!confirm(`هل تريد إلغاء وحذف الطلب #${short} نهائياً؟`))return;try{const r=await api(`/rest/v1/orders?id=eq.${encodeURIComponent(id)}`,{method:'DELETE',headers:{Prefer:'return=minimal'}});if(!r.ok)throw new Error(await r.text());window.__previousOrders=(window.__previousOrders||[]).filter(x=>String(x.id)!==String(id));alert('✅ تم إلغاء وحذف الطلب.');showOrders()}catch(e){console.warn('deletePreviousOrder',e);alert('⚠️ لم يتم حذف الطلب. تأكد من صلاحية الحذف في Supabase.')}}
@@ -527,7 +516,33 @@ async function showReports(){
   }catch(e){console.warn('showReports',e);host.innerHTML='<div class="error-state">⚠️ تعذّر تحميل تقرير المبيعات. تأكد من الاتصال بقاعدة البيانات.</div>'}
 }
 
-function loadSettings(){deliveryCharge=0;localStorage.setItem(DELIVERY_CHARGE_KEY,'0');grillSurcharge=Number(localStorage.getItem(GLOBAL_GRILL_KEY));if(!Number.isFinite(grillSurcharge))grillSurcharge=DEFAULT_GRILL_SURCHARGE;frySurcharge=Number(localStorage.getItem(GLOBAL_FRY_KEY));if(!Number.isFinite(frySurcharge))frySurcharge=DEFAULT_FRY_SURCHARGE}
+async function loadSettings(){
+deliveryCharge=0;
+localStorage.setItem(DELIVERY_CHARGE_KEY,'0');
+let fry=Number(localStorage.getItem(GLOBAL_FRY_KEY));
+let grill=Number(localStorage.getItem(GLOBAL_GRILL_KEY));
+try{
+ if(navigator.onLine){
+  const r=await api('/rest/v1/pos_settings?select=key,value&key=in.(fish_fry_surcharge,fish_grill_surcharge)');
+  if(r.ok){
+   const rows=await r.json();
+   for(const row of rows){
+    const v=Number(row.value);
+    if(row.key==='fish_fry_surcharge'&&Number.isFinite(v))fry=v;
+    if(row.key==='fish_grill_surcharge'&&Number.isFinite(v))grill=v;
+   }
+  }
+ }
+}catch(e){console.warn('loadSettings',e)}
+if(!Number.isFinite(fry)&&Number.isFinite(grill))fry=grill;
+if(!Number.isFinite(grill)&&Number.isFinite(fry))grill=fry;
+if(!Number.isFinite(fry))fry=DEFAULT_FRY_SURCHARGE;
+if(!Number.isFinite(grill))grill=DEFAULT_GRILL_SURCHARGE;
+frySurcharge=fry;
+grillSurcharge=grill;
+localStorage.setItem(GLOBAL_FRY_KEY,String(fry));
+localStorage.setItem(GLOBAL_GRILL_KEY,String(grill));
+}
 function loadMenu(){try{const x=JSON.parse(localStorage.getItem(MENU_STORAGE_KEY)||'null');if(Array.isArray(x)&&x.length){menu=x;return}}catch{}menu=JSON.parse(JSON.stringify(DEFAULT_MENU));localStorage.setItem(MENU_STORAGE_KEY,JSON.stringify(menu))}
 const CATEGORY_ALIASES={'🍽️ وجبات':MEALS_CATEGORY,'🍽️ الوجبات والساندويش':MEALS_CATEGORY,'الوجبات':MEALS_CATEGORY,'🥪 ساندويشات':SANDWICHES_CATEGORY,'ساندويشات':SANDWICHES_CATEGORY,'الساندويشات':SANDWICHES_CATEGORY,'العروض':'🎁 العروض','المقبلات':'🥗 المقبلات','السلطات':'🥬 السلطات','المشروبات':'🥤 المشروبات','الأسماك':'🐟 الأسماك','ثمار البحر':'🦐 ثمار البحر'};
 function canonicalCategory(c){return CATEGORY_ALIASES[String(c||'').trim()]||String(c||'').trim()}
@@ -640,7 +655,7 @@ async function saveSetting(id,value){try{const r=await api('/rest/v1/pos_setting
 async function toggleAvailability(id){const i=menu.find(x=>x.id===id);if(!i)return;const next=!i.available;i.available=next;saveMenuLocal();const synced=await syncOneMenuItem(i);renderItems();refreshManagerKeepScroll();if(!synced&&navigator.onLine){i.available=!next;saveMenuLocal();renderItems();alert('⚠️ لم يتم تحديث توفر الصنف على قاعدة البيانات.');}}
 document.getElementById('phone')?.addEventListener('input',queueCustomerLookup);document.getElementById('phone')?.addEventListener('blur',findCustomer);
 window.addEventListener('online',()=>{setStatus();syncPendingOrders();syncMenuFromCloud();setTimeout(checkWhatsAppOrders,800)});window.addEventListener('offline',setStatus);
-window.addEventListener('load',async()=>{loadSettings();loadMenu();setStatus();if(sessionStorage.getItem('tabbaraLoggedIn')==='1')document.getElementById('loginScreen').style.display='none';if(navigator.onLine){await syncMenuFromCloud()}renderCategories();renderItems();renderCart();setTimeout(checkWhatsAppOrders,400);setInterval(checkWhatsAppOrders,4000);});
+window.addEventListener('load',async()=>{await loadSettings();loadMenu();setStatus();if(sessionStorage.getItem('tabbaraLoggedIn')==='1')document.getElementById('loginScreen').style.display='none';if(navigator.onLine){await syncMenuFromCloud()}renderCategories();renderItems();renderCart();setTimeout(checkWhatsAppOrders,400);setInterval(checkWhatsAppOrders,4000);});
 
 /* v33: universal touch numeric keypad */
 let activeNumericInput=null;
