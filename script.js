@@ -87,36 +87,16 @@ async function saveCustomer(){const phone=normalizePhone(document.getElementById
 function paymentMeta(){const p=document.getElementById('paymentMethod').value;return p==='cash'?'كاش':p==='card'?'بطاقة':'تحويل'}
 function makeClientOrderId(){try{if(window.crypto&&typeof window.crypto.randomUUID==='function')return window.crypto.randomUUID()}catch{}return 'client-'+Date.now()+'-'+Math.random().toString(36).slice(2,12)}
 
-const INVOICE_RANGE_KEY='tabbara_invoice_range_v1';
+const OFFLINE_INVOICE_KEY='tabbara_offline_invoice_v1';
 function beirutInvoiceDate(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Beirut',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}
-function loadInvoiceRange(){try{return JSON.parse(localStorage.getItem(INVOICE_RANGE_KEY)||'null')}catch{return null}}
-function saveInvoiceRange(r){localStorage.setItem(INVOICE_RANGE_KEY,JSON.stringify(r))}
-async function reserveInvoiceRange(count=20){
+function getOfflineInvoiceDisplayNumber(){
   const date=beirutInvoiceDate();
-  const current=loadInvoiceRange();
-  if(current && current.date===date && Number(current.next)<=Number(current.end)) return current;
-  if(!navigator.onLine) return null;
-  const r=await api('/rest/v1/rpc/reserve_invoice_range',{method:'POST',body:JSON.stringify({p_device_id:deviceId,p_invoice_date:date,p_count:count})});
-  if(!r.ok) throw new Error(await r.text());
-  const rows=await r.json();
-  const row=Array.isArray(rows)?rows[0]:rows;
-  if(!row || !Number.isFinite(Number(row.start_invoice_no))) throw new Error('Invalid invoice range response');
-  const range={date,start:Number(row.start_invoice_no),end:Number(row.end_invoice_no),next:Number(row.start_invoice_no)};
-  saveInvoiceRange(range);
-  return range;
-}
-async function assignCentralInvoice(payload){
-  if(payload.invoice_no && payload.invoice_date) return payload;
-  const date=beirutInvoiceDate();
-  let range=loadInvoiceRange();
-  if(!range || range.date!==date || Number(range.next)>Number(range.end)) range=await reserveInvoiceRange(20);
-  if(range && Number(range.next)<=Number(range.end)){
-    payload.invoice_date=date;
-    payload.invoice_no=Number(range.next);
-    range.next=Number(range.next)+1;
-    saveInvoiceRange(range);
-  }
-  return payload;
+  let state={date,next:0};
+  try{state=JSON.parse(localStorage.getItem(OFFLINE_INVOICE_KEY)||'{}')||state}catch{}
+  if(state.date!==date) state={date,next:0};
+  state.next=Number(state.next||0)+1;
+  localStorage.setItem(OFFLINE_INVOICE_KEY,JSON.stringify(state));
+  return 'OFF-'+String(state.next);
 }
 
 function orderPayload(clientOrderId){const baseTotal=cart.reduce((s,x)=>s+Number(x.total),0),deliveryTime=document.getElementById('deliveryTime')?.value||'';const meta={__meta:true,payment_method:document.getElementById('paymentMethod').value,payment_label:paymentMeta(),delivery_charge:0,delivery_time:deliveryTime};return{client_order_id:clientOrderId||makeClientOrderId(),order_type:selectedOrderType,customer_name:document.getElementById('name').value.trim(),customer_phone:normalizePhone(document.getElementById('phone').value),customer_address:document.getElementById('address').value.trim(),notes:document.getElementById('notes').value.trim(),delivery_time:deliveryTime||null,items:[...cart,meta],total:baseTotal,device_id:deviceId,sync_status:navigator.onLine?'synced':'pending',created_at:new Date().toISOString(),delivery_charge:0,invoice_date:null,invoice_no:null}}
@@ -125,29 +105,19 @@ async function confirmOrder(){
   if(!cart.length)return alert('أضف صنفاً واحداً على الأقل.');
   const clientOrderId=makeClientOrderId();
   const payload=orderPayload(clientOrderId);
-  try{await assignCentralInvoice(payload)}catch(e){console.warn('invoice allocation',e)}
-  const finish=async()=>{
-    try{
-      await printOrder(payload);
-      clearOrder();
-    }catch(e){
-      console.error(e);
-      alert('⚠️ تم حفظ الطلب لكن الطباعة فشلت.\n'+e.message);
-    }
-  };
 
-  // OFFLINE POS orders: save locally first and print immediately. Never wait for Supabase.
   if(!navigator.onLine){
+    const provisionalNumber=getOfflineInvoiceDisplayNumber();
     const q=JSON.parse(localStorage.getItem(PENDING_ORDERS_KEY)||'[]');
     const localOrder={local_order_id:clientOrderId,payload,printed:false};
     q.push(localOrder);
     localStorage.setItem(PENDING_ORDERS_KEY,JSON.stringify(q));
     try{
-      await printOrder(payload);
+      await printOrder(payload,provisionalNumber);
       localOrder.printed=true;
       localStorage.setItem(PENDING_ORDERS_KEY,JSON.stringify(q));
       clearOrder();
-      alert('📴 تم حفظ الطلب محلياً وطباعته فوراً. سيتم حفظه في Supabase عند عودة الإنترنت.');
+      alert('📴 تم حفظ الطلب محلياً وطباعته فوراً. عند عودة الإنترنت سيأخذ رقم الفاتورة المركزي من Supabase.');
     }catch(e){
       console.error(e);
       alert('📴 تم حفظ الطلب محلياً، لكن الطباعة فشلت.\n'+e.message);
@@ -155,25 +125,41 @@ async function confirmOrder(){
     return;
   }
 
-  // ONLINE POS orders: save to Supabase, then print. Printing is not part of sync.
   try{
-    const r=await api('/rest/v1/orders?on_conflict=client_order_id',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:JSON.stringify(payload)});
+    const r=await api('/rest/v1/orders?on_conflict=client_order_id',{
+      method:'POST',
+      headers:{Prefer:'resolution=ignore-duplicates,return=representation'},
+      body:JSON.stringify(payload)
+    });
     if(!r.ok)throw new Error(await r.text());
+    let rows=await r.json().catch(()=>[]);
+    let saved=Array.isArray(rows)?rows[0]:rows;
+    if(!saved?.invoice_no){
+      const qr=await api('/rest/v1/orders?client_order_id=eq.'+encodeURIComponent(clientOrderId)+'&select=invoice_date,invoice_no&limit=1');
+      if(qr.ok){
+        const found=await qr.json();
+        saved=found[0]||saved;
+      }
+    }
+    if(!saved?.invoice_no)throw new Error('لم يتم استلام رقم الفاتورة المركزي من Supabase.');
+    payload.invoice_date=saved.invoice_date||null;
+    payload.invoice_no=Number(saved.invoice_no);
     saveCustomer().catch(()=>{});
     alert('✅ تم حفظ الطلب بنجاح');
-    await finish();
+    await printOrder(payload);
+    clearOrder();
   }catch(e){
-    // A transient failure after the POS was online is treated as a local pending order.
+    const provisionalNumber=getOfflineInvoiceDisplayNumber();
     const q=JSON.parse(localStorage.getItem(PENDING_ORDERS_KEY)||'[]');
     const localOrder={local_order_id:clientOrderId,payload,printed:false};
     q.push(localOrder);
     localStorage.setItem(PENDING_ORDERS_KEY,JSON.stringify(q));
     try{
-      await printOrder(payload);
+      await printOrder(payload,provisionalNumber);
       localOrder.printed=true;
       localStorage.setItem(PENDING_ORDERS_KEY,JSON.stringify(q));
       clearOrder();
-      alert('⚠️ تعذّر الحفظ على Supabase، فتم حفظ الطلب محلياً وطباعته. سيتم مزامنته لاحقاً.');
+      alert('⚠️ تعذّر الحفظ على Supabase، فتم حفظ الطلب محلياً وطباعته. سيتم إعطاؤه رقم الفاتورة المركزي عند المزامنة.');
     }catch(printError){
       console.error(printError);
       alert('⚠️ تم حفظ الطلب محلياً، لكن الطباعة فشلت.\n'+printError.message);
@@ -343,7 +329,7 @@ function getDailyInvoiceNumber(order){
   return seq.next;
 }
 
-async function printOrder(o){
+async function printOrder(o,displayInvoiceNumber=null){
   const rawItems=Array.isArray(o.items)?o.items:[];
   const items=rawItems.filter(x=>!x.__meta);
   const meta=rawItems.find(x=>x.__meta)||{};
@@ -373,7 +359,7 @@ async function printOrder(o){
   const finalValue=subtotal+delivery;
   const displayOrderType=isDelivery?'توصيل':'استلام من المحل';
   const cleanNotes=cleanOrderNotes(o.notes);
-  const orderNumber=(o.invoice_no!=null?Number(o.invoice_no):getDailyInvoiceNumber(o));
+  const orderNumber=(displayInvoiceNumber!=null?String(displayInvoiceNumber):(o.invoice_no!=null?Number(o.invoice_no):getDailyInvoiceNumber(o)));
   const orderShort=String(o.id||'').replace(/-/g,'').slice(-6).toUpperCase();
   const created=o.created_at?new Date(o.created_at):new Date();
   const date=created.toLocaleDateString('ar-LB');
@@ -622,7 +608,7 @@ async function saveSetting(id,value){try{const r=await api('/rest/v1/pos_setting
 async function toggleAvailability(id){const i=menu.find(x=>x.id===id);if(!i)return;const next=!i.available;i.available=next;saveMenuLocal();const synced=await syncOneMenuItem(i);renderItems();refreshManagerKeepScroll();if(!synced&&navigator.onLine){i.available=!next;saveMenuLocal();renderItems();alert('⚠️ لم يتم تحديث توفر الصنف على قاعدة البيانات.');}}
 document.getElementById('phone')?.addEventListener('input',queueCustomerLookup);document.getElementById('phone')?.addEventListener('blur',findCustomer);
 window.addEventListener('online',()=>{setStatus();syncPendingOrders();syncMenuFromCloud();setTimeout(checkWhatsAppOrders,800)});window.addEventListener('offline',setStatus);
-window.addEventListener('load',async()=>{loadSettings();loadMenu();setStatus();if(sessionStorage.getItem('tabbaraLoggedIn')==='1')document.getElementById('loginScreen').style.display='none';if(navigator.onLine){await syncMenuFromCloud();try{await reserveInvoiceRange(20)}catch(e){console.warn('invoice range preload',e)}}renderCategories();renderItems();renderCart();setTimeout(checkWhatsAppOrders,400);setInterval(checkWhatsAppOrders,4000);});
+window.addEventListener('load',async()=>{loadSettings();loadMenu();setStatus();if(sessionStorage.getItem('tabbaraLoggedIn')==='1')document.getElementById('loginScreen').style.display='none';if(navigator.onLine){await syncMenuFromCloud()}renderCategories();renderItems();renderCart();setTimeout(checkWhatsAppOrders,400);setInterval(checkWhatsAppOrders,4000);});
 
 /* v33: universal touch numeric keypad */
 let activeNumericInput=null;
