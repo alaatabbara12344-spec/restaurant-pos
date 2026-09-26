@@ -194,6 +194,18 @@ async function printWithLocalBridge(html, orderNumber){
   }
   throw new Error('تعذّرت الطباعة من Print Bridge: '+(lastError?.message||'تأكد أن البرنامج شغّال على اللابتوب'));
 }
+let whatsappSyncTimer=null;
+let whatsappSyncStarted=false;
+function startWhatsAppOrderSync(){
+  if(whatsappSyncStarted)return;
+  whatsappSyncStarted=true;
+  const tick=()=>{ if(navigator.onLine) checkWhatsAppOrders(); };
+  setTimeout(tick,700);
+  whatsappSyncTimer=setInterval(tick,2000);
+  window.addEventListener('online',()=>setTimeout(tick,300));
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(tick,150);});
+}
+
 async function checkWhatsAppOrders(){
   if(!navigator.onLine||whatsappPollBusy)return;
   whatsappPollBusy=true;
@@ -211,6 +223,8 @@ async function checkWhatsAppOrders(){
         await printOrder(o);
         await markWhatsAppOrderProcessed(id);
         rememberWhatsAppOrder(id);
+        const ordersList=document.getElementById('ordersList');
+        if(ordersList && typeof showOrders==='function') showOrders();
       }catch(e){
         console.warn('WhatsApp order processing',e);
         // Keep the order pending so it can be retried after the problem is fixed.
@@ -707,7 +721,7 @@ async function saveSetting(id,value){try{const r=await api('/rest/v1/pos_setting
 async function toggleAvailability(id){const i=menu.find(x=>x.id===id);if(!i)return;const next=!i.available;i.available=next;saveMenuLocal();const synced=await syncOneMenuItem(i);renderItems();refreshManagerKeepScroll();if(!synced&&navigator.onLine){i.available=!next;saveMenuLocal();renderItems();alert('⚠️ لم يتم تحديث توفر الصنف على قاعدة البيانات.');}}
 document.getElementById('phone')?.addEventListener('input',queueCustomerLookup);document.getElementById('phone')?.addEventListener('blur',findCustomer);
 window.addEventListener('online',async()=>{setStatus();syncPendingOrders();await syncDirtyMenuToCloud();await syncMenuFromCloud();setTimeout(checkWhatsAppOrders,800)});window.addEventListener('offline',setStatus);
-window.addEventListener('load',async()=>{await loadSettings();loadMenu();setStatus();if(sessionStorage.getItem('tabbaraLoggedIn')==='1')document.getElementById('loginScreen').style.display='none';renderCategories();renderItems();renderCart();setTimeout(checkWhatsAppOrders,1200);setInterval(checkWhatsAppOrders,4000);if(navigator.onLine)syncMenuFromCloud()});
+window.addEventListener('load',async()=>{await loadSettings();loadMenu();setStatus();if(sessionStorage.getItem('tabbaraLoggedIn')==='1')document.getElementById('loginScreen').style.display='none';renderCategories();renderItems();renderCart();startWhatsAppOrderSync();if(navigator.onLine)syncMenuFromCloud()});
 
 /* v33: universal touch numeric keypad */
 let activeNumericInput=null;
