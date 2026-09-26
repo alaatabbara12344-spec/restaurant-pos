@@ -396,49 +396,121 @@ async function showOrders(){
 function getPreviousOrder(id){return (window.__previousOrders||[]).find(o=>String(o.id)===String(id))||null}
 function orderItemsSummary(o){const items=(Array.isArray(o?.items)?o.items:[]).filter(x=>!x.__meta);return items.map(x=>{const qty=Number(x.weight??x.quantity??1);const unit=Number(x.unitPrice??x.price??x.unit_price??0);const stored=Number(x.total??x.line_total);const line=Number.isFinite(stored)&&stored>0?stored:qty*unit;const label=x.label||x.name||'صنف';return `<div class="detail-item"><span>${esc(label)} × ${esc(String(Number(x.weight)>0?money(Number(x.weight))+' كغ':x.quantity||1))}</span><b dir="ltr">$${money(line)}</b></div>`}).join('')||'<div class="muted">لا توجد أصناف.</div>'}
 function viewOrderDetails(id){const o=getPreviousOrder(id);if(!o)return alert('الطلب غير موجود.');const meta=(Array.isArray(o.items)?o.items:[]).find(x=>x.__meta)||{};const date=o.created_at?new Date(o.created_at).toLocaleString('ar-LB',{dateStyle:'medium',timeStyle:'short'}):'';const short=String(o.id||'').replace(/-/g,'').slice(-6).toUpperCase();openModal('📋 تفاصيل الطلب #'+esc(short),`<div class="order-details"><div><b>التاريخ:</b> ${esc(date)}</div><div><b>نوع الطلب:</b> ${esc(o.order_type||'')}</div><div><b>الزبون:</b> ${esc(o.customer_name||'غير محدد')}</div><div><b>الهاتف:</b> <span dir="ltr">${esc(o.customer_phone||'')}</span></div>${String(o.order_type||'').toLowerCase()==='delivery'?`<div><b>العنوان:</b> ${esc(o.customer_address||'غير محدد')}</div>${meta.delivery_time?`<div><b>وقت التوصيل:</b> <span dir="ltr">${esc(meta.delivery_time)}</span></div>`:''}`:''}<div><b>طريقة الدفع:</b> ${esc(meta.payment_label||'كاش')}</div><hr><h4>الأصناف</h4>${orderItemsSummary(o)}<hr><div class="detail-total"><span>المجموع</span><b dir="ltr">$${money(o.total)}</b></div>${o.notes?`<div><b>ملاحظات:</b> ${esc(o.notes)}</div>`:''}<div class="data-card-actions"><button type="button" class="primary" onclick="openEditPreviousOrder('${esc(String(o.id||''))}')">✏️ تعديل الطلب</button><button type="button" class="primary" onclick="reprintOrder('${esc(String(o.id||''))}')">🖨️ إعادة طباعة</button><button type="button" class="danger" onclick="deletePreviousOrder('${esc(String(o.id||''))}')">🗑️ إلغاء/حذف</button></div></div>`)}
+function isWeightOrderItem(x){
+  if(!x||x.__meta)return false;
+  if(Number(x.weight)>0)return true;
+  const t=String(x.type??x.item_type??'').toLowerCase();
+  if(['weight','fish_weight','kg','كيلو','كغ'].includes(t))return true;
+  const unit=String(x.unit??x.unit_name??'').toLowerCase();
+  if(unit==='kg'||unit==='كيلو'||unit==='كغ')return true;
+  const menuItem=(Array.isArray(menu)?menu:[]).find(m=>String(m.name||'').trim()===String(x.name||'').trim());
+  return !!(menuItem && String(menuItem.type||'').toLowerCase()==='weight');
+}
 function editOrderItemRows(o){
-  const items=(Array.isArray(o?.items)?o.items:[]).filter(x=>!x.__meta);
+  const items=(Array.isArray(o?.items)?o.items:[]).filter(x=>x && !x.__meta);
   return items.map((x,n)=>{
-    const isWeight=Number(x.weight)>0;
-    const qty=isWeight?Number(x.weight):Number(x.quantity||1);
+    const isWeight=isWeightOrderItem(x);
+    const qty=isWeight?(Number(x.weight)>0?Number(x.weight):Number(x.quantity||1)):Number(x.quantity||1);
     const label=x.label||x.name||'صنف';
-    return `<div class="edit-order-row"><div class="edit-order-info"><b>${esc(label)}</b><small>$${money(Number(x.unitPrice??x.unit_price??x.price??0))} / ${isWeight?'كغ':'حبة'}</small></div><div class="edit-order-qty"><button type="button" onclick="changeEditedOrderQty(${n},-1)">−</button><input id="editOrderQty-${n}" class="modal-input" type="number" min="${isWeight?'0.1':'1'}" step="${isWeight?'0.1':'1'}" value="${isWeight?money(qty):qty}"><button type="button" onclick="changeEditedOrderQty(${n},1)">+</button></div></div>`;
+    return `<div class="edit-order-row"><div class="edit-order-info"><b>${esc(label)}</b><small>$${money(Number(x.unitPrice??x.unit_price??x.price??0))} / ${isWeight?'كغ':'حبة'}</small></div><div class="edit-order-qty"><button type="button" onclick="changeEditedOrderQty(${n},-1)">−</button><input id="editOrderQty-${n}" class="modal-input" type="number" min="${isWeight?'0.1':'1'}" step="${isWeight?'0.1':'1'}" value="${isWeight?money(qty):qty}" onchange="updateEditedOrderTotal()"><button type="button" onclick="changeEditedOrderQty(${n},1)">+</button></div></div>`;
   }).join('')||'<div class="muted">لا توجد أصناف.</div>';
+}
+function editAvailableMenuOptions(){
+  return (Array.isArray(menu)?menu:[]).filter(i=>i && i.available!==false && stockAvailable(i)).map(i=>`<option value="${esc(String(i.id))}">${esc(i.name||'صنف')} — ${esc(i.category||'')}</option>`).join('');
+}
+function refreshEditAddItemForm(){
+  const id=document.getElementById('editAddItemSelect')?.value;
+  const i=(Array.isArray(menu)?menu:[]).find(x=>String(x.id)===String(id));
+  const box=document.getElementById('editAddItemOptions'); if(!box)return;
+  if(!i){box.innerHTML='';return;}
+  const weight=i.type==='weight';
+  const prep=weight?`<div><label>التحضير</label><select id="editAddPrep" class="modal-input"><option value="raw">ني</option><option value="fry">مقلي</option><option value="grill">مشوي</option></select></div>`:'';
+  const qty=weight?`<div><label>الوزن (كغ)</label><input id="editAddQty" class="modal-input" type="number" min="0.1" step="0.1" value="1.0"></div>`:`<div><label>الكمية</label><input id="editAddQty" class="modal-input" type="number" min="1" step="1" value="1"></div>`;
+  let variant='';
+  if(i.type==='sizes')variant=`<div><label>الحجم</label><select id="editAddVariant" class="modal-input">${Object.keys(i.sizes||{}).map(k=>`<option value="${esc(k)}">${esc(k)} — $${money(i.sizes[k])}</option>`).join('')}</select></div>`;
+  if(i.type==='meal')variant=`<div><label>النوع</label><select id="editAddVariant" class="modal-input"><option value="وجبة">وجبة</option><option value="ساندويش">ساندويش</option></select></div>`;
+  box.innerHTML=`<div class="form-grid" style="margin-top:8px">${qty}${prep}${variant}<button type="button" class="primary" onclick="addEditedOrderItem()">➕ إضافة للفاتورة</button></div>`;
+}
+function addEditedOrderItem(){
+  const o=window.__editingPreviousOrder;if(!o)return;
+  const id=document.getElementById('editAddItemSelect')?.value;
+  const i=(Array.isArray(menu)?menu:[]).find(x=>String(x.id)===String(id));
+  if(!i)return alert('اختار الصنف أولاً.');
+  const qty=Number(document.getElementById('editAddQty')?.value||0);
+  if(!Number.isFinite(qty)||qty<=0)return alert('أدخل كمية صحيحة.');
+  let unit=0,label=i.name,weight=0,prep='',option='',size='';
+  if(i.type==='weight'){
+    prep=document.getElementById('editAddPrep')?.value||'raw';
+    unit=effectivePrice(i,prep); weight=Number(qty.toFixed(1)); label=`${i.name} - ${prep==='fry'?'مقلي':prep==='grill'?'مشوي':'ني'}`;
+  }else if(i.type==='sizes'){
+    size=document.getElementById('editAddVariant')?.value||Object.keys(i.sizes||{})[0]||''; unit=Number(i.sizes?.[size]||0); label=`${i.name} - ${size}`;
+  }else if(i.type==='meal'){
+    option=document.getElementById('editAddVariant')?.value||'وجبة'; unit=Number(i.prices?.[option]||0); label=`${i.name} - ${option}`;
+  }else if(i.type==='offer'){unit=Number(i.price||0);label=i.name;}else{unit=Number(i.price||0);label=i.name;}
+  if(!Number.isFinite(unit)||unit<0)return alert('سعر الصنف غير صالح.');
+  const item={id:i.id,name:i.name,label,type:i.type,offerItems:i.type==='offer'?(i.items||[]):[],quantity:i.type==='weight'?weight:Math.round(qty),weight,unitPrice:unit,total:Number((qty*unit).toFixed(2)),line_total:Number((qty*unit).toFixed(2)),preparation:prep,prep,category:i.category};
+  if(option)item.option=option;
+  if(size)item.size=size;
+  const meta=(Array.isArray(o.items)?o.items:[]).find(x=>x&&x.__meta);
+  const items=(Array.isArray(o.items)?o.items:[]).filter(x=>x&&!x.__meta);
+  items.push(item);o.items=meta?[...items,meta]:items;
+  const host=document.getElementById('editOrderItems');if(host)host.innerHTML=editOrderItemRows(o);
+  updateEditedOrderTotal();
+  const sel=document.getElementById('editAddItemSelect');if(sel)sel.value='';
+  const box=document.getElementById('editAddItemOptions');if(box)box.innerHTML='';
 }
 function changeEditedOrderQty(index,delta){
   const o=window.__editingPreviousOrder;if(!o)return;
-  const items=(Array.isArray(o.items)?o.items:[]).filter(x=>!x.__meta);const x=items[index];if(!x)return;
-  const isWeight=Number(x.weight)>0;const el=document.getElementById('editOrderQty-'+index);if(!el)return;
+  const items=(Array.isArray(o.items)?o.items:[]).filter(x=>x && !x.__meta);const x=items[index];if(!x)return;
+  const isWeight=isWeightOrderItem(x);const el=document.getElementById('editOrderQty-'+index);if(!el)return;
   let v=Number(el.value||0)+(isWeight?delta*0.1:delta);v=isWeight?Math.max(0.1,Math.round(v*10)/10):Math.max(1,Math.round(v));el.value=isWeight?money(v):String(v);
   updateEditedOrderTotal();
 }
 function updateEditedOrderTotal(){
   const o=window.__editingPreviousOrder;if(!o)return;
-  const items=(Array.isArray(o.items)?o.items:[]).filter(x=>!x.__meta);let food=0;
+  const items=(Array.isArray(o.items)?o.items:[]).filter(x=>x && !x.__meta);let food=0;
   items.forEach((x,n)=>{const el=document.getElementById('editOrderQty-'+n);const qty=Number(el?.value||0);const unit=Number(x.unitPrice??x.unit_price??x.price??0);food+=qty*unit;});
-  const meta=(Array.isArray(o.items)?o.items:[]).find(x=>x.__meta)||{};const delivery=Number(o.delivery_charge??meta.delivery_charge??0);const total=food+delivery;const el=document.getElementById('editOrderTotal');if(el)el.textContent='$'+money(total);
+  const meta=(Array.isArray(o.items)?o.items:[]).find(x=>x&&x.__meta)||{};const delivery=Number(o.delivery_charge??meta.delivery_charge??0);const total=food+delivery;const el=document.getElementById('editOrderTotal');if(el)el.textContent='$'+money(total);
 }
 function openEditPreviousOrder(id){
   const o=getPreviousOrder(id);if(!o)return alert('الطلب غير موجود.');
   window.__editingPreviousOrder=JSON.parse(JSON.stringify(o));
   const meta=(Array.isArray(o.items)?o.items:[]).find(x=>x.__meta)||{};
   const short=String(o.id||'').replace(/-/g,'').slice(-6).toUpperCase();
-  openModal('✏️ تعديل الطلب #'+esc(short),`<div class="edit-order-form"><div class="muted" style="margin-bottom:10px">عدّل الكمية، ثم احفظ. رقم الفاتورة يبقى نفسه.</div><div id="editOrderItems">${editOrderItemRows(o)}</div><hr><div class="detail-total"><span>المجموع الجديد</span><b id="editOrderTotal" dir="ltr">$${money(o.total)}</b></div><div class="data-card-actions"><button type="button" class="primary" onclick="saveEditedPreviousOrder('${esc(String(o.id||''))}')">💾 حفظ التعديل</button><button type="button" class="danger" onclick="closeModal()">إلغاء</button></div></div>`);
+  openModal('✏️ تعديل الطلب #'+esc(short),`<div class="edit-order-form"><div class="muted" style="margin-bottom:10px">عدّل الكمية أو الوزن، أو أضف صنفاً جديداً. رقم الفاتورة يبقى نفسه.</div><div id="editOrderItems">${editOrderItemRows(o)}</div><div style="margin-top:12px;padding-top:12px;border-top:1px dashed #999"><b>➕ إضافة صنف</b><select id="editAddItemSelect" class="modal-input" style="width:100%;margin-top:6px" onchange="refreshEditAddItemForm()"><option value="">اختار صنف...</option>${editAvailableMenuOptions()}</select><div id="editAddItemOptions"></div></div><hr><div class="detail-total"><span>المجموع الجديد</span><b id="editOrderTotal" dir="ltr">$${money(o.total)}</b></div><div class="data-card-actions"><button type="button" class="primary" onclick="saveEditedPreviousOrder('${esc(String(o.id||''))}')">💾 حفظ التعديل</button><button type="button" class="danger" onclick="closeModal()">إلغاء</button></div></div>`);
   updateEditedOrderTotal();
 }
 async function saveEditedPreviousOrder(id){
   const o=window.__editingPreviousOrder;if(!o)return;
   try{
-    const items=(Array.isArray(o.items)?o.items:[]).filter(x=>!x.__meta);const meta=(Array.isArray(o.items)?o.items:[]).find(x=>x.__meta)||{};
+    const originalItems=Array.isArray(o.items)?o.items:[];
+    const items=originalItems.filter(x=>x && !x.__meta);
+    const meta=originalItems.find(x=>x && x.__meta);
     let food=0;
-    items.forEach((x,n)=>{const el=document.getElementById('editOrderQty-'+n);const qty=Number(el?.value||0);if(!Number.isFinite(qty)||qty<=0)throw new Error('INVALID_QTY');const unit=Number(x.unitPrice??x.unit_price??x.price??0);if(Number(x.weight)>0){x.weight=qty;x.quantity=qty}else{x.quantity=Math.round(qty)}x.total=Number((qty*unit).toFixed(2));x.line_total=x.total;food+=x.total;});
-    const delivery=Number(o.delivery_charge??meta.delivery_charge??0);const total=Number((food+delivery).toFixed(2));
-    o.items=[...items,meta];o.total=total;
-    const r=await api(`/rest/v1/orders?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({items:o.items,total:o.total})});
+    items.forEach((x,n)=>{
+      const el=document.getElementById('editOrderQty-'+n);
+      const qty=Number(el?.value||0);
+      if(!Number.isFinite(qty)||qty<=0)throw new Error('INVALID_QTY');
+      const unit=Number(x.unitPrice??x.unit_price??x.price??0);
+      if(!Number.isFinite(unit))throw new Error('INVALID_UNIT_PRICE');
+      if(isWeightOrderItem(x)){x.weight=Number(qty.toFixed(1));x.quantity=x.weight;}else{x.quantity=Math.round(qty);}
+      x.total=Number((qty*unit).toFixed(2));
+      x.line_total=x.total;
+      food+=x.total;
+    });
+    const delivery=Number(o.delivery_charge??(meta?.delivery_charge)??0);
+    const total=Number((food+delivery).toFixed(2));
+    o.items=meta ? [...items,meta] : items;
+    o.total=total;
+    const r=await api(`/rest/v1/orders?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({items:o.items,total:o.total})});
     if(!r.ok)throw new Error(await r.text());
-    window.__previousOrders=(window.__previousOrders||[]).map(x=>String(x.id)===String(id)?o:x);
+    const saved=await r.json();
+    if(!Array.isArray(saved)||!saved.length)throw new Error('Supabase did not return the updated order.');
+    const confirmed=saved[0];
+    window.__previousOrders=(window.__previousOrders||[]).map(x=>String(x.id)===String(id)?confirmed:x);
+    window.__editingPreviousOrder=confirmed;
     closeModal();
-    try{await printOrder(o);alert('✅ تم تعديل الطلب وحفظ الفاتورة وإعادة طباعتها.')}catch(e){alert('✅ تم حفظ التعديل، لكن إعادة الطباعة فشلت.\n'+e.message)}
+    try{await printOrder(confirmed);alert('✅ تم تعديل الطلب وحفظ الفاتورة وإعادة طباعتها.')}catch(e){alert('✅ تم حفظ التعديل، لكن إعادة الطباعة فشلت.\n'+e.message)}
     showOrders();
   }catch(e){console.error('saveEditedPreviousOrder',e);alert('⚠️ لم يتم حفظ تعديل الفاتورة.\n'+e.message)}
 }
