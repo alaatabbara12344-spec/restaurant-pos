@@ -53,7 +53,7 @@ const normalizePhone=p=>{let s=String(p||'').replace(/\D/g,'');if(!s)return '';i
 function saveMenuLocal(markDirty=true){localStorage.setItem(MENU_STORAGE_KEY,JSON.stringify(menu));if(markDirty)localStorage.setItem(MENU_DIRTY_KEY,'1')}
 function markMenuDeleted(id){try{const a=JSON.parse(localStorage.getItem(MENU_DELETED_KEY)||'[]');const ids=Array.isArray(a)?a:[];if(!ids.includes(String(id)))ids.push(String(id));localStorage.setItem(MENU_DELETED_KEY,JSON.stringify(ids))}catch{localStorage.setItem(MENU_DELETED_KEY,JSON.stringify([String(id)]))}}
 function menuHasLocalChanges(){return localStorage.getItem(MENU_DIRTY_KEY)==='1'||JSON.parse(localStorage.getItem(MENU_DELETED_KEY)||'[]').length>0}
-async function api(path,opt={}){const headers=Object.assign({apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'},opt.headers||{});return fetch(SUPABASE_URL+path,{...opt,headers})}
+async function api(path,opt={}){const headers=Object.assign({apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'},opt.headers||{});return fetch(SUPABASE_URL+path,{...opt,headers,cache:'no-store'})}
 function setStatus(){const e=document.getElementById('connectionStatus');if(!e)return;e.textContent=navigator.onLine?'🟢 متصل':'🔴 أوفلاين';e.className='status-badge '+(navigator.onLine?'status-online':'status-offline')}
 function login(){const input=document.getElementById('loginPassword'),err=document.getElementById('loginError');if(input&&input.value===LOGIN_PASSWORD){sessionStorage.setItem('tabbaraLoggedIn','1');const screen=document.getElementById('loginScreen');if(screen)screen.style.display='none';if(err)err.style.display='none'}else if(err){err.style.display='block'}}
 function logout(){sessionStorage.removeItem('tabbaraLoggedIn');location.reload()}
@@ -196,10 +196,11 @@ async function printWithLocalBridge(html, orderNumber){
 }
 let whatsappSyncTimer=null;
 let whatsappSyncStarted=false;
+let whatsappLastTickAt=0;
 function startWhatsAppOrderSync(){
   if(whatsappSyncStarted)return;
   whatsappSyncStarted=true;
-  const tick=()=>{ if(navigator.onLine) checkWhatsAppOrders(); };
+  const tick=()=>{ if(navigator.onLine){ whatsappLastTickAt=Date.now(); checkWhatsAppOrders(); } };
   setTimeout(tick,700);
   whatsappSyncTimer=setInterval(tick,2000);
   window.addEventListener('online',()=>setTimeout(tick,300));
