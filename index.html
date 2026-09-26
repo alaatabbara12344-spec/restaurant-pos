@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#123b4a">
 <title>Tabbara Fish - POS</title>
-<link rel="stylesheet" href="style.css?v=65">
+<link rel="stylesheet" href="style.css?v=69">
 </head>
 <body>
 <div id="loginScreen" class="login-screen">
@@ -24,6 +24,7 @@
     <button class="orders-button" onclick="showCustomers()">👥 الزبائن</button>
     <button class="orders-button" onclick="showReports()">📊 تقارير المبيعات</button>
     <button class="orders-button" onclick="showMenuManager()">⚙️ إدارة المنيو</button>
+    <button class="orders-button" onclick="forceAppRefresh()">🔄 تحديث النظام</button>
     <button class="orders-button" onclick="logout()">🔒 خروج</button>
   </div>
 </header>
@@ -57,8 +58,8 @@
 </main>
 </div>
 <div id="modalRoot"></div>
-<script src="script.js?v=67"></script>
-<script src="qz-integration.js?v=65"></script>
-<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=65',{updateViaCache:'none'}));}</script>
+<script src="script.js?v=65"></script>
+<script src="qz-integration.js?v=69"></script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=69',{updateViaCache:'none'}));}</script>
 </body>
 </html>

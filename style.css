@@ -82,3 +82,8 @@
 #deliveryTime:disabled{opacity:.55;background:#f4f4f4}
 
 .delivery-time-label{display:block;font-weight:700;font-size:15px;margin-top:8px;margin-bottom:4px}
+
+/* v69 previous-order editor */
+.edit-order-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px dashed #ccc}
+.edit-order-info{display:flex;flex-direction:column;gap:4px;flex:1}.edit-order-info small{color:#666}
+.edit-order-qty{display:flex;align-items:center;gap:5px}.edit-order-qty button{width:38px;height:38px;border:0;border-radius:9px;font-size:20px;font-weight:800;cursor:pointer}.edit-order-qty input{width:76px;text-align:center;margin:0}

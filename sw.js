@@ -1,5 +1,5 @@
-const CACHE="tabbara-pos-v67";
-const ASSETS=["./","./index.html","./style.css?v=67","./script.js?v=67","./qz-integration.js?v=67","./html2canvas.min.js"];
+const CACHE="tabbara-pos-v69";
+const ASSETS=["./","./index.html","./style.css?v=69","./script.js?v=69","./qz-integration.js?v=69","./html2canvas.min.js"];
 self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener("fetch",e=>{
