@@ -23,6 +23,7 @@
     <button class="orders-button" onclick="showOrders()">📋 الطلبات السابقة</button>
     <button class="orders-button" onclick="showCustomers()">👥 الزبائن</button>
     <button class="orders-button" onclick="showReports()">📊 تقارير المبيعات</button>
+    <button class="orders-button" onclick="showPurchaseReports()">🧾 تقارير المشتريات</button>
     <button class="orders-button" onclick="showMenuManager()">⚙️ إدارة المنيو</button>
     <button class="orders-button" onclick="forceAppRefresh()">🔄 تحديث النظام</button>
     <button class="orders-button" onclick="logout()">🔒 خروج</button>
@@ -49,6 +50,7 @@
   <input id="phone" type="tel" placeholder="رقم الهاتف">
   <input id="address" type="text" placeholder="العنوان">
   <label for="deliveryTime" class="delivery-time-label">🕐 وقت التوصيل</label><input id="deliveryTime" type="time" disabled aria-label="وقت التوصيل">
+  <label for="pickupTime" class="delivery-time-label">🏪 وقت الاستلام من المحل</label><input id="pickupTime" type="time" disabled aria-label="وقت الاستلام من المحل">
   <select id="paymentMethod"><option value="cash">💵 كاش</option><option value="card">💳 بطاقة</option><option value="transfer">🏦 تحويل</option></select>
   <textarea id="notes" placeholder="ملاحظات على الطلب"></textarea>
   <div id="customerMessage" class="customer-message"></div>
