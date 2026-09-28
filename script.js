@@ -252,7 +252,15 @@ function normalizeDeliveryTime(value){
   if(!m)return s;
   const h=String(Number(m[1]));
   const mins=m[2]||'00';
-  return h+':'+mins+(m[3]?' '+m[3]:'');
+  let hour=Number(h), suffix=m[3]||'';
+  if(suffix){
+    const isPM=/^(مساءً|PM)$/i.test(suffix);
+    hour=hour%12+(isPM?12:0);
+  }
+  if(hour===0)return '12:'+mins+' AM';
+  if(hour<12)return hour+':'+mins+' AM';
+  if(hour===12)return '12:'+mins+' PM';
+  return (hour-12)+':'+mins+' PM';
 }
 function cleanOrderNotes(notes){
   return String(notes||'')
@@ -288,7 +296,7 @@ async function printOrder(o){
   const isDelivery=String(o.order_type||'').toLowerCase()==='delivery';
   const delivery=Number(o.delivery_charge||meta.delivery_charge||0);
   const deliveryTime=normalizeDeliveryTime(extractDeliveryTime(o,meta));
-  const pickupTime=String(o.pickup_time||meta.pickup_time||'').trim();
+  const pickupTime=normalizeDeliveryTime(o.pickup_time||meta.pickup_time||'');
   const getQty=x=>{
     const w=Number(x?.weight);
     if(Number.isFinite(w) && w>0) return w;
@@ -316,7 +324,7 @@ async function printOrder(o){
   const orderShort=String(o.id||'').replace(/-/g,'').slice(-6).toUpperCase();
   const created=o.created_at?new Date(o.created_at):new Date();
   const date=created.toLocaleDateString('ar-LB');
-  const time=created.toLocaleTimeString('ar-LB',{hour:'2-digit',minute:'2-digit'});
+  const time=created.toLocaleTimeString('en-US',{timeZone:'Asia/Beirut',hour:'numeric',minute:'2-digit',hour12:true});
   const moneyHtml=v=>'<span dir="ltr" style="direction:ltr;unicode-bidi:isolate;white-space:nowrap">$'+money(v)+'</span>';
   const rows=items.map(x=>{
     const qty=getQty(x),unit=getUnit(x),line=getLineTotal(x);
