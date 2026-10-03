@@ -96,36 +96,53 @@ async function findCustomer(){const raw=String(document.getElementById('phone')?
 function queueCustomerLookup(){clearTimeout(customerLookupTimer);customerLookupTimer=setTimeout(findCustomer,300)}
 async function saveCustomer(){const phone=normalizePhone(document.getElementById('phone').value),name=document.getElementById('name').value.trim(),address=document.getElementById('address').value.trim(),notes=document.getElementById('notes').value.trim();if(!phone||!navigator.onLine)return;try{const r=await api('/rest/v1/customers?on_conflict=phone',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({phone,name,address,notes,updated_at:new Date().toISOString()})});if(!r.ok)console.warn('customer save',r.status,await r.text())}catch(e){console.warn(e)}}
 function paymentMeta(){const p=document.getElementById('paymentMethod').value;return p==='cash'?'كاش':p==='card'?'بطاقة':'تحويل'}
-function orderPayload(){const baseTotal=cart.reduce((s,x)=>s+Number(x.total),0),delivery=selectedOrderType==='Delivery'?deliveryCharge:0,deliveryTime=document.getElementById('deliveryTime')?.value||'',pickupTime=document.getElementById('pickupTime')?.value||'';const meta={__meta:true,payment_method:document.getElementById('paymentMethod').value,payment_label:paymentMeta(),delivery_charge:delivery,delivery_time:deliveryTime,pickup_time:pickupTime};return{order_type:selectedOrderType,customer_name:document.getElementById('name').value.trim(),customer_phone:normalizePhone(document.getElementById('phone').value),customer_address:document.getElementById('address').value.trim(),notes:document.getElementById('notes').value.trim(),delivery_time:deliveryTime||null,pickup_time:pickupTime||null,items:[...cart,meta],total:baseTotal+delivery,device_id:deviceId,sync_status:navigator.onLine?'synced':'pending',created_at:new Date().toISOString(),delivery_charge:delivery}}
+function orderPayload(){const baseTotal=cart.reduce((s,x)=>s+Number(x.total),0),delivery=selectedOrderType==='Delivery'?deliveryCharge:0,deliveryTime=document.getElementById('deliveryTime')?.value||'',pickupTime=document.getElementById('pickupTime')?.value||'',clientOrderId=(crypto?.randomUUID?crypto.randomUUID():'pos-'+Date.now()+'-'+Math.random().toString(36).slice(2,10));const meta={__meta:true,payment_method:document.getElementById('paymentMethod').value,payment_label:paymentMeta(),delivery_charge:delivery,delivery_time:deliveryTime,pickup_time:pickupTime};return{order_type:selectedOrderType,customer_name:document.getElementById('name').value.trim(),customer_phone:normalizePhone(document.getElementById('phone').value),customer_address:document.getElementById('address').value.trim(),notes:document.getElementById('notes').value.trim(),delivery_time:deliveryTime||null,pickup_time:pickupTime||null,items:[...cart,meta],total:baseTotal+delivery,device_id:deviceId,sync_status:navigator.onLine?'synced':'pending',created_at:new Date().toISOString(),delivery_charge:delivery,client_order_id:clientOrderId}}
+function getPendingOrders(){try{const q=JSON.parse(localStorage.getItem(PENDING_ORDERS_KEY)||'[]');return Array.isArray(q)?q:[]}catch{return[]}}
+function setPendingOrders(q){localStorage.setItem(PENDING_ORDERS_KEY,JSON.stringify(Array.isArray(q)?q:[]))}
+function queuePendingOrder(o){const q=getPendingOrders();const key=String(o.client_order_id||o.id||'');if(key&&!q.some(x=>String(x.client_order_id||x.id||'')===key))q.push(o);setPendingOrders(q)}
+async function syncOnePendingOrder(o){
+  if(!navigator.onLine)return false;
+  try{
+    const cid=String(o.client_order_id||'');
+    if(cid){
+      const check=await api(`/rest/v1/orders?client_order_id=eq.${encodeURIComponent(cid)}&select=id&limit=1`);
+      if(check.ok){const found=await check.json();if(Array.isArray(found)&&found.length)return true;}
+    }
+    const payload={...o,sync_status:'synced'};
+    const r=await api('/rest/v1/orders',{method:'POST',body:JSON.stringify(payload)});
+    return r.ok;
+  }catch(e){console.warn('syncOnePendingOrder',e);return false}
+}
+let pendingOrdersSyncBusy=false;
+async function syncPendingOrders(){
+  if(!navigator.onLine||pendingOrdersSyncBusy)return;
+  const q=getPendingOrders();if(!q.length)return;
+  pendingOrdersSyncBusy=true;
+  try{
+    const left=[];
+    for(const o of q){if(!(await syncOnePendingOrder(o)))left.push(o)}
+    setPendingOrders(left);
+    if(!left.length){const ordersList=document.getElementById('ordersList');if(ordersList)showOrders();}
+  }finally{pendingOrdersSyncBusy=false}
+}
 async function confirmOrder(){
   if(!selectedOrderType)return alert('اختار نوع الطلب أولاً.');
   if(!cart.length)return alert('أضف صنفاً واحداً على الأقل.');
   const payload=orderPayload();
-  const finish=async()=>{
-    try{
-      await printOrder(payload);
-      clearOrder();
-    }catch(e){
-      console.error(e);
-      alert('⚠️ تم حفظ الطلب لكن الطباعة فشلت.\n'+e.message);
-    }
-  };
+  // Queue locally first so printing never waits for Supabase/network.
+  queuePendingOrder(payload);
+  const printPromise=printOrder(payload);
+  saveCustomer().catch(()=>{});
+  clearOrder();
+  // Sync in the background; it must never block or delay printing.
+  syncPendingOrders().catch(e=>console.warn('background order sync',e));
   try{
-    const r=await api('/rest/v1/orders',{method:'POST',body:JSON.stringify(payload)});
-    if(!r.ok)throw new Error(await r.text());
-    saveCustomer().catch(()=>{});
-    alert('✅ تم حفظ الطلب بنجاح');
-    await finish();
+    await printPromise;
   }catch(e){
-    const q=JSON.parse(localStorage.getItem(PENDING_ORDERS_KEY)||'[]');
-    q.push(payload);
-    localStorage.setItem(PENDING_ORDERS_KEY,JSON.stringify(q));
-    alert('📴 تم حفظ الطلب على الجهاز وسيتم مزامنته عند عودة الإنترنت.');
-    await finish();
+    console.error(e);
+    alert('⚠️ تم حفظ الطلب، لكن الطباعة فشلت.\n'+e.message);
   }
 }
-
-async function syncPendingOrders(){if(!navigator.onLine)return;const q=JSON.parse(localStorage.getItem(PENDING_ORDERS_KEY)||'[]');if(!q.length)return;const left=[];for(const o of q){try{const r=await api('/rest/v1/orders',{method:'POST',body:JSON.stringify(o)});if(!r.ok)throw 0}catch{left.push(o)}}localStorage.setItem(PENDING_ORDERS_KEY,JSON.stringify(left))}
 let whatsappPollBusy=false;
 const WHATSAPP_SEEN_KEY='tabbara_whatsapp_seen_orders';
 function getWhatsAppSeen(){try{const a=JSON.parse(localStorage.getItem(WHATSAPP_SEEN_KEY)||'[]');return Array.isArray(a)?a:[]}catch{return[]}}
@@ -247,20 +264,38 @@ function extractDeliveryTime(order, meta){
   return '';
 }
 function normalizeDeliveryTime(value){
-  let s=String(value||'').trim().replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/\./g,':');
-  const m=s.match(/^([0-2]?\d)(?::([0-5]\d))?\s*(صباحاً|مساءً|AM|PM)?$/i);
-  if(!m)return s;
-  const h=String(Number(m[1]));
-  const mins=m[2]||'00';
-  let hour=Number(h), suffix=m[3]||'';
-  if(suffix){
-    const isPM=/^(مساءً|PM)$/i.test(suffix);
-    hour=hour%12+(isPM?12:0);
+  let s=String(value??'').trim();
+  if(!s)return '';
+  s=s.replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+  // Accept a full timestamp/date-time and extract only its local clock time.
+  const dateMatch=s.match(/(?:T|\s)([0-2]?\d)[:.]([0-5]\d)(?::[0-5]\d)?(?:\s*(Z|[+-]\d{2}:\d{2}))?$/i);
+  if(dateMatch){
+    s=`${dateMatch[1]}:${dateMatch[2]}`;
+  }else{
+    s=s.replace(/\./g,':').replace(/\s+/g,' ').trim();
   }
-  if(hour===0)return '12:'+mins+' AM';
-  if(hour<12)return hour+':'+mins+' AM';
-  if(hour===12)return '12:'+mins+' PM';
-  return (hour-12)+':'+mins+' PM';
+  const m=s.match(/^([0-2]?\d)(?::([0-5]\d))?\s*(صباحاً|صباحا|مساءً|مساءا|AM|PM)?$/i);
+  if(!m)return s;
+  let hour=Number(m[1]),mins=m[2]||'00',suffix=m[3]||'';
+  if(suffix){const isPM=/^(مساءً|مساءا|PM)$/i.test(suffix);hour=hour%12+(isPM?12:0);}
+  if(hour<0||hour>23)return s;
+  const period=hour>=12?'م':'ص';
+  const h=hour%12||12;
+  return `${h}:${mins} ${period}`;
+}
+function formatScheduledTime(value){
+  const raw=String(value??'').trim();
+  if(!raw)return '';
+  const normalized=normalizeDeliveryTime(raw);
+  // If it is a full date-time, show the date only when it is not today in Beirut.
+  const dateMatch=raw.match(/^(\d{4})-(\d{2})-(\d{2})[T\s]/);
+  if(!dateMatch)return normalized;
+  const dt=new Date(raw);
+  if(Number.isNaN(dt.getTime()))return normalized;
+  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Beirut',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Beirut',year:'numeric',month:'2-digit',day:'2-digit'}).format(dt);
+  if(day===today)return normalized;
+  return `${day} - ${normalized}`;
 }
 function cleanOrderNotes(notes){
   return String(notes||'')
@@ -295,8 +330,8 @@ async function printOrder(o){
   const meta=rawItems.find(x=>x.__meta)||{};
   const isDelivery=String(o.order_type||'').toLowerCase()==='delivery';
   const delivery=Number(o.delivery_charge||meta.delivery_charge||0);
-  const deliveryTime=normalizeDeliveryTime(extractDeliveryTime(o,meta));
-  const pickupTime=normalizeDeliveryTime(o.pickup_time||meta.pickup_time||'');
+  const deliveryTime=formatScheduledTime(extractDeliveryTime(o,meta));
+  const pickupTime=formatScheduledTime(o.pickup_time||meta.pickup_time||'');
   const getQty=x=>{
     const w=Number(x?.weight);
     if(Number.isFinite(w) && w>0) return w;
@@ -420,9 +455,13 @@ async function showOrders(){
     const r=await api('/rest/v1/orders?select=*&order=created_at.desc&limit=200');
     if(!r.ok)throw new Error(await r.text());
     const rows=await r.json();
-    window.__previousOrders=rows;
-    if(!rows.length){host.innerHTML='<div class="empty-state">لا توجد طلبات سابقة.</div>';return}
-    host.innerHTML=rows.map((o,i)=>{
+    const pending=getPendingOrders();
+    const pendingIds=new Set(rows.map(o=>String(o.client_order_id||'')));
+    const merged=[...rows,...pending.filter(o=>{const id=String(o.client_order_id||'');return id&&!pendingIds.has(id)})];
+    window.__previousOrders=merged;
+    const rowsForDisplay=merged;
+    if(!merged.length){host.innerHTML='<div class="empty-state">لا توجد طلبات سابقة.</div>';return}
+    host.innerHTML=rowsForDisplay.map((o,i)=>{
       const items=(Array.isArray(o.items)?o.items:[]).filter(x=>!x.__meta);
       const date=o.created_at?new Date(o.created_at).toLocaleString('ar-LB',{dateStyle:'short',timeStyle:'short'}):'';
       const oid=esc(String(o.id||'')).replace(/'/g,"\\'");
@@ -444,7 +483,7 @@ async function showOrders(){
 
 function getPreviousOrder(id){return (window.__previousOrders||[]).find(o=>String(o.id)===String(id))||null}
 function orderItemsSummary(o){const items=(Array.isArray(o?.items)?o.items:[]).filter(x=>!x.__meta);return items.map(x=>{const qty=Number(x.weight??x.quantity??1);const unit=Number(x.unitPrice??x.price??x.unit_price??0);const stored=Number(x.total??x.line_total);const line=Number.isFinite(stored)&&stored>0?stored:qty*unit;const label=x.label||x.name||'صنف';return `<div class="detail-item"><span>${esc(label)} × ${esc(String(Number(x.weight)>0?money(Number(x.weight))+' كغ':x.quantity||1))}</span><b dir="ltr">$${money(line)}</b></div>`}).join('')||'<div class="muted">لا توجد أصناف.</div>'}
-function viewOrderDetails(id){const o=getPreviousOrder(id);if(!o)return alert('الطلب غير موجود.');const meta=(Array.isArray(o.items)?o.items:[]).find(x=>x.__meta)||{};const date=o.created_at?new Date(o.created_at).toLocaleString('ar-LB',{dateStyle:'medium',timeStyle:'short'}):'';const short=String(o.id||'').replace(/-/g,'').slice(-6).toUpperCase();openModal('📋 تفاصيل الطلب #'+esc(short),`<div class="order-details"><div><b>التاريخ:</b> ${esc(date)}</div><div><b>نوع الطلب:</b> ${esc(o.order_type||'')}</div><div><b>الزبون:</b> ${esc(o.customer_name||'غير محدد')}</div><div><b>الهاتف:</b> <span dir="ltr">${esc(o.customer_phone||'')}</span></div>${String(o.order_type||'').toLowerCase()==='delivery'?`<div><b>العنوان:</b> ${esc(o.customer_address||'غير محدد')}</div>${meta.delivery_time?`<div><b>وقت التوصيل:</b> <span dir="ltr">${esc(meta.delivery_time)}</span></div>`:''}`:''}<div><b>طريقة الدفع:</b> ${esc(meta.payment_label||'كاش')}</div><hr><h4>الأصناف</h4>${orderItemsSummary(o)}<hr><div class="detail-total"><span>المجموع</span><b dir="ltr">$${money(o.total)}</b></div>${o.notes?`<div><b>ملاحظات:</b> ${esc(o.notes)}</div>`:''}<div class="data-card-actions"><button type="button" class="primary" onclick="openEditPreviousOrder('${esc(String(o.id||''))}')">✏️ تعديل الطلب</button><button type="button" class="primary" onclick="reprintOrder('${esc(String(o.id||''))}')">🖨️ إعادة طباعة</button><button type="button" class="danger" onclick="deletePreviousOrder('${esc(String(o.id||''))}')">🗑️ إلغاء/حذف</button></div></div>`)}
+function viewOrderDetails(id){const o=getPreviousOrder(id);if(!o)return alert('الطلب غير موجود.');const meta=(Array.isArray(o.items)?o.items:[]).find(x=>x.__meta)||{};const date=o.created_at?new Date(o.created_at).toLocaleString('ar-LB',{dateStyle:'medium',timeStyle:'short'}):'';const short=String(o.id||'').replace(/-/g,'').slice(-6).toUpperCase();openModal('📋 تفاصيل الطلب #'+esc(short),`<div class="order-details"><div><b>التاريخ:</b> ${esc(date)}</div><div><b>نوع الطلب:</b> ${esc(o.order_type||'')}</div><div><b>الزبون:</b> ${esc(o.customer_name||'غير محدد')}</div><div><b>الهاتف:</b> <span dir="ltr">${esc(o.customer_phone||'')}</span></div>${String(o.order_type||'').toLowerCase()==='delivery'?`<div><b>العنوان:</b> ${esc(o.customer_address||'غير محدد')}</div>${meta.delivery_time?`<div><b>وقت التوصيل:</b> <span dir="ltr">${esc(formatScheduledTime(meta.delivery_time))}</span></div>`:''}`:''}<div><b>طريقة الدفع:</b> ${esc(meta.payment_label||'كاش')}</div><hr><h4>الأصناف</h4>${orderItemsSummary(o)}<hr><div class="detail-total"><span>المجموع</span><b dir="ltr">$${money(o.total)}</b></div>${o.notes?`<div><b>ملاحظات:</b> ${esc(o.notes)}</div>`:''}<div class="data-card-actions"><button type="button" class="primary" onclick="openEditPreviousOrder('${esc(String(o.id||''))}')">✏️ تعديل الطلب</button><button type="button" class="primary" onclick="reprintOrder('${esc(String(o.id||''))}')">🖨️ إعادة طباعة</button><button type="button" class="danger" onclick="deletePreviousOrder('${esc(String(o.id||''))}')">🗑️ إلغاء/حذف</button></div></div>`)}
 function isWeightOrderItem(x){
   if(!x||x.__meta)return false;
   if(Number(x.weight)>0)return true;
