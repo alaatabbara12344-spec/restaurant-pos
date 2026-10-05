@@ -297,6 +297,12 @@ function formatScheduledTime(value){
   if(day===today)return normalized;
   return `${day} - ${normalized}`;
 }
+function formatOrderDate(value, style='medium'){
+  if(!value)return '';
+  const dt=new Date(value);
+  if(Number.isNaN(dt.getTime()))return '';
+  return new Intl.DateTimeFormat('ar-LB',{timeZone:'Asia/Beirut',dateStyle:style,timeStyle:'short',hour12:true}).format(dt);
+}
 function cleanOrderNotes(notes){
   return String(notes||'')
     .replace(/(?:وقت\s*التوصيل|وقت\s*الطلب|delivery\s*time)\s*[:：-]?\s*[0-2]?\d\s*[:.]\s*[0-5]\d\s*(?:صباحاً|مساءً|AM|PM)?/gi,'')
@@ -463,7 +469,7 @@ async function showOrders(){
     if(!merged.length){host.innerHTML='<div class="empty-state">لا توجد طلبات سابقة.</div>';return}
     host.innerHTML=rowsForDisplay.map((o,i)=>{
       const items=(Array.isArray(o.items)?o.items:[]).filter(x=>!x.__meta);
-      const date=o.created_at?new Date(o.created_at).toLocaleString('ar-LB',{dateStyle:'short',timeStyle:'short'}):'';
+      const date=formatOrderDate(o.created_at,'short');
       const oid=esc(String(o.id||'')).replace(/'/g,"\\'");
       const short=String(o.id||'').replace(/-/g,'').slice(-6).toUpperCase()||String(i+1);
       const itemText=items.map(x=>`${esc(x.label||x.name||'صنف')} × ${esc(String(Number(x.weight)>0?money(Number(x.weight))+' كغ':x.quantity||1))}`).join('، ')||'لا توجد أصناف';
@@ -483,7 +489,7 @@ async function showOrders(){
 
 function getPreviousOrder(id){return (window.__previousOrders||[]).find(o=>String(o.id)===String(id))||null}
 function orderItemsSummary(o){const items=(Array.isArray(o?.items)?o.items:[]).filter(x=>!x.__meta);return items.map(x=>{const qty=Number(x.weight??x.quantity??1);const unit=Number(x.unitPrice??x.price??x.unit_price??0);const stored=Number(x.total??x.line_total);const line=Number.isFinite(stored)&&stored>0?stored:qty*unit;const label=x.label||x.name||'صنف';return `<div class="detail-item"><span>${esc(label)} × ${esc(String(Number(x.weight)>0?money(Number(x.weight))+' كغ':x.quantity||1))}</span><b dir="ltr">$${money(line)}</b></div>`}).join('')||'<div class="muted">لا توجد أصناف.</div>'}
-function viewOrderDetails(id){const o=getPreviousOrder(id);if(!o)return alert('الطلب غير موجود.');const meta=(Array.isArray(o.items)?o.items:[]).find(x=>x.__meta)||{};const date=o.created_at?new Date(o.created_at).toLocaleString('ar-LB',{dateStyle:'medium',timeStyle:'short'}):'';const short=String(o.id||'').replace(/-/g,'').slice(-6).toUpperCase();openModal('📋 تفاصيل الطلب #'+esc(short),`<div class="order-details"><div><b>التاريخ:</b> ${esc(date)}</div><div><b>نوع الطلب:</b> ${esc(o.order_type||'')}</div><div><b>الزبون:</b> ${esc(o.customer_name||'غير محدد')}</div><div><b>الهاتف:</b> <span dir="ltr">${esc(o.customer_phone||'')}</span></div>${String(o.order_type||'').toLowerCase()==='delivery'?`<div><b>العنوان:</b> ${esc(o.customer_address||'غير محدد')}</div>${meta.delivery_time?`<div><b>وقت التوصيل:</b> <span dir="ltr">${esc(formatScheduledTime(meta.delivery_time))}</span></div>`:''}`:''}<div><b>طريقة الدفع:</b> ${esc(meta.payment_label||'كاش')}</div><hr><h4>الأصناف</h4>${orderItemsSummary(o)}<hr><div class="detail-total"><span>المجموع</span><b dir="ltr">$${money(o.total)}</b></div>${o.notes?`<div><b>ملاحظات:</b> ${esc(o.notes)}</div>`:''}<div class="data-card-actions"><button type="button" class="primary" onclick="openEditPreviousOrder('${esc(String(o.id||''))}')">✏️ تعديل الطلب</button><button type="button" class="primary" onclick="reprintOrder('${esc(String(o.id||''))}')">🖨️ إعادة طباعة</button><button type="button" class="danger" onclick="deletePreviousOrder('${esc(String(o.id||''))}')">🗑️ إلغاء/حذف</button></div></div>`)}
+function viewOrderDetails(id){const o=getPreviousOrder(id);if(!o)return alert('الطلب غير موجود.');const meta=(Array.isArray(o.items)?o.items:[]).find(x=>x.__meta)||{};const date=formatOrderDate(o.created_at,'medium');const short=String(o.id||o.client_order_id||'').replace(/-/g,'').slice(-6).toUpperCase();const type=String(o.order_type||'').toLowerCase();const deliveryTime=formatScheduledTime(o.delivery_time||meta.delivery_time||'');const pickupTime=formatScheduledTime(o.pickup_time||meta.pickup_time||'');const timeHtml=type==='delivery'?(deliveryTime?`<div><b>وقت التوصيل:</b> <span dir="ltr">${esc(deliveryTime)}</span></div>`:''):(pickupTime?`<div><b>وقت الاستلام من المحل:</b> <span dir="ltr">${esc(pickupTime)}</span></div>`:'');openModal('📋 تفاصيل الطلب #'+esc(short),`<div class="order-details"><div><b>التاريخ:</b> ${esc(date)}</div><div><b>نوع الطلب:</b> ${esc(o.order_type||'')}</div><div><b>الزبون:</b> ${esc(o.customer_name||'غير محدد')}</div><div><b>الهاتف:</b> <span dir="ltr">${esc(o.customer_phone||'')}</span></div>${type==='delivery'?`<div><b>العنوان:</b> ${esc(o.customer_address||'غير محدد')}</div>`:''}${timeHtml}<div><b>طريقة الدفع:</b> ${esc(meta.payment_label||'كاش')}</div><hr><h4>الأصناف</h4>${orderItemsSummary(o)}<hr><div class="detail-total"><span>المجموع</span><b dir="ltr">$${money(o.total)}</b></div>${o.notes?`<div><b>ملاحظات:</b> ${esc(o.notes)}</div>`:''}<div class="data-card-actions"><button type="button" class="primary" onclick="openEditPreviousOrder('${esc(String(o.id||o.client_order_id||''))}')">✏️ تعديل الطلب</button><button type="button" class="primary" onclick="reprintOrder('${esc(String(o.id||o.client_order_id||''))}')">🖨️ إعادة طباعة</button><button type="button" class="danger" onclick="deletePreviousOrder('${esc(String(o.id||o.client_order_id||''))}')">🗑️ إلغاء/حذف</button></div></div>`)}
 function isWeightOrderItem(x){
   if(!x||x.__meta)return false;
   if(Number(x.weight)>0)return true;
