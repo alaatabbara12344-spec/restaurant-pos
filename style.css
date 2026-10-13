@@ -105,3 +105,6 @@
 .total{font-size:19px;margin:10px 0;padding:9px}
 .modal-confirm-btn{margin-top:8px;padding:10px;font-size:16px;border-radius:8px}
 @media(max-height:700px){.modal-box{max-height:94vh}.modal-header{padding:7px 12px}.modal-body{padding:8px}.qty-display{height:42px!important;min-height:42px!important;font-size:23px!important;margin:3px 0 5px!important}.qty-pad button{min-height:39px;font-size:20px}.option-btn,.size-option{min-height:36px;padding:6px 9px}.total{margin:6px 0;padding:7px}.modal-confirm-btn{margin-top:5px;padding:8px}}
+
+/* v75: multi-day sales report selection */
+.report-select-toolbar{margin:10px 0;padding:10px;border:1px solid #d7dce0;border-radius:10px;background:#f7f9fa;font-weight:700}.report-select-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.report-select-actions .choice-btn{margin:0}.report-day-label{display:flex;align-items:center;gap:9px;cursor:pointer;width:100%;padding:2px 0}.report-day-select{width:20px!important;height:20px!important;min-height:20px!important;margin:0!important;flex:0 0 20px;accent-color:#123b4a;cursor:pointer}.report-day-label span{flex:1}.report-select-toolbar button:disabled{opacity:.45;cursor:not-allowed}
